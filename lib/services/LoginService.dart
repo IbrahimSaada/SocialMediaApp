@@ -1,5 +1,3 @@
-// ignore_for_file: file_names, avoid_print
-
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -8,7 +6,7 @@ import 'SignatureService.dart';  // Import the SignatureService class
 class LoginService {
   final String baseUrl =
       'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api';
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
   final SignatureService _signatureService = SignatureService();  // Use SignatureService
 
   // Login function
@@ -36,7 +34,7 @@ class LoginService {
       var token = data['token']; // Access token
       var refreshToken = data['refreshToken']; // Refresh token
       var userId = data['userId']; // Get user ID from the response
-      var expiration = DateTime.now().add(const Duration(minutes: 2)); // Set expiration time
+      var expiration = DateTime.now().add(Duration(minutes: 2)); // Set expiration time
       await _storeTokenAndUserId(token, refreshToken, userId, expiration);
     } else {
       throw Exception('Failed to login: ${response.body}');
@@ -69,7 +67,7 @@ class LoginService {
     var data = jsonDecode(response.body);
     var token = data['accessToken']; // New access token
     var newRefreshToken = data['refreshToken']; // New refresh token
-    var expiration = DateTime.now().add(const Duration(minutes: 1)); // Set new expiration time
+    var expiration = DateTime.now().add(Duration(minutes: 1)); // Set new expiration time
 
     // Retrieve the user ID
     final userId = await getUserId();

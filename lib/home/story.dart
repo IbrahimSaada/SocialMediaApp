@@ -9,6 +9,7 @@ import 'package:cook/models/presigned_url.dart';
 import 'package:cook/services/StoryService.dart'; // Import the story service
 import 'package:cook/services/LoginService.dart'; // Import the login service to get user ID
 import 'package:cook/models/story_request_model.dart'; // Import the story request model
+import 'package:cook/maintenance/expiredtoken.dart';
 
 class StoryBox extends StatefulWidget {
   final Function(List<story_model.Story>) onStoriesUpdated;
@@ -152,6 +153,15 @@ class _StoryBoxState extends State<StoryBox> {
     }
   }
 
+  Future<bool> _checkSession(BuildContext context) async {
+  final userId = await LoginService().getUserId();
+  if (userId == null) {
+    handleSessionExpired(context); // Show session expired dialog
+    return false; // Session expired
+  }
+  return true; // Session is valid
+}
+
   Future<void> _pickMedia() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -261,54 +271,57 @@ class _StoryBoxState extends State<StoryBox> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _showOptionsDialog(context),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [
-              Color(0xFF4B3F72), // Deep burgundy color
-              Color(0xFFF4A261), // Warm orange color
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+Widget build(BuildContext context) {
+  return GestureDetector(
+    onTap: () async {
+      if (!await _checkSession(context)) return; // Check session before showing options dialog
+      _showOptionsDialog(context); // Show options to take photo or pick media
+    },
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF4B3F72), // Deep burgundy color
+            Color(0xFFF4A261), // Warm orange color
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20.0), // Softer rounded corners
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15), // Updated shadow
+            blurRadius: 8,
+            offset: const Offset(0, 4), // Shadow position
           ),
-          borderRadius: BorderRadius.circular(20.0), // Softer rounded corners
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.15), // Updated shadow
-              blurRadius: 8,
-              offset: const Offset(0, 4), // Shadow position
+        ],
+      ),
+      child: Container(
+        width: 110, // Increased size
+        height: 110, // Increased size
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20.0), // Softer corners
+          color: Colors.white, // Background color inside the border
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Center the plus icon and make it white with a transparent circular background
+            Container(
+              width: 45, // Adjust size of circular container
+              height: 45,
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.1), // Transparent circle background
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.add, color: Colors.white, size: 30), // Plus icon in the center
             ),
           ],
         ),
-        child: Container(
-          width: 110, // Increased size
-          height: 110, // Increased size
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20.0), // Softer corners
-            color: Colors.white, // Background color inside the border
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Center the plus icon and make it white with a transparent circular background
-              Container(
-                width: 45, // Adjust size of circular container
-                height: 45,
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.1), // Transparent circle background
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.add, color: Colors.white, size: 30), // Plus icon in the center
-              ),
-            ],
-          ),
-        ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class MediaPreviewScreen extends StatelessWidget {
