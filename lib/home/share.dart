@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '***REMOVED***/models/post_model.dart';
 import '***REMOVED***/services/LoginService.dart';
 import '***REMOVED***/services/RepostServices.dart';
-
+import '***REMOVED***/maintenance/expiredtoken.dart'; // Import expired token handler
 
 class ShareBottomSheet extends StatelessWidget {
   final Post post;
@@ -43,10 +43,9 @@ class ShareBottomSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 15),
-            // Share Card that fills the full width
+            // Share Card
             Container(
-              width:
-                  MediaQuery.of(context).size.width, // Full width of the screen
+              width: MediaQuery.of(context).size.width,
               decoration: BoxDecoration(
                 color: Colors.white,
                 border: Border.all(color: Colors.orange, width: 1.5),
@@ -61,8 +60,7 @@ class ShareBottomSheet extends StatelessWidget {
                 ],
               ),
               child: Padding(
-                padding:
-                    const EdgeInsets.all(12.0), // Inner padding for content
+                padding: const EdgeInsets.all(12.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -98,46 +96,34 @@ class ShareBottomSheet extends StatelessWidget {
                           onPressed: () async {
                             String shareText = _shareTextController.text.trim();
 
-                            // Fetch the current user's ID from the secure storage
+                            // Check user session before sharing
                             int? userId = await LoginService().getUserId();
 
                             if (userId != null) {
-                              // Call the repost service to create a repost
+                              // Perform the repost action
                               try {
                                 await RepostService().createRepost(
                                     userId, post.postId, shareText);
-                                // ignore: avoid_print
-                                print('Repost successful');
-                                // Optionally, refresh the UI or show a success message
+                                Navigator.pop(context); // Close bottom sheet after successful share
                               } catch (e) {
-                                // ignore: avoid_print
                                 print('Failed to repost: $e');
-                                // Optionally, show an error message to the user
                               }
-
-                              // Close the bottom sheet after reposting
-                              // ignore: use_build_context_synchronously
-                              Navigator.pop(context);
                             } else {
-                              // Handle the case where the user ID is not available
-                              // ignore: avoid_print
-                              print('User not logged in');
-                              // Optionally, show a message to the user
+                              // Session expired, show dialog
+                              handleSessionExpired(context);
                             }
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange, // Orange background
+                            backgroundColor: Colors.orange,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10.0),
                             ),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 40.0,
-                                vertical: 15.0), // Larger button size
+                                horizontal: 40.0, vertical: 15.0),
                           ),
                           child: const Text(
                             'Share',
-                            style: TextStyle(
-                                color: Colors.white), // White text color
+                            style: TextStyle(color: Colors.white),
                           ),
                         ),
                       ],

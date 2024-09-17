@@ -74,11 +74,11 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
     }
   }
 void _submitReport(String reportReason, int reportedUserId, int contentId) async {
-  if (!await _checkSession(context)) return; // Check session before proceeding
+  // Check if the session is still valid
+  if (!await _checkSession(context)) return;
 
   try {
     final userId = await LoginService().getUserId();
-
     if (userId == null) {
       _showSnackbar("You need to be logged in to report.");
       return;
@@ -284,8 +284,119 @@ Future<bool> _checkSession(BuildContext context) async {
 
 
 void _deleteStory(int storyId) async {
-  if (!await _checkSession(context)) return; // Check session before proceeding
-  
+  _pauseStory(); // Pause the story while confirmation dialog is open
+
+  bool confirmDelete = await showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15.0), // Modern rounded corners
+        ),
+        elevation: 16,
+        backgroundColor: Colors.white,
+        child: Container(
+          padding: const EdgeInsets.all(20.0), // Padding around the content
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15.0), // Rounded corners
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1), // Light shadow for depth
+                spreadRadius: 5,
+                blurRadius: 15,
+                offset: Offset(0, 5), // Shadow position
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.delete_outline, // Trash icon
+                color: Color(0xFFD32F2F), // Red color for the delete icon
+                size: 40,
+              ),
+              const SizedBox(height: 20), // Space between icon and text
+              const Text(
+                'Confirm Deletion',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF4B3F72), // Deep purple text color
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Are you sure you want to delete this story? This action cannot be undone.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 30), // Space between text and buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(false); // Cancel deletion
+                    },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      backgroundColor: Colors.grey.shade300, // Grey cancel button
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20), // Rounded button
+                      ),
+                    ),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: Colors.black87, // Dark text on grey background
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(true); // Confirm deletion
+                    },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      backgroundColor: Color(0xFFD32F2F), // Red delete button
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20), // Rounded button
+                      ),
+                    ),
+                    child: const Text(
+                      'Delete',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+
+  if (!confirmDelete) {
+    _resumeStory(); // Resume story if delete was not confirmed
+    return;
+  }
+
+  if (!await _checkSession(context)) {
+    _resumeStory();
+    return; // Show session expired dialog if needed
+  }
+
   try {
     final mediaId = widget.stories[_currentStoryIndex].media[_currentMediaIndex].mediaId;
     final userId = _loggedInUserId;
@@ -310,7 +421,10 @@ void _deleteStory(int storyId) async {
   } catch (e) {
     _showSnackbar("Error occurred while deleting story: $e");
   }
+
+  _resumeStory(); // Resume the story after deleting
 }
+
 
 
  void _showReportOptions(int reportedUserId, int contentId) {
@@ -319,10 +433,10 @@ void _deleteStory(int storyId) async {
     backgroundColor: Colors.transparent,
     builder: (BuildContext context) {
       return Container(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
-          color: Color(0xFF4B3F72), // Set background color
-          borderRadius: BorderRadius.only(
+          color: const Color(0xFF4B3F72), // Set background color
+          borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(25.0),
             topRight: Radius.circular(25.0),
           ),
@@ -330,7 +444,7 @@ void _deleteStory(int storyId) async {
             BoxShadow(
               color: Colors.black.withOpacity(0.3),
               blurRadius: 10,
-              offset: Offset(0, -5), // Shadow for the box
+              offset: const Offset(0, -5), // Shadow for the box
             ),
           ],
         ),
@@ -341,15 +455,15 @@ void _deleteStory(int storyId) async {
               child: Container(
                 width: 50,
                 height: 5,
-                margin: EdgeInsets.only(bottom: 10),
+                margin: const EdgeInsets.only(bottom: 10),
                 decoration: BoxDecoration(
-                  color: Color(0xFFD4AF37), // Bronze color for the divider
+                  color: const Color(0xFFD4AF37), // Bronze color for the divider
                   borderRadius: BorderRadius.circular(2.5),
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10.0),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10.0),
               child: Text(
                 'Report Story',
                 style: TextStyle(
@@ -360,25 +474,31 @@ void _deleteStory(int storyId) async {
               ),
             ),
             ListTile(
-              leading: Icon(Icons.flag, color: Color(0xFFD4AF37)), // Bronze icon
-              title: Text(
+              leading: const Icon(Icons.flag, color: Color(0xFFD4AF37)), // Bronze icon
+              title: const Text(
                 'Spam',
                 style: TextStyle(color: Colors.white, fontSize: 16),
               ),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(context);
-                _submitReport('Spam', reportedUserId, contentId); // Submit the report for 'Spam'
+                // Session check when "Spam" is pressed
+                if (await _checkSession(context)) {
+                  _submitReport('Spam', reportedUserId, contentId); // Proceed to submit the report
+                }
               },
             ),
             ListTile(
-              leading: Icon(Icons.block, color: Color(0xFFD4AF37)),
-              title: Text(
+              leading: const Icon(Icons.block, color: Color(0xFFD4AF37)),
+              title: const Text(
                 'Inappropriate',
                 style: TextStyle(color: Colors.white, fontSize: 16),
               ),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(context);
-                _submitReport('Inappropriate', reportedUserId, contentId); // Submit for 'Inappropriate'
+                // Session check when "Inappropriate" is pressed
+                if (await _checkSession(context)) {
+                  _submitReport('Inappropriate', reportedUserId, contentId); // Proceed to submit the report
+                }
               },
             ),
           ],
@@ -387,6 +507,7 @@ void _deleteStory(int storyId) async {
     },
   );
 }
+
 
 
   void _showSnackbar(String message) {

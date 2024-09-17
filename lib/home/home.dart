@@ -694,27 +694,16 @@ Future<void> _handleLike() async {
     });
     _animationController.forward().then((_) => _animationController.reverse());
   }
-
-  void _showShareBottomSheet(BuildContext context) async {
-  // Check if the user is logged in
-  bool isLoggedIn = await LoginService().isLoggedIn();
-
-  if (isLoggedIn) {
-    // If the user is logged in, show the share bottom sheet
+  void _showShareBottomSheet(BuildContext context) {
     showModalBottomSheet(
-      // ignore: use_build_context_synchronously
       context: context,
       builder: (BuildContext context) {
         return ShareBottomSheet(post: widget.post);
       },
       isScrollControlled: true,
     );
-  } else {
-    // If the session is expired, handle it using your global session expired handler
-    // ignore: use_build_context_synchronously
-    handleSessionExpired(context);
   }
-}
+
 
 
   @override
@@ -912,12 +901,13 @@ Future<void> _handleLike() async {
                     },
                   ),
                   Text('${widget.post.commentCount}', style: TextStyle(color: Colors.grey.shade600)),
-                  IconButton(
-                    icon: Icon(Icons.share, color: Colors.grey.shade600),
-                    onPressed: () {
-                      _showShareBottomSheet(context); // Show share bottom sheet
-                    },
-                  ),
+    IconButton(
+      icon: Icon(Icons.share, color: Colors.grey.shade600),
+      onPressed: () {
+        // Show share bottom sheet
+        _showShareBottomSheet(context);
+      },
+    ),
                   const Spacer(),
                   ScaleTransition(
                     scale: _animationController,

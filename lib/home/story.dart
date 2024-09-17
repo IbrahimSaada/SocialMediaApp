@@ -153,15 +153,15 @@ class _StoryBoxState extends State<StoryBox> {
     }
   }
 
-  Future<bool> _checkSession(BuildContext context) async {
+Future<bool> _checkSession(BuildContext context) async {
   final userId = await LoginService().getUserId();
   if (userId == null) {
-    handleSessionExpired(context); // Show session expired dialog
+    // Show the ExpiredToken dialog when session is expired
+    handleSessionExpired(context); // Call the function from ExpiredToken.dart
     return false; // Session expired
   }
   return true; // Session is valid
 }
-
   Future<void> _pickMedia() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -220,51 +220,56 @@ class _StoryBoxState extends State<StoryBox> {
   }
 
   Future<void> _sendToStory(List<String> mediaPaths) async {
-    S3UploadService s3UploadService = S3UploadService();
-    StoryService storyService = StoryService();
+  S3UploadService s3UploadService = S3UploadService();
+  StoryService storyService = StoryService();
 
-    List<String> fileNames =
-        mediaPaths.map((path) => path.split('/').last).toList();
+  List<String> fileNames = mediaPaths.map((path) => path.split('/').last).toList();
 
-    try {
-      int userId = await LoginService().getUserId() ?? 0;
+  try {
+    int userId = await LoginService().getUserId() ?? 0;
 
-      List<PresignedUrl> presignedUrls = await s3UploadService
-          .getPresignedUrls(fileNames, folderName: 'stories');
+    List<PresignedUrl> presignedUrls = await s3UploadService
+        .getPresignedUrls(fileNames, folderName: 'stories');
 
-      List<MediaRequest> mediaItems = [];
-      for (int i = 0; i < presignedUrls.length; i++) {
-        String uploadedUrl = await s3UploadService.uploadFile(
-            presignedUrls[i], XFile(mediaPaths[i]));
-        // ignore: unused_local_variable
-        String mimeType = lookupMimeType(mediaPaths[i]) ?? '';
+    List<MediaRequest> mediaItems = [];
+    for (int i = 0; i < presignedUrls.length; i++) {
+      String uploadedUrl = await s3UploadService.uploadFile(
+          presignedUrls[i], XFile(mediaPaths[i]));
 
-        mediaItems.add(
-          MediaRequest(
-            mediaUrl: uploadedUrl,
-            mediaType: 'photo',
-          ),
-        );
-      }
-
-      StoryRequest storyRequest =
-          StoryRequest(userId: userId, media: mediaItems);
-
-      await storyService.createStory(storyRequest);
-
-      List<story_model.Story> updatedStories =
-          await storyService.fetchStories(userId);
-      widget.onStoriesUpdated(updatedStories);
-
-      // ignore: use_build_context_synchronously
-      Navigator.pop(context);
-    } catch (e) {
-      // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to create story: $e')),
+      // Add media request without mime type since it's no longer needed
+      mediaItems.add(
+        MediaRequest(
+          mediaUrl: uploadedUrl,
+          mediaType: 'photo', // Assuming all media are photos
+        ),
       );
     }
+
+    StoryRequest storyRequest =
+        StoryRequest(userId: userId, media: mediaItems);
+
+    await storyService.createStory(storyRequest);
+
+    List<story_model.Story> updatedStories =
+        await storyService.fetchStories(userId);
+    widget.onStoriesUpdated(updatedStories);
+
+    // ignore: use_build_context_synchronously
+    Navigator.pop(context); // After successful send, pop back
+  }catch (e) {
+  print('Error occurred: $e'); // For debugging
+  
+  if (e.toString().contains('Session expired')) {
+    // Wrap dialog call in Future.microtask to ensure it's called in the next event loop
+    Future.microtask(() => handleSessionExpired(context)); 
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to create story: $e')),
+    );
   }
+}
+}
+
 
   bool _isValidMimeType(String mimeType) {
     return mimeType.startsWith('image/');
@@ -273,9 +278,8 @@ class _StoryBoxState extends State<StoryBox> {
   @override
 Widget build(BuildContext context) {
   return GestureDetector(
-    onTap: () async {
-      if (!await _checkSession(context)) return; // Check session before showing options dialog
-      _showOptionsDialog(context); // Show options to take photo or pick media
+    onTap: () {
+      _showOptionsDialog(context); // Show options directly without session check
     },
     child: DecoratedBox(
       decoration: BoxDecoration(
@@ -287,34 +291,33 @@ Widget build(BuildContext context) {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20.0), // Softer rounded corners
+        borderRadius: BorderRadius.circular(20.0),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.15), // Updated shadow
             blurRadius: 8,
-            offset: const Offset(0, 4), // Shadow position
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Container(
-        width: 110, // Increased size
-        height: 110, // Increased size
+        width: 110, 
+        height: 110, 
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20.0), // Softer corners
-          color: Colors.white, // Background color inside the border
+          borderRadius: BorderRadius.circular(20.0), 
+          color: Colors.white, 
         ),
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Center the plus icon and make it white with a transparent circular background
             Container(
-              width: 45, // Adjust size of circular container
+              width: 45, 
               height: 45,
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.1), // Transparent circle background
+                color: Colors.black.withOpacity(0.1), 
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.add, color: Colors.white, size: 30), // Plus icon in the center
+              child: const Icon(Icons.add, color: Colors.white, size: 30), 
             ),
           ],
         ),
@@ -324,16 +327,26 @@ Widget build(BuildContext context) {
 }
 }
 
-class MediaPreviewScreen extends StatelessWidget {
+// MediaPreviewScreen after modification
+
+class MediaPreviewScreen extends StatefulWidget {
   final List<String> filePaths;
   final List<String> mimeTypes;
   final Function(List<String>) onSendToStory;
 
-  const MediaPreviewScreen({super.key, 
+  const MediaPreviewScreen({
+    super.key,
     required this.filePaths,
     required this.mimeTypes,
     required this.onSendToStory,
   });
+
+  @override
+  _MediaPreviewScreenState createState() => _MediaPreviewScreenState();
+}
+
+class _MediaPreviewScreenState extends State<MediaPreviewScreen> {
+  bool _isSending = false; // To prevent multiple sends
 
   @override
   Widget build(BuildContext context) {
@@ -342,26 +355,50 @@ class MediaPreviewScreen extends StatelessWidget {
         title: const Text('Preview Media'),
         actions: [
           TextButton(
-            onPressed: () {
-              onSendToStory(filePaths);
-            },
-            child: const Text(
-              'SEND',
-              style: TextStyle(color: Colors.orange),
-            ),
-          ),
+  onPressed: _isSending ? null : () async {
+    setState(() {
+      _isSending = true;
+    });
+
+    // Perform session check before sending the story
+    if (!await _checkSession(context)) {
+      setState(() {
+        _isSending = false; // Re-enable button if session expired
+      });
+      return;
+    }
+
+    await widget.onSendToStory(widget.filePaths); // Send media if session is valid
+
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  },
+  child: Text(
+    _isSending ? 'CREATING...' : 'CREATE',
+    style: const TextStyle(color: Colors.orange),
+  ),
+),
         ],
       ),
       body: PageView.builder(
-        itemCount: filePaths.length,
+        itemCount: widget.filePaths.length,
         itemBuilder: (context, index) {
           return Center(
-            child: mimeTypes[index].startsWith('image/')
-                ? Image.file(File(filePaths[index]))
+            child: widget.mimeTypes[index].startsWith('image/')
+                ? Image.file(File(widget.filePaths[index]))
                 : Container(),
           );
         },
       ),
     );
+  }
+
+  // Session check function that calls the custom dialog
+  Future<bool> _checkSession(BuildContext context) async {
+    final userId = await LoginService().getUserId();
+    if (userId == null) {
+      handleSessionExpired(context); // Show the custom session expired dialog
+      return false; // Return false if session expired
+    }
+    return true; // Session is valid
   }
 }
