@@ -32,6 +32,8 @@ dependencies:
     sdk: flutter
   image_picker: ^1.1.2
   cached_network_image: ^3.0.0
+  flutter_svg: ^1.0.3
+  clippy_flutter: 2.0.0-nullsafety.1
   timeago: ^3.0.2
   video_player: ^2.9.1  # Corrected to latest version
   animate_do: ^3.3.4
@@ -59,7 +61,11 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/
+    - assets\images\food1.jpg
+    - assets\images\food2.jpeg
+    - assets\images\food3.jpg
+    - assets\images\food4.jpg
+    - assets\images\food5.jpg
    
     
 
