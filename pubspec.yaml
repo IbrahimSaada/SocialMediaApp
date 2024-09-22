@@ -61,6 +61,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/
     - assets\images\food1.jpg
     - assets\images\food2.jpeg
     - assets\images\food3.jpg
