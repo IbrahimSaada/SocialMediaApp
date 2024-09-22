@@ -28,8 +28,9 @@ import 'package:cook/models/story_model.dart' as story_model;
 import 'package:cook/services/StoryService.dart'; // Import Story service
 import 'package:cook/models/storyview_request_model.dart';
 import 'package:cook/services/storyview_Service.dart';
-import 'package:cook/home/ask_question.dart';
+import 'package:cook/askquestion/qna_page.dart';
 import 'package:cook/maintenance/expiredtoken.dart';  // Importing the expired token handler
+import 'package:cook/models/bookmarkrequest_model.dart';
 
 
 class HomePage extends StatefulWidget {
@@ -293,7 +294,7 @@ PreferredSizeWidget buildAppBar() {
     // Navigate to AskQuestionPage
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => AskQuestionPage()),
+      MaterialPageRoute(builder: (context) => QnaPage()),
     );
   },
 ),
@@ -612,6 +613,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
   void initState() {
     super.initState();
     _isLiked = widget.post.isLiked;
+    _isBookmarked = widget.post.isBookmarked; // Assuming `post` model has isBookmarked field
     _fetchCurrentUserId();
 
     // Initialize the animation controller
@@ -633,6 +635,56 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     _currentUserId = await LoginService().getUserId();
   }
 
+Future<void> _toggleBookmark() async {
+  try {
+    // Check if the user is logged in (this also refreshes the token if it's expired)
+    bool isLoggedIn = await LoginService().isLoggedIn();
+    
+    if (!isLoggedIn) {
+      throw Exception('Session expired');
+    }
+
+    final userId = await LoginService().getUserId();
+    if (userId == null) {
+      throw Exception('User ID not found');
+    }
+
+    // Start the animation for toggling the bookmark
+    await _animationController.forward();
+
+    // Now, attempt to bookmark/unbookmark
+    if (_isBookmarked) {
+      // Unbookmark the post
+      await PostService.unbookmarkPost(
+        BookmarkRequest(userId: userId, postId: widget.post.postId),
+      );
+      // Reverse the bookmark animation (remove glow)
+      await _animationController.reverse();
+    } else {
+      // Bookmark the post
+      await PostService.bookmarkPost(
+        BookmarkRequest(userId: userId, postId: widget.post.postId),
+      );
+    }
+
+    // Update the bookmark state
+    setState(() {
+      _isBookmarked = !_isBookmarked;
+    });
+
+  } catch (e) {
+    // Handle session expiration
+    if (e.toString().contains('Session expired')) {
+      if (context.mounted) {
+        handleSessionExpired(context); // Show session expired dialog
+      }
+    } else {
+      // For any other errors, just print them
+      print('Failed to bookmark/unbookmark post: $e');
+    }
+  }
+}
+
   void _toggleExpansion() {
     setState(() {
       _isExpanded = !_isExpanded;
@@ -651,49 +703,42 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     );
   }
 
-Future<void> _handleLike() async {
-  final userId = await LoginService().getUserId();
+  Future<void> _handleLike() async {
+    final userId = await LoginService().getUserId();
 
-  if (userId == null) {
-    return;
-  }
-
-  try {
-    if (_isLiked) {
-      await PostService.unlikePost(
-        LikeRequest(userId: userId, postId: widget.post.postId),
-      );
-      setState(() {
-        _isLiked = false;
-        widget.post.likeCount -= 1;
-      });
-    } else {
-      await PostService.likePost(
-        LikeRequest(userId: userId, postId: widget.post.postId),
-      );
-      setState(() {
-        _isLiked = true;
-        widget.post.likeCount += 1;
-      });
+    if (userId == null) {
+      return;
     }
-  } catch (e) {
-    if (e.toString().contains('Session expired')) {
-      // ignore: use_build_context_synchronously
-      handleSessionExpired(context);  // Global session expired handler
-    } else {
-      // ignore: avoid_print
-      print('Failed to like/unlike post: $e');
+
+    try {
+      if (_isLiked) {
+        await PostService.unlikePost(
+          LikeRequest(userId: userId, postId: widget.post.postId),
+        );
+        setState(() {
+          _isLiked = false;
+          widget.post.likeCount -= 1;
+        });
+      } else {
+        await PostService.likePost(
+          LikeRequest(userId: userId, postId: widget.post.postId),
+        );
+        setState(() {
+          _isLiked = true;
+          widget.post.likeCount += 1;
+        });
+      }
+    } catch (e) {
+      if (e.toString().contains('Session expired')) {
+        // ignore: use_build_context_synchronously
+        handleSessionExpired(context);  // Global session expired handler
+      } else {
+        // ignore: avoid_print
+        print('Failed to like/unlike post: $e');
+      }
     }
   }
-}
 
-
-  void _toggleBookmark() {
-    setState(() {
-      _isBookmarked = !_isBookmarked;
-    });
-    _animationController.forward().then((_) => _animationController.reverse());
-  }
   void _showShareBottomSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -703,8 +748,6 @@ Future<void> _handleLike() async {
       isScrollControlled: true,
     );
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -901,14 +944,16 @@ Future<void> _handleLike() async {
                     },
                   ),
                   Text('${widget.post.commentCount}', style: TextStyle(color: Colors.grey.shade600)),
-    IconButton(
-      icon: Icon(Icons.share, color: Colors.grey.shade600),
-      onPressed: () {
-        // Show share bottom sheet
-        _showShareBottomSheet(context);
-      },
-    ),
+                  IconButton(
+                    icon: Icon(Icons.share, color: Colors.grey.shade600),
+                    onPressed: () {
+                      // Show share bottom sheet
+                      _showShareBottomSheet(context);
+                    },
+                  ),
                   const Spacer(),
+
+                  // Bookmark button with animation
                   ScaleTransition(
                     scale: _animationController,
                     child: IconButton(
@@ -917,7 +962,7 @@ Future<void> _handleLike() async {
                         color: Colors.grey.shade600,
                         size: 28,
                       ),
-                      onPressed: _toggleBookmark,
+                      onPressed: _toggleBookmark, // Toggle bookmark state
                     ),
                   ),
                 ],
@@ -929,9 +974,6 @@ Future<void> _handleLike() async {
     );
   }
 }
-
-
-
 
 
 class FullscreenImagePage extends StatelessWidget {
