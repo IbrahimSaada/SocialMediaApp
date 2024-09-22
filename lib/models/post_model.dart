@@ -10,6 +10,7 @@ class Post {
   final String profilePic;
   final List<PostMedia> media;
   final bool isLiked;
+  bool isBookmarked; // Add the bookmark field
 
   Post({
     required this.postId,
@@ -23,6 +24,7 @@ class Post {
     required this.profilePic,
     required this.media,
     required this.isLiked,
+    this.isBookmarked = false, // Default to false if not provided
   }) : _createdAtUtc = createdAt.toUtc();
 
   // Getter to convert `createdAt` to local time
@@ -58,7 +60,25 @@ class Post {
           .map((mediaJson) => PostMedia.fromJson(mediaJson))
           .toList(),
       isLiked: json['is_liked'],
+      isBookmarked: json['is_Bookmarked'] ?? false, // Handle `isBookmarked` from JSON
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'post_id': postId,
+      'caption': caption,
+      'comment_count': commentCount,
+      'created_at': _createdAtUtc.toIso8601String(),
+      'is_public': isPublic,
+      'like_count': likeCount,
+      'user_id': userId,
+      'fullname': fullName,
+      'profile_pic': profilePic,
+      'media': media.map((m) => m.toJson()).toList(),
+      'is_liked': isLiked,
+      'is_bookmarked': isBookmarked, // Include `isBookmarked` in toJson
+    };
   }
 }
 
@@ -82,5 +102,14 @@ class PostMedia {
       mediaType: json['media_type'],
       postId: json['post_id'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'media_id': mediaId,
+      'media_url': mediaUrl,
+      'media_type': mediaType,
+      'post_id': postId,
+    };
   }
 }

@@ -6,6 +6,7 @@ import '../models/post_model.dart';
 import '../models/LikeRequest_model.dart';
 import 'LoginService.dart';
 import 'SignatureService.dart';
+import '../models/bookmarkrequest_model.dart';
 
 class PostService {
   static const String apiUrl = '***REMOVED***/api/Posts';
@@ -201,6 +202,94 @@ class PostService {
     } catch (e) {
       print("Error in unlikePost: $e");
       rethrow;
+    }
+  }
+
+  static Future<void> bookmarkPost(BookmarkRequest bookmarkRequest) async {
+    try {
+      String? token = await _loginService.getToken();
+      String dataToSign = '${bookmarkRequest.userId}:${bookmarkRequest.postId}';
+      String signature = await _signatureService.generateHMAC(dataToSign);
+
+      final response = await http.post(
+        Uri.parse('$apiUrl/Bookmark'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+          'Authorization': 'Bearer $token',
+          'X-Signature': signature,
+        },
+        body: jsonEncode(bookmarkRequest.toJson()),
+      );
+
+      if (response.statusCode == 401) {
+        // Token is invalid or expired, attempt to refresh it
+        await _loginService.refreshAccessToken();
+        token = await _loginService.getToken();
+        
+        // Retry the request after refreshing the token
+        final retryResponse = await http.post(
+          Uri.parse('$apiUrl/Bookmark'),
+          headers: <String, String>{
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Authorization': 'Bearer $token',
+            'X-Signature': signature,
+          },
+          body: jsonEncode(bookmarkRequest.toJson()),
+        );
+
+        if (retryResponse.statusCode != 200) {
+          throw Exception('Failed to bookmark post after token refresh.');
+        }
+      } else if (response.statusCode != 200) {
+        throw Exception('Failed to bookmark post.');
+      }
+    } catch (e) {
+      print("Error in bookmarkPost: $e");
+      rethrow; // Re-throw to handle it in the UI layer
+    }
+  }
+
+  static Future<void> unbookmarkPost(BookmarkRequest bookmarkRequest) async {
+    try {
+      String? token = await _loginService.getToken();
+      String dataToSign = '${bookmarkRequest.userId}:${bookmarkRequest.postId}';
+      String signature = await _signatureService.generateHMAC(dataToSign);
+
+      final response = await http.post(
+        Uri.parse('$apiUrl/Unbookmark'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+          'Authorization': 'Bearer $token',
+          'X-Signature': signature,
+        },
+        body: jsonEncode(bookmarkRequest.toJson()),
+      );
+
+      if (response.statusCode == 401) {
+        // Token is invalid or expired, attempt to refresh it
+        await _loginService.refreshAccessToken();
+        token = await _loginService.getToken();
+        
+        // Retry the request after refreshing the token
+        final retryResponse = await http.post(
+          Uri.parse('$apiUrl/Unbookmark'),
+          headers: <String, String>{
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Authorization': 'Bearer $token',
+            'X-Signature': signature,
+          },
+          body: jsonEncode(bookmarkRequest.toJson()),
+        );
+
+        if (retryResponse.statusCode != 200) {
+          throw Exception('Failed to unbookmark post after token refresh.');
+        }
+      } else if (response.statusCode != 200) {
+        throw Exception('Failed to unbookmark post.');
+      }
+    } catch (e) {
+      print("Error in unbookmarkPost: $e");
+      rethrow; // Re-throw to handle it in the UI layer
     }
   }
 }
