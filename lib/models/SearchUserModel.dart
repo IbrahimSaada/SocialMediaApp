@@ -5,6 +5,8 @@ class SearchUserModel {
   final String profilePic;
   final String bio;
   final String phoneNumber;
+  bool isFollowing;   // Indicates if the searched user is following the current user
+  bool amFollowing;   // Indicates if the current user is following the searched user
 
   SearchUserModel({
     required this.userId,
@@ -13,6 +15,8 @@ class SearchUserModel {
     required this.profilePic,
     required this.bio,
     required this.phoneNumber,
+    required this.isFollowing,
+    required this.amFollowing,
   });
 
   factory SearchUserModel.fromJson(Map<String, dynamic> json) {
@@ -23,6 +27,8 @@ class SearchUserModel {
       profilePic: json['profile_pic'] as String,
       bio: json['bio'] as String,
       phoneNumber: json['phone_number'] as String,
+      isFollowing: json['is_following'] as bool,
+      amFollowing: json['am_following'] as bool,
     );
   }
 
@@ -34,6 +40,8 @@ class SearchUserModel {
       'profile_pic': profilePic,
       'bio': bio,
       'phone_number': phoneNumber,
+      'is_following': isFollowing,
+      'am_following': amFollowing,
     };
   }
 }

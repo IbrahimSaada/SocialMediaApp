@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:cook/models/SearchUserModel.dart';
 import 'package:cook/services/search_service.dart';
+import 'package:cook/services/LoginService.dart';
+import 'package:cook/services/followService.dart';
 
 class Search extends StatefulWidget {
   const Search({super.key});
@@ -19,7 +21,9 @@ class _SearchState extends State<Search> {
   bool isFetchingMore = false;
   int currentPage = 1;
   int pageSize = 10;
+  int? currentUserId; // Store the currentUserId
   final SearchService _searchService = SearchService();
+  final LoginService _loginService = LoginService(); // Instantiate LoginService
   final ScrollController _scrollController = ScrollController();
   String currentQuery = "";
 
@@ -27,23 +31,27 @@ class _SearchState extends State<Search> {
   void initState() {
     super.initState();
     loadSavedUsers(); // Load saved users when app starts
+    getCurrentUserId(); // Fetch current user ID
 
     // Infinite scrolling
     _scrollController.addListener(() {
       if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
-        fetchMoreUsers();
+        fetchMoreUsers(); // Fetch more users when the bottom of the list is reached
       }
     });
   }
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
+  // Fetch current user ID from LoginService
+  Future<void> getCurrentUserId() async {
+    int? userId = await _loginService.getUserId();
+    setState(() {
+      currentUserId = userId; // Set current user ID in the state
+    });
   }
 
   // Search for users
   Future<void> searchUsers(String query) async {
+    if (currentUserId == null) return; // Ensure currentUserId is available
     setState(() {
       isLoading = true;
       currentQuery = query;
@@ -52,11 +60,14 @@ class _SearchState extends State<Search> {
     });
 
     try {
-      List<SearchUserModel> users = await _searchService.searchUsers(query, currentPage, pageSize);
+      List<SearchUserModel> users = await _searchService.searchUsers(query, currentUserId!, currentPage, pageSize);
+      // Remove duplicates in searchResults
+      users.removeWhere((user) => searchResults.any((existingUser) => existingUser.userId == user.userId));
+      
       // Exclude already saved users from search results
       users.removeWhere((user) => savedUsers.any((savedUser) => savedUser.userId == user.userId));
       setState(() {
-        searchResults = users;
+        searchResults.addAll(users); // Merge non-duplicate users
       });
     } catch (e) {
       setState(() {
@@ -71,15 +82,17 @@ class _SearchState extends State<Search> {
 
   // Fetch more users (pagination)
   Future<void> fetchMoreUsers() async {
-    if (isFetchingMore) return;
+    if (isFetchingMore || currentUserId == null) return;
     setState(() {
       isFetchingMore = true;
       currentPage++;
     });
 
     try {
-      List<SearchUserModel> moreUsers =
-          await _searchService.searchUsers(currentQuery, currentPage, pageSize);
+      List<SearchUserModel> moreUsers = await _searchService.searchUsers(currentQuery, currentUserId!, currentPage, pageSize);
+      // Remove duplicates in searchResults
+      moreUsers.removeWhere((user) => searchResults.any((existingUser) => existingUser.userId == user.userId));
+      
       moreUsers.removeWhere((user) => savedUsers.any((savedUser) => savedUser.userId == user.userId));
       setState(() {
         searchResults.addAll(moreUsers);
@@ -160,25 +173,76 @@ class _SearchState extends State<Search> {
   }
 
   // Follow/Following button toggle
-  Widget buildFollowButton(SearchUserModel user) {
-    bool isFollowing = false; // Initially not following
-    return StatefulBuilder(builder: (context, setState) {
-      return ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.orange, // Orange background
-          foregroundColor: Colors.white, // White font color
-        ),
-        onPressed: isFollowing
-            ? null
-            : () {
-                setState(() {
-                  isFollowing = true;
-                });
-              },
-        child: Text(isFollowing ? 'Following' : 'Follow'),
-      );
-    });
-  }
+ Widget buildFollowButton(SearchUserModel user, int currentUserId) {
+  return StatefulBuilder(builder: (context, setState) {
+    // Initialize buttonText and buttonColor with default values
+    String buttonText = "Follow"; // Default text (safe fallback)
+    Color buttonColor = Colors.orange; // Default color (safe fallback)
+
+    // Handle the button text and color based on the following states
+    if (user.isFollowing && !user.amFollowing) {
+      // Case 1: They are following you, but you are not following them
+      buttonText = "Follow Back";
+      buttonColor = Colors.orange;
+    } else if (!user.isFollowing && user.amFollowing) {
+      // Case 2: You are following them, but they are not following you
+      buttonText = "Following";
+      buttonColor = Colors.grey;
+    } else if (!user.isFollowing && !user.amFollowing) {
+      // Case 3: Neither of you are following each other
+      buttonText = "Follow";
+      buttonColor = Colors.orange;
+    } else if (user.isFollowing && user.amFollowing) {
+      // Case 4: Both of you are following each other
+      buttonText = "Following";
+      buttonColor = Colors.grey;
+    }
+
+    // Return the button with onPressed logic for follow/unfollow
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: buttonColor,
+        foregroundColor: Colors.white,
+      ),
+      onPressed: () async {
+        // Optimistically update the UI first
+        setState(() {
+          if (!user.amFollowing) {
+            // Update the UI to reflect the follow action immediately
+            user.amFollowing = true;
+          } else {
+            // Update the UI to reflect the unfollow action immediately
+            user.amFollowing = false;
+          }
+        });
+
+        // Now, perform the async action in the background
+        try {
+          if (!user.amFollowing) {
+            // Call the unfollow API
+            await FollowService().unfollowUser(currentUserId, user.userId);
+          } else {
+            // Call the follow API
+            await FollowService().followUser(currentUserId, user.userId);
+          }
+        } catch (e) {
+          // In case of error, revert the UI state
+          setState(() {
+            if (!user.amFollowing) {
+              // Revert back to following
+              user.amFollowing = true;
+            } else {
+              // Revert back to not following
+              user.amFollowing = false;
+            }
+          });
+        }
+      },
+      child: Text(buttonText),
+    );
+  });
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -293,8 +357,9 @@ class _SearchState extends State<Search> {
                               ),
                               title: Text(user.username),
                               subtitle: Text(user.fullName),
-                              trailing: buildFollowButton(user),
-                              onTap: () => selectUser(user),
+                              // Pass both user and currentUserId to the buildFollowButton
+                              trailing: buildFollowButton(user, currentUserId!), // Ensure currentUserId is passed
+                              onTap: () => selectUser(user),  // Select user to save them
                             );
                           },
                         ),

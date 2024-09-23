@@ -3,12 +3,13 @@ import 'package:http/http.dart' as http;
 import 'package:cook/models/SearchUserModel.dart';
 
 class SearchService {
-  static const String baseUrl = 'https://cc2e-185-97-92-77.ngrok-free.app/api/Users/search';
+  static const String baseUrl = 'https://da8f-185-97-92-77.ngrok-free.app/api/Users/search';
 
-  // Method to fetch search results with pagination from the backend
-  Future<List<SearchUserModel>> searchUsers(String query, int pageNumber, int pageSize) async {
+  // Method to fetch search results with pagination and currentUserId from the backend
+  Future<List<SearchUserModel>> searchUsers(String query, int currentUserId, int pageNumber, int pageSize) async {
     final Uri uri = Uri.parse(baseUrl).replace(queryParameters: {
       'fullname': query,
+      'currentUserId': currentUserId.toString(), // Add currentUserId as part of the query
       'pageNumber': pageNumber.toString(),
       'pageSize': pageSize.toString(),
     });
