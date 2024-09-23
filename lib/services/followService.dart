@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class FollowService {
-  static const String baseUrl = 'https://da8f-185-97-92-77.ngrok-free.app/api/Users';
+  static const String baseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Users';
 
   // Follow a user
-  Future<void> followUser(int followerUserId, int userId) async {
+  Future<void> followUser(int userId, int followerUserId) async {
     final body = jsonEncode({
       'user_id': userId,
       'follower_user_id': followerUserId,
@@ -27,7 +27,7 @@ class FollowService {
   }
 
   // Unfollow a user
-  Future<void> unfollowUser(int followerUserId, int userId) async {
+  Future<void> unfollowUser(int userId, int followerUserId) async {
     final body = jsonEncode({
       'user_id': userId,
       'follower_user_id': followerUserId,
