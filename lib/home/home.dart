@@ -309,16 +309,16 @@ PreferredSizeWidget buildAppBar() {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     // Add Friends Icon
-                    IconButton(
-                      icon: const Icon(Icons.person_add, color: Colors.white),
-                      onPressed: () {
-                        // Navigate to Add Friends Page
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const AddFriendsPage()),
-                        );
-                      },
-                    ),
+                     IconButton(
+          icon: const Icon(Icons.person_add, color: Colors.white),
+          onPressed: () {
+            // Navigate to Add Friends Page
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => AddFriendsPage()), // Properly invoke AddFriendsPage
+            );
+          },
+        ),
                     // Search Icon
                     IconButton(
                       icon: const Icon(Icons.search, color: Colors.white),
