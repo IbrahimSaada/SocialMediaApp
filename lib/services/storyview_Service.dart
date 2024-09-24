@@ -19,6 +19,7 @@ class StoryServiceRequest {
 
     // If the token is expired, proactively refresh it
     if (expiration == null || DateTime.now().isAfter(expiration)) {
+       // ignore: avoid_print
       print('Access token expired, refreshing...');
       await _loginService.refreshAccessToken(); // Refresh the token
       accessToken = await _loginService.getToken(); // Get the new token
@@ -32,6 +33,7 @@ class StoryServiceRequest {
     String? accessToken = await _getValidToken(); // Ensure token is valid
 
     if (accessToken == null) {
+       // ignore: avoid_print
       print('Unable to retrieve access token.');
       return null; // If no valid token, return early
     }
@@ -52,7 +54,8 @@ class StoryServiceRequest {
 
     if (response.statusCode == 200) {
       return StoryViewResponse.fromJson(jsonDecode(response.body));
-    } else {
+    } else { 
+      // ignore: avoid_print
       print("Failed to record story view: ${response.statusCode}");
       return null;
     }
@@ -63,6 +66,7 @@ class StoryServiceRequest {
     String? accessToken = await _getValidToken(); // Ensure token is valid
 
     if (accessToken == null) {
+      // ignore: avoid_print
       print('Unable to retrieve access token.');
       return null; // If no valid token, return early
     }
@@ -86,6 +90,7 @@ class StoryServiceRequest {
           jsonList.map((json) => StoryViewer.fromJson(json)).toList();
       return viewers;
     } else {
+      // ignore: avoid_print
       print("Failed to retrieve story viewers: ${response.statusCode}");
       return null;
     }

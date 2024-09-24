@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
@@ -146,7 +148,6 @@ class _StoryBoxState extends State<StoryBox> {
         _handlePickedFiles([file.path]);
       }
     } catch (e) {
-      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to capture media: $e')),
       );
@@ -171,7 +172,7 @@ Future<bool> _checkSession(BuildContext context) async {
 
       if (result != null && result.files.isNotEmpty) {
         if (result.files.length > _maxMediaCount) {
-          // ignore: use_build_context_synchronously
+          
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
                 content: Text('You can select a maximum of 10 media files.')),
@@ -181,7 +182,7 @@ Future<bool> _checkSession(BuildContext context) async {
         }
       }
     } catch (e) {
-      // ignore: use_build_context_synchronously
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to pick media: $e')),
       );
@@ -254,7 +255,6 @@ Future<bool> _checkSession(BuildContext context) async {
         await storyService.fetchStories(userId);
     widget.onStoriesUpdated(updatedStories);
 
-    // ignore: use_build_context_synchronously
     Navigator.pop(context); // After successful send, pop back
   }catch (e) {
   print('Error occurred: $e'); // For debugging

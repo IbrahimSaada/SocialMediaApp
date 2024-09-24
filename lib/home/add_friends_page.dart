@@ -1,3 +1,5 @@
+// ignore_for_file: unnecessary_brace_in_string_interps, use_key_in_widget_constructors
+
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import '***REMOVED***/models/SearchUserModel.dart';
