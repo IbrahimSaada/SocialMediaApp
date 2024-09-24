@@ -65,29 +65,17 @@ class _AddFriendsPageState extends State<AddFriendsPage> with TickerProviderStat
   }
 
   // Load more follower requests for infinite scroll
-Future<void> _loadMoreFollowers() async {
-  setState(() {
-    isLoadingMore = true;
-  });
+  Future<void> _loadMoreFollowers() async {
+    setState(() {
+      isLoadingMore = true;
+    });
 
-  // Simulate loading more users for infinite scrolling
-  await Future.delayed(Duration(seconds: 2));
-
-  // Here, generate and append more users with all required fields
-  setState(() {
-    users.addAll(List.generate(5, (index) => SearchUserModel(
-      userId: users.length + index, // Unique user ID
-      fullName: 'User ${users.length + index}', 
-      username: 'user${users.length + index}', 
-      profilePic: 'assets/profile.png', // Placeholder profile picture
-      bio: 'This is the bio for user ${users.length + index}', 
-      phoneNumber: '123-456-789${index}', 
-      isFollowing: false, // Initial status as not following
-      amFollowing: false, // Initial status as not being followed
-    )));
-    isLoadingMore = false;
-  });
-}
+    // You can implement pagination here later if necessary.
+    
+    setState(() {
+      isLoadingMore = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -200,7 +188,7 @@ Future<void> _loadMoreFollowers() async {
 
   // Friend request card with buttons below the full name and orange shaded border
   Widget _friendRequestCard(String fullName, String username, int followedUserId) {
-
+    final user = users.firstWhere((u) => u.username == username); // Find the user model for additional properties
 
     return Container(
       margin: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
@@ -224,7 +212,9 @@ Future<void> _loadMoreFollowers() async {
           Row(
             children: [
               CircleAvatar(
-                backgroundImage: AssetImage('assets/profile.png'),
+                backgroundImage: user.profilePic.isNotEmpty 
+                  ? NetworkImage(user.profilePic) // Use NetworkImage if profilePic is a URL
+                  : AssetImage('assets/profile.png') as ImageProvider, // Fallback to AssetImage if no profilePic
                 radius: 28,
               ),
               SizedBox(width: 15),
