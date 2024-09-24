@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:cook/models/story_model.dart';
@@ -128,6 +130,7 @@ class StoryService {
     if (response.statusCode == 200) {
       return true; // Successfully deleted
     } else {
+      
       print("Failed to delete story media: ${response.statusCode}");
       return false;
     }

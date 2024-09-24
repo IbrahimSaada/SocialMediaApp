@@ -1,3 +1,5 @@
+// ignore_for_file: use_key_in_widget_constructors
+
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cook/models/storyview_response_model.dart';
@@ -16,6 +18,7 @@ class FullScreenStoryView extends StatefulWidget {
   final List<Story> stories;
   final int initialIndex;
 
+  // ignore: prefer_const_constructors_in_immutables
   FullScreenStoryView({required this.stories, required this.initialIndex});
 
   @override
@@ -662,7 +665,7 @@ void _deleteStory(int storyId) async {
       errorWidget: (context, url, error) => Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+          children: const [
             Icon(Icons.error, color: Colors.white),
             Text(
               'Failed to load media',
