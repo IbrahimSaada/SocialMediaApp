@@ -54,6 +54,8 @@ dependencies:
   photo_view: ^0.15.0
   file_picker: ^8.1.2
   crypto: ^3.0.5
+  firebase_core: ^3.5.0
+  firebase_messaging: ^15.1.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
