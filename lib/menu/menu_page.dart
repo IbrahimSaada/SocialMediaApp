@@ -22,7 +22,7 @@ class MenuPage extends StatelessWidget {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const ProfilePage()),
+                    MaterialPageRoute(builder: (context) =>  ProfilePage()),
                   );
                 },
                 child: const Row(
