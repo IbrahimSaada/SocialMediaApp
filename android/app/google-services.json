@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "441046522470",
+    "project_id": "cooktalk-cd05d",
+    "storage_bucket": "cooktalk-cd05d.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:441046522470:android:c61ac1dc3ea00df823eba7",
+        "android_client_info": {
+          "package_name": "com.example.cook"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDHI0rsti3kY_wHocqVqWeocvuO7OdHeMc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
