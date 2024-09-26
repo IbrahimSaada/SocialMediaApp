@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '***REMOVED***/menu/editprofilepage.dart';
-
+import 'dart:io';
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -18,6 +18,40 @@ class _ProfilePageState extends State<ProfilePage> {
     'assets/images/food4.jpg',
     'assets/images/food5.jpg',
   ];
+
+  // Added variables for username, bio, and profileImage
+  String username = 'Omar Mohamed';
+  String bio = 'Hi, my name is Omar Mohamed, I am a robotics teacher!! It\'s my greatest passion in life.';
+  File? profileImage;
+void _openEditProfilePage() async {
+  final result = await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => EditProfilePage(
+        currentUsername: username,
+        currentBio: bio,
+        currentImage: profileImage,
+      ),
+    ),
+  );
+
+  if (result != null) {
+    setState(() {
+      username = result['username']; // Update username
+      bio = result['bio'];           // Update bio
+      profileImage = result['imageFile']; // Update profile image
+    });
+  }
+
+
+    if (result != null) {
+      setState(() {
+        username = result['username'];
+        bio = result['bio'];
+        profileImage = result['imageFile'];
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,28 +120,23 @@ class _ProfilePageState extends State<ProfilePage> {
                 // Profile Picture
                 CircleAvatar(
                   radius: 60,
-                  backgroundImage: AssetImage('assets/images/omar.jpeg'),
+                  backgroundImage: profileImage != null
+                      ? FileImage(profileImage!)
+                      : AssetImage('assets/images/omar.jpeg'),
                 ),
                 SizedBox(height: 10),
                 // Name, QR Code, and Pencil Icon centered
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-// Pencil Icon for Profile Editing
-GestureDetector(
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => EditProfilePage()), // Navigating to the EditProfilePage
-    );
-  },
-  child: Icon(Icons.edit, color: Colors.orangeAccent, size: screenWidth * 0.07),
-),
-
-
+                    // Pencil Icon for Profile Editing
+                    GestureDetector(
+                      onTap: _openEditProfilePage,
+                      child: Icon(Icons.edit, color: Colors.orangeAccent, size: screenWidth * 0.07),
+                    ),
                     SizedBox(width: 10),
                     Text(
-                      'Omar Mohamed',
+                      username, // Updated username
                       style: TextStyle(
                         fontSize: screenWidth * 0.06, // Responsive font size
                         fontWeight: FontWeight.bold,
@@ -155,8 +184,7 @@ GestureDetector(
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 30.0),
                   child: Text(
-                    'Hi, my name is Omar Mohamed, I am a robotics teacher!! '
-                    'It\'s my greatest passion in life. I love Adam Saifi alot',
+                    bio, // Updated bio
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: screenWidth * 0.03, color: Colors.grey[700]),
                   ),
