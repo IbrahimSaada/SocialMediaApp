@@ -1,19 +1,17 @@
-// ignore_for_file: unnecessary_brace_in_string_interps, use_key_in_widget_constructors
-
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import '***REMOVED***/models/SearchUserModel.dart';
 import '***REMOVED***/services/search_service.dart';
 import '***REMOVED***/services/loginservice.dart';
 import '***REMOVED***/services/followService.dart';
+import '***REMOVED***/maintenance/expiredtoken.dart'; // Import the expired session handler
 
 class AddFriendsPage extends StatefulWidget {
   @override
   _AddFriendsPageState createState() => _AddFriendsPageState();
 }
 
-class _AddFriendsPageState extends State<AddFriendsPage>
-    with TickerProviderStateMixin {
+class _AddFriendsPageState extends State<AddFriendsPage> with TickerProviderStateMixin {
   List<SearchUserModel> users = [];
   Map<String, String> requestStatus = {};
   bool isLoading = true;
@@ -37,9 +35,7 @@ class _AddFriendsPageState extends State<AddFriendsPage>
   }
 
   void _scrollListener() {
-    if (_scrollController.position.pixels ==
-            _scrollController.position.maxScrollExtent &&
-        !isLoadingMore) {
+    if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent && !isLoadingMore) {
       _loadMoreFollowers();
     }
   }
@@ -48,8 +44,7 @@ class _AddFriendsPageState extends State<AddFriendsPage>
     try {
       int? currentUserId = await _loginService.getUserId();
       if (currentUserId != null) {
-        List<SearchUserModel> fetchedUsers =
-            await _searchService.getFollowerRequests(currentUserId);
+        List<SearchUserModel> fetchedUsers = await _searchService.getFollowerRequests(currentUserId);
         setState(() {
           users = fetchedUsers;
           isLoading = false;
@@ -61,6 +56,12 @@ class _AddFriendsPageState extends State<AddFriendsPage>
         print("User ID not found");
       }
     } catch (e) {
+      // Handle session expiration
+      if (e.toString().contains('Session expired')) {
+        if (context.mounted) {
+          handleSessionExpired(context);  // Show session expired dialog
+        }
+      }
       setState(() {
         isLoading = false;
       });
@@ -73,134 +74,27 @@ class _AddFriendsPageState extends State<AddFriendsPage>
       isLoadingMore = true;
     });
 
-    await Future.delayed(Duration(seconds: 2));
+    await Future.delayed(Duration(seconds: 2)); // Simulate a delay
 
-    setState(() {
-      users.addAll(List.generate(
-          5,
-          (index) => SearchUserModel(
-                userId: users.length + index,
-                fullName: 'User ${users.length + index}',
-                username: 'user${users.length + index}',
-                profilePic: 'assets/profile.png',
-                bio: 'This is the bio for user ${users.length + index}',
-                phoneNumber: '123-456-789${index}',
-                isFollowing: false,
-                amFollowing: false,
-              )));
-
-      isLoadingMore = false;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          // Background
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.orangeAccent.shade200,
-                  Colors.deepOrangeAccent,
-                  Colors.white,
-                ],
-                stops: [0.1, 0.4, 1.0],
-              ),
-            ),
-          ),
-          SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // "Add Friends" header with classy font and icons
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.restaurant_menu,
-                          color: Colors.white, size: 30),
-                      SizedBox(width: 10),
-                      Text(
-                        'Add Friends',
-                        style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          fontFamily: 'Metropolis', // Classy font style
-                        ),
-                      ),
-                      SizedBox(width: 10),
-                      Icon(Icons.restaurant_menu,
-                          color: Colors.white, size: 30),
-                    ],
-                  ),
-                ),
-                // Main content
-                Expanded(
-                  child: Container(
-                    padding: EdgeInsets.only(top: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(40),
-                        topRight: Radius.circular(40),
-                      ),
-                    ),
-                    child: isLoading
-                        ? _shimmerLoading() // Show shimmer while loading
-                        : NotificationListener<ScrollNotification>(
-                            onNotification: (ScrollNotification scrollInfo) {
-                              if (!isLoadingMore &&
-                                  scrollInfo.metrics.pixels ==
-                                      scrollInfo.metrics.maxScrollExtent) {
-                                _loadMoreFollowers();
-                              }
-                              return true;
-                            },
-                            child: ListView.builder(
-                              controller: _scrollController,
-                              itemCount: users.length +
-                                  (isLoadingMore
-                                      ? 1
-                                      : 0), // Add loading indicator at the bottom if loading more
-                              itemBuilder: (context, index) {
-                                if (index == users.length && isLoadingMore) {
-                                  return Center(
-                                      child: CircularProgressIndicator());
-                                }
-                                final user = users[index];
-                                return _friendRequestCard(
-                                  user.fullName,
-                                  user.username,
-                                  user.userId,
-                                  user.bio,
-                                  user.phoneNumber,
-                                  (username) {
-                                    setState(() {
-                                      // Remove the user from the list when declined
-                                      users.removeWhere(
-                                          (u) => u.username == username);
-                                    });
-                                  },
-                                );
-                              },
-                            ),
-                          ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    try {
+      List<SearchUserModel> moreUsers = await _searchService.getFollowerRequests(users.length);
+      setState(() {
+        users.addAll(moreUsers); // Add more users to the list
+        isLoadingMore = false;
+      });
+    } catch (e) {
+      // Handle session expiration
+      if (e.toString().contains('Session expired')) {
+        if (context.mounted) {
+          handleSessionExpired(context);  // Show session expired dialog
+        }
+      }
+      print("Error loading more followers: $e");
+    } finally {
+      setState(() {
+        isLoadingMore = false;
+      });
+    }
   }
 
   Widget _shimmerLoading() {
@@ -211,8 +105,7 @@ class _AddFriendsPageState extends State<AddFriendsPage>
           baseColor: Colors.grey[300]!,
           highlightColor: Colors.grey[100]!,
           child: Container(
-            margin: EdgeInsets.symmetric(
-                vertical: 5, horizontal: 20), // Reduced vertical margin
+            margin: EdgeInsets.symmetric(vertical: 5, horizontal: 20), // Reduced vertical margin
             height: 70, // Reduced height
             decoration: BoxDecoration(
               color: Colors.white,
@@ -224,16 +117,9 @@ class _AddFriendsPageState extends State<AddFriendsPage>
     );
   }
 
-  Widget _friendRequestCard(
-      String fullName,
-      String username,
-      int followedUserId,
-      String bio,
-      String phoneNumber,
-      Function(String) onDecline) {
+  Widget _friendRequestCard(String fullName, String username, int followedUserId, String bio, String phoneNumber, Function(String) onDecline) {
     return Container(
-      margin: EdgeInsets.symmetric(
-          vertical: 5, horizontal: 20), // Reduced vertical margin
+      margin: EdgeInsets.symmetric(vertical: 5, horizontal: 20), // Reduced vertical margin
       padding: EdgeInsets.all(10), // Reduced padding
       decoration: BoxDecoration(
         color: Colors.white,
@@ -275,16 +161,10 @@ class _AddFriendsPageState extends State<AddFriendsPage>
                               color: Colors.black,
                             ),
                           ),
-                          Text('@$username',
-                              style: TextStyle(
-                                  fontSize: 12, color: Colors.grey[600])),
+                          Text('@$username', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                           SizedBox(height: 2), // Reduced spacing
-                          Text(bio,
-                              style: TextStyle(
-                                  fontSize: 10, color: Colors.grey[800])),
-                          Text(phoneNumber,
-                              style: TextStyle(
-                                  fontSize: 10, color: Colors.grey[800])),
+                          Text(bio, style: TextStyle(fontSize: 10, color: Colors.grey[800])),
+                          Text(phoneNumber, style: TextStyle(fontSize: 10, color: Colors.grey[800])),
                         ],
                       ),
                     ),
@@ -300,8 +180,7 @@ class _AddFriendsPageState extends State<AddFriendsPage>
     );
   }
 
-  Widget _actionButtons(
-      String username, int followedUserId, Function(String) onDecline) {
+  Widget _actionButtons(String username, int followedUserId, Function(String) onDecline) {
     bool isFollowing = requestStatus[username] == 'Following';
 
     return Row(
@@ -317,6 +196,12 @@ class _AddFriendsPageState extends State<AddFriendsPage>
                 });
               }
             } catch (e) {
+              // Handle session expiration
+              if (e.toString().contains('Session expired')) {
+                if (context.mounted) {
+                  handleSessionExpired(context);  // Show session expired dialog
+                }
+              }
               print('Error while following: $e');
             }
           },
@@ -326,8 +211,7 @@ class _AddFriendsPageState extends State<AddFriendsPage>
               borderRadius: BorderRadius.circular(20),
             ),
           ),
-          child: Text(isFollowing ? 'Following' : 'Follow',
-              style: TextStyle(color: Colors.white)),
+          child: Text(isFollowing ? 'Following' : 'Follow', style: TextStyle(color: Colors.white)),
         ),
         SizedBox(width: 5), // Reduced spacing
         if (!isFollowing) // Show "Decline" button only if not following
@@ -336,26 +220,130 @@ class _AddFriendsPageState extends State<AddFriendsPage>
               try {
                 int? currentUserId = await _loginService.getUserId();
                 if (currentUserId != null) {
-                  await _followService.cancelFollowerRequest(
-                      followedUserId, currentUserId);
+                  await _followService.cancelFollowerRequest(followedUserId, currentUserId);
                   setState(() {
                     requestStatus[username] = 'Declined';
                   });
                   onDecline(username); // Call the decline function
                 }
               } catch (e) {
+                // Handle session expiration
+                if (e.toString().contains('Session expired')) {
+                  if (context.mounted) {
+                    handleSessionExpired(context);  // Show session expired dialog
+                  }
+                }
                 print('Error while canceling the follower request: $e');
               }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.redAccent,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
               padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
             ),
             child: Text('Decline', style: TextStyle(color: Colors.white)),
           ),
       ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        children: [
+          // Background
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.orangeAccent.shade200,
+                  Colors.deepOrangeAccent,
+                  Colors.white,
+                ],
+                stops: [0.1, 0.4, 1.0],
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // "Add Friends" header with classy font and icons
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.restaurant_menu, color: Colors.white, size: 30),
+                      SizedBox(width: 10),
+                      Text(
+                        'Add Friends',
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          fontFamily: 'Metropolis', // Classy font style
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      Icon(Icons.restaurant_menu, color: Colors.white, size: 30),
+                    ],
+                  ),
+                ),
+                // Main content
+                Expanded(
+                  child: Container(
+                    padding: EdgeInsets.only(top: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(40),
+                        topRight: Radius.circular(40),
+                      ),
+                    ),
+                    child: isLoading
+                        ? _shimmerLoading() // Show shimmer while loading
+                        : NotificationListener<ScrollNotification>(
+                            onNotification: (ScrollNotification scrollInfo) {
+                              if (!isLoadingMore && scrollInfo.metrics.pixels == scrollInfo.metrics.maxScrollExtent) {
+                                _loadMoreFollowers();
+                              }
+                              return true;
+                            },
+                            child: ListView.builder(
+                              controller: _scrollController,
+                              itemCount: users.length + (isLoadingMore ? 1 : 0), // Add loading indicator at the bottom if loading more
+                              itemBuilder: (context, index) {
+                                if (index == users.length && isLoadingMore) {
+                                  return Center(child: CircularProgressIndicator());
+                                }
+                                final user = users[index];
+                                return _friendRequestCard(
+                                  user.fullName,
+                                  user.username,
+                                  user.userId,
+                                  user.bio,
+                                  user.phoneNumber,
+                                  (username) {
+                                    setState(() {
+                                      // Remove the user from the list when declined
+                                      users.removeWhere((u) => u.username == username);
+                                    });
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

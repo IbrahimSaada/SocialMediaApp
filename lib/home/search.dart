@@ -6,6 +6,7 @@ import '***REMOVED***/models/SearchUserModel.dart';
 import '***REMOVED***/services/search_service.dart';
 import '***REMOVED***/services/LoginService.dart';
 import '***REMOVED***/services/followService.dart';
+import '***REMOVED***/maintenance/expiredtoken.dart';  // Import expired token handler
 
 class Search extends StatefulWidget {
   const Search({super.key});
@@ -70,9 +71,16 @@ class _SearchState extends State<Search> {
         searchResults.addAll(users); // Merge non-duplicate users
       });
     } catch (e) {
-      setState(() {
-        searchResults = [];
-      });
+      // Handle session expiration
+      if (e.toString().contains('Session expired')) {
+        if (context.mounted) {
+          handleSessionExpired(context);  // Call session expired dialog
+        }
+      } else {
+        setState(() {
+          searchResults = [];
+        });
+      }
     } finally {
       setState(() {
         isLoading = false;
@@ -98,7 +106,12 @@ class _SearchState extends State<Search> {
         searchResults.addAll(moreUsers);
       });
     } catch (e) {
-      // Handle error if needed
+      // Handle session expiration
+      if (e.toString().contains('Session expired')) {
+        if (context.mounted) {
+          handleSessionExpired(context);  // Call session expired dialog
+        }
+      }
     } finally {
       setState(() {
         isFetchingMore = false;
@@ -226,6 +239,13 @@ class _SearchState extends State<Search> {
             await FollowService().followUser(currentUserId, user.userId);
           }
         } catch (e) {
+          // Handle session expiration
+          if (e.toString().contains('Session expired')) {
+            if (context.mounted) {
+              handleSessionExpired(context);  // Call session expired dialog
+            }
+          }
+
           // In case of error, revert the UI state
           setState(() {
             if (!user.amFollowing) {
@@ -242,7 +262,6 @@ class _SearchState extends State<Search> {
     );
   });
 }
-
 
   @override
   Widget build(BuildContext context) {
