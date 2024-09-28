@@ -32,6 +32,7 @@ dependencies:
     sdk: flutter
   image_picker: ^1.1.2
   cached_network_image: ^3.0.0
+  image_cropper: ^8.0.0
   flutter_svg: ^1.0.3
   clippy_flutter: 2.0.0-nullsafety.1
   timeago: ^3.0.2
@@ -70,7 +71,7 @@ flutter:
     - assets\images\food3.jpg
     - assets\images\food4.jpg
     - assets\images\food5.jpg
-    - assets\images\omar.jpeg
+    - assets\images\default.png
     
 
 
