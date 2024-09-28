@@ -1,6 +1,11 @@
+import 'dart:io';
+import '***REMOVED***/models/presigned_url.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import '***REMOVED***/services/s3_upload_service.dart'; // Use your S3UploadService
+import '***REMOVED***/services/loginservice.dart'; // Use your LoginService
+import '***REMOVED***/services/userprofile_service.dart'; // Use the UserProfileService
+import '***REMOVED***/models/editprofile_model.dart'; // Use your EditUserProfile model
 
 class EditProfilePage extends StatefulWidget {
   final String currentUsername;
@@ -23,6 +28,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   File? _imageFile;
   final ImagePicker _picker = ImagePicker();
   final int bioMaxLength = 150;
+  bool isUploading = false;
 
   @override
   void initState() {
@@ -41,12 +47,83 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
-  void _saveChanges() {
-    Navigator.pop(context, {
-      'username': usernameController.text,
-      'bio': bioController.text,
-      'imageFile': _imageFile,
-    });
+Future<void> _saveChanges() async {
+  setState(() {
+    isUploading = true; // Show progress indicator
+  });
+
+  String? uploadedImageUrl;
+  if (_imageFile != null) {
+    // Upload the selected image using S3UploadService
+    uploadedImageUrl = await _uploadProfileImage(_imageFile!);
+  }
+
+  // Check if the fields have changed
+  String? newUsername = (usernameController.text != widget.currentUsername) ? usernameController.text : null;
+  String? newBio = (bioController.text != widget.currentBio) ? bioController.text : null;
+  String? newProfilePic = (uploadedImageUrl != null) ? uploadedImageUrl : null;
+
+  if (newProfilePic != null || newUsername != null || newBio != null) {
+    // Call the edit profile API after the image has been uploaded
+    UserProfileService userProfileService = UserProfileService();
+    int userId = await LoginService().getUserId() ?? 0;
+
+    // Create the updated profile model with only the changed fields
+    EditUserProfile updatedProfile = EditUserProfile(
+      profilePic: newProfilePic,
+      fullName: newUsername,
+      bio: newBio,
+    );
+
+    // Use the UserProfileService to update the profile
+    bool success = await userProfileService.editUserProfile(
+      id: userId.toString(),
+      editUserProfile: updatedProfile, // Correct parameter name
+    );
+
+    if (success) {
+      // On successful update, return the updated profile data
+      Navigator.pop(context, {
+        'username': usernameController.text,
+        'bio': bioController.text,
+        'imageFile': _imageFile,
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update profile')),
+      );
+    }
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('No changes detected')),
+    );
+  }
+
+  setState(() {
+    isUploading = false;
+  });
+}
+
+
+  Future<String?> _uploadProfileImage(File imageFile) async {
+    try {
+      S3UploadService s3UploadService = S3UploadService();
+
+      String fileName = imageFile.path.split('/').last;
+
+      // Get the presigned URL from the S3 service
+      List<PresignedUrl> presignedUrls = await s3UploadService.getPresignedUrls([fileName], folderName: 'users');
+
+      if (presignedUrls.isNotEmpty) {
+        // Upload the file to the presigned URL
+        String uploadedUrl = await s3UploadService.uploadFile(presignedUrls[0], XFile(imageFile.path));
+
+        return uploadedUrl; // Return the uploaded file URL
+      }
+    } catch (e) {
+      print('Error uploading profile image: $e');
+    }
+    return null;
   }
 
   @override
@@ -54,15 +131,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
     double screenWidth = MediaQuery.of(context).size.width;
 
     return Material(
-      type: MaterialType.transparency, // Ensure transparency
-      child: Stack(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              color: Colors.transparent, // Ensure background stays transparent
-            ),
-          ),
+  type: MaterialType.transparency, // Keep this as is
+  child: Stack(
+    children: [
+      GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: Container(
+          color: Colors.transparent, // Ensures background transparency
+        ),
+      ),
           Center(
             child: SingleChildScrollView(
               child: Container(
@@ -151,21 +228,23 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       ),
                     ),
                     SizedBox(height: 30),
-                    SizedBox(
-                      width: screenWidth * 0.7,
-                      child: ElevatedButton.icon(
-                        icon: Icon(Icons.check, color: Colors.white),
-                        label: Text('Save', style: TextStyle(color: Colors.white, fontSize: 16)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orangeAccent,
-                          padding: EdgeInsets.symmetric(vertical: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(50),
+                    isUploading
+                        ? CircularProgressIndicator() // Show progress while uploading
+                        : SizedBox(
+                            width: screenWidth * 0.7,
+                            child: ElevatedButton.icon(
+                              icon: Icon(Icons.check, color: Colors.white),
+                              label: Text('Save', style: TextStyle(color: Colors.white, fontSize: 16)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orangeAccent,
+                                padding: EdgeInsets.symmetric(vertical: 15),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(50),
+                                ),
+                              ),
+                              onPressed: _saveChanges,
+                            ),
                           ),
-                        ),
-                        onPressed: _saveChanges,
-                      ),
-                    ),
                   ],
                 ),
               ),

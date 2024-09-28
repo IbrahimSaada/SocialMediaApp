@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import '***REMOVED***/menu/editprofilepage.dart';
 import 'dart:io';
+import '***REMOVED***/services/LoginService.dart';
+import '***REMOVED***/services/Userprofile_service.dart';
+import '***REMOVED***/models/userprofileresponse_model.dart';
+import '***REMOVED***/services/Post_service.dart';
+import '***REMOVED***/models/post_model.dart';
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -9,49 +14,96 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   bool isPostsSelected = true;
-
-  // Example list of images for the posts grid
-  final List<String> imageUrls = [
-    'assets/images/food1.jpg',
-    'assets/images/food2.jpeg',
-    'assets/images/food3.jpg',
-    'assets/images/food4.jpg',
-    'assets/images/food5.jpg',
-  ];
-
-  // Added variables for username, bio, and profileImage
-  String username = 'Omar Mohamed';
-  String bio = 'Hi, my name is Omar Mohamed, I am a robotics teacher!! It\'s my greatest passion in life.';
+  bool isLoading = false;
+  String username = '';
+  String bio = '';
   File? profileImage;
+  int? userId;
+  double rating = 0.0;
+  int postNb = 0;
+  int followersNb = 0;
+  int followingNb = 0;
+  UserProfile? userProfile;
+  List<Post> userPosts = [];
+  List<Post> bookmarkedPosts = [];
+
+  final LoginService _loginService = LoginService();
+  final UserProfileService _userProfileService = UserProfileService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    final isLoggedIn = await _loginService.isLoggedIn();
+    if (isLoggedIn) {
+      final userId = await _loginService.getUserId();
+      if (userId != null) {
+        userProfile = await _userProfileService.fetchUserProfile(userId);
+        if (userProfile != null) {
+          setState(() {
+            this.userId = userId;
+            username = userProfile!.fullName;
+            bio = userProfile!.bio;
+            rating = userProfile!.rating;
+            postNb = userProfile!.postNb;
+            followersNb = userProfile!.followersNb;
+            followingNb = userProfile!.followingNb;
+          });
+        }
+        // Fetch posts and bookmarks
+        await _fetchUserPosts();
+      }
+    }
+
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  Future<void> _fetchUserPosts() async {
+    try {
+      if (userId != null) {
+        List<Post> posts = await PostService.fetchPosts(userId: userId!);
+        setState(() {
+          userPosts = posts.where((post) => !post.isBookmarked).toList();
+          bookmarkedPosts = posts.where((post) => post.isBookmarked).toList();
+        });
+      }
+    } catch (e) {
+      print("Error fetching posts: $e");
+    }
+  }
+
 void _openEditProfilePage() async {
   final result = await Navigator.push(
     context,
-    MaterialPageRoute(
-      builder: (context) => EditProfilePage(
-        currentUsername: username,
-        currentBio: bio,
-        currentImage: profileImage,
-      ),
+    PageRouteBuilder(
+      opaque: false,  // Make the page route transparent
+      pageBuilder: (BuildContext context, _, __) {
+        return EditProfilePage(
+          currentUsername: username,
+          currentBio: bio,
+          currentImage: profileImage,
+        );
+      },
     ),
   );
 
   if (result != null) {
     setState(() {
-      username = result['username']; // Update username
-      bio = result['bio'];           // Update bio
-      profileImage = result['imageFile']; // Update profile image
+      username = result['username'];
+      bio = result['bio'];
+      profileImage = result['imageFile'];
     });
   }
-
-
-    if (result != null) {
-      setState(() {
-        username = result['username'];
-        bio = result['bio'];
-        profileImage = result['imageFile'];
-      });
-    }
-  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -62,9 +114,8 @@ void _openEditProfilePage() async {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Orange Background positioned higher
           Container(
-            height: screenHeight * 0.28, // Slightly higher
+            height: screenHeight * 0.28,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [Colors.orangeAccent, Colors.deepOrangeAccent],
@@ -73,23 +124,17 @@ void _openEditProfilePage() async {
               ),
             ),
           ),
-          // Curved White Container
           Positioned(
-            top: screenHeight * 0.18, // Positioned higher to free up space for posts
+            top: screenHeight * 0.18,
             left: 0,
             right: 0,
             child: Container(
               height: screenHeight * 0.8,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(60),
-                  topRight: Radius.circular(60),
-                ),
               ),
             ),
           ),
-          // Back Button
           Positioned(
             top: 50,
             left: 10,
@@ -100,7 +145,6 @@ void _openEditProfilePage() async {
               },
             ),
           ),
-          // Settings Icon
           Positioned(
             top: 50,
             right: 10,
@@ -111,34 +155,34 @@ void _openEditProfilePage() async {
               },
             ),
           ),
-          // Profile Details with Username Centered and Pencil & QR Code beside each other
           Padding(
             padding: EdgeInsets.only(top: screenHeight * 0.09),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: <Widget>[
-                // Profile Picture
                 CircleAvatar(
                   radius: 60,
-                  backgroundImage: profileImage != null
-                      ? FileImage(profileImage!)
-                      : AssetImage('assets/images/omar.jpeg'),
+                  backgroundImage: userProfile != null
+                      ? NetworkImage(userProfile!.profilePic)
+                      : AssetImage('assets/images/default.png'),
                 ),
                 SizedBox(height: 10),
-                // Name, QR Code, and Pencil Icon centered
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Pencil Icon for Profile Editing
                     GestureDetector(
                       onTap: _openEditProfilePage,
-                      child: Icon(Icons.edit, color: Colors.orangeAccent, size: screenWidth * 0.07),
+                      child: Icon(
+                        Icons.edit, 
+                        color: Colors.orangeAccent, 
+                        size: screenWidth * 0.07
+                      ),
                     ),
                     SizedBox(width: 10),
                     Text(
-                      username, // Updated username
+                      username,
                       style: TextStyle(
-                        fontSize: screenWidth * 0.06, // Responsive font size
+                        fontSize: screenWidth * 0.06,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                       ),
@@ -148,68 +192,21 @@ void _openEditProfilePage() async {
                   ],
                 ),
                 SizedBox(height: 10),
-                // Enhanced Rating Design
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      padding: EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        '4.5',
-                        style: TextStyle(
-                          fontSize: screenWidth * 0.05,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 10),
-                    Row(
-                      children: [
-                        Icon(Icons.star, color: Colors.orange, size: screenWidth * 0.05),
-                        Icon(Icons.star, color: Colors.orange, size: screenWidth * 0.05),
-                        Icon(Icons.star, color: Colors.orange, size: screenWidth * 0.05),
-                        Icon(Icons.star, color: Colors.orange, size: screenWidth * 0.05),
-                        Icon(Icons.star_half, color: Colors.orange, size: screenWidth * 0.05),
-                      ],
-                    ),
-                  ],
-                ),
-                SizedBox(height: 10),
-                // Bio text
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 30.0),
-                  child: Text(
-                    bio, // Updated bio
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: screenWidth * 0.03, color: Colors.grey[700]),
-                  ),
-                ),
-                SizedBox(height: 16),
-                // Stats (Posts, Followers, Following) after bio
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildStatItem('5', 'Posts', screenWidth),
-                    SizedBox(width: screenWidth * 0.08), // Responsive spacing between stats
-                    _buildStatItem('100', 'Followers', screenWidth),
+                    _buildStatItem(postNb.toString(), 'Posts', screenWidth),
                     SizedBox(width: screenWidth * 0.08),
-                    _buildStatItem('200', 'Following', screenWidth),
+                    _buildStatItem(followersNb.toString(), 'Followers', screenWidth),
+                    SizedBox(width: screenWidth * 0.08),
+                    _buildStatItem(followingNb.toString(), 'Following', screenWidth),
                   ],
                 ),
                 SizedBox(height: 16),
-                // Orange Divider Line (full width)
                 Divider(
                   color: Colors.orange,
                   thickness: 2,
-                  indent: 0,
-                  endIndent: 0, // Full-width divider line
                 ),
-                // Toggle between Posts and Saved Posts (without text)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -219,24 +216,31 @@ void _openEditProfilePage() async {
                           isPostsSelected = true;
                         });
                       },
-                      child: Icon(Icons.grid_on, color: isPostsSelected ? Colors.orange : Colors.grey, size: screenWidth * 0.07),
+                      child: Icon(Icons.grid_on,
+                          color: isPostsSelected ? Colors.orange : Colors.grey,
+                          size: screenWidth * 0.07),
                     ),
-                    SizedBox(width: screenWidth * 0.2), // More space between icons
+                    SizedBox(width: screenWidth * 0.2),
                     GestureDetector(
                       onTap: () {
                         setState(() {
                           isPostsSelected = false;
                         });
                       },
-                      child: Icon(Icons.bookmark, color: !isPostsSelected ? Colors.orange : Colors.grey, size: screenWidth * 0.07),
+                      child: Icon(Icons.bookmark,
+                          color: !isPostsSelected ? Colors.orange : Colors.grey,
+                          size: screenWidth * 0.07),
                     ),
                   ],
                 ),
                 SizedBox(height: 16),
-                // Display posts or saved posts based on selection
-                Expanded(
-                  child: isPostsSelected ? _buildPosts(screenWidth) : _buildSavedPosts(screenWidth),
-                ),
+                isLoading
+                    ? Center(child: CircularProgressIndicator())
+                    : Expanded(
+                        child: isPostsSelected
+                            ? _buildPosts(screenWidth)
+                            : _buildSavedPosts(screenWidth),
+                      ),
               ],
             ),
           ),
@@ -245,7 +249,6 @@ void _openEditProfilePage() async {
     );
   }
 
-  // Helper method for building the stats widgets (Posts, Followers, Following)
   Widget _buildStatItem(String count, String label, double screenWidth) {
     return Column(
       children: [
@@ -269,47 +272,169 @@ void _openEditProfilePage() async {
     );
   }
 
-  // Example posts grid (real images)
   Widget _buildPosts(double screenWidth) {
     return GridView.builder(
       padding: EdgeInsets.all(10.0),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: screenWidth * 0.02, // Reduced spacing
+        crossAxisCount: 3,  // 3 posts per row
+        crossAxisSpacing: screenWidth * 0.02,
         mainAxisSpacing: screenWidth * 0.02,
+        childAspectRatio: 1, // Ensures square grid items
       ),
-      itemCount: imageUrls.length, // Number of media posts
+      itemCount: userPosts.length,
       itemBuilder: (context, index) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Image.asset(imageUrls[index], fit: BoxFit.cover), // Real images as per your request
+        final post = userPosts[index];
+        return GestureDetector(
+          onTap: () {
+            _openFullPost(post);
+          },
+          child: _buildPostThumbnail(post),
         );
       },
     );
   }
 
-  // Example saved posts grid (same real images)
   Widget _buildSavedPosts(double screenWidth) {
     return GridView.builder(
       padding: EdgeInsets.all(10.0),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: screenWidth * 0.02, // Reduced spacing
+        crossAxisCount: 3,  // 3 posts per row
+        crossAxisSpacing: screenWidth * 0.02,
         mainAxisSpacing: screenWidth * 0.02,
+        childAspectRatio: 1, // Ensures square grid items
       ),
-      itemCount: imageUrls.length, // Number of saved posts
+      itemCount: bookmarkedPosts.length,
       itemBuilder: (context, index) {
+        final post = bookmarkedPosts[index];
+        return GestureDetector(
+          onTap: () {
+            _openFullPost(post);
+          },
+          child: _buildPostThumbnail(post),
+        );
+      },
+    );
+  }
+
+  Widget _buildPostThumbnail(Post post) {
+    if (post.media.isNotEmpty) {
+      if (post.media[0].mediaType == 'video') {
+        return Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+              ),
+              child: Image.network(
+                post.media[0].mediaUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return _buildErrorPlaceholder();
+                },
+              ),
+            ),
+            // Centered video play icon
+            Positioned.fill(
+              child: Align(
+                alignment: Alignment.center,
+                child: Icon(
+                  Icons.play_circle_outline,
+                  color: Colors.white,
+                  size: 50,
+                ),
+              ),
+            ),
+          ],
+        );
+      } else {
         return Container(
           decoration: BoxDecoration(
             color: Colors.grey[300],
-            borderRadius: BorderRadius.circular(10),
           ),
-          child: Image.asset(imageUrls[index], fit: BoxFit.cover), // Real images for saved posts
+          child: Image.network(
+            post.media[0].mediaUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return _buildErrorPlaceholder();
+            },
+          ),
         );
-      },
+      }
+    } else {
+      // If no media, it's a caption-only post, display a 'TT' icon
+      return Container(
+        color: Colors.orange,
+        child: Center(
+          child: Icon(
+            Icons.text_fields, // 'TT' icon representing a caption
+            color: Colors.white,
+            size: 40,
+          ),
+        ),
+      );
+    }
+  }
+
+  Widget _buildErrorPlaceholder() {
+    return Container(
+      color: Colors.grey[300],
+      child: Center(
+        child: Icon(
+          Icons.error,
+          color: Colors.red,
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+  void _openFullPost(Post post) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FullPostPage(post: post),
+      ),
+    );
+  }
+}
+
+// Full Post Page to display the post details
+class FullPostPage extends StatelessWidget {
+  final Post post;
+
+  const FullPostPage({Key? key, required this.post}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Post Details'),
+      ),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (post.media.isNotEmpty)
+              if (post.media[0].mediaType == 'video')
+                Container(
+                  height: 200,
+                  color: Colors.black,
+                  child: Center(child: Icon(Icons.videocam, color: Colors.white, size: 100)),
+                )
+              else
+                Image.network(post.media[0].mediaUrl),
+            if (post.caption.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: Text(
+                  post.caption,
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
