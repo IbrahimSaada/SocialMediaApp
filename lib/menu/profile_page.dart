@@ -102,29 +102,32 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  // Method to display stars based on rating
-  Row buildStars(double rating, double screenWidth) {
-    rating = rating.clamp(0, 5);
+Row buildStars(double rating, double screenWidth) {
+  // Ensure rating is between 0 and 5
+  rating = rating.clamp(0, 5);
 
-    List<Widget> stars = [];
-    int fullStars = rating.floor();
-    bool hasHalfStar = (rating - fullStars) >= 0.5;
+  List<Widget> stars = [];
+  int fullStars = rating.floor(); // Full stars (4 in case of 4.5)
+  bool hasHalfStar = (rating - fullStars) >= 0.5; // Half star if there's a fraction
 
-    for (int i = 0; i < fullStars; i++) {
-      stars.add(Icon(Icons.star, color: Colors.orange, size: screenWidth * 0.05));
-    }
-
-    if (hasHalfStar) {
-      stars.add(Icon(Icons.star_half, color: Colors.orange, size: screenWidth * 0.05));
-    }
-
-    int emptyStars = 5 - stars.length;
-    for (int i = 0; i < emptyStars; i++) {
-      stars.add(Icon(Icons.star_border, color: Colors.orange, size: screenWidth * 0.05));
-    }
-
-    return Row(children: stars);
+  // Add full stars
+  for (int i = 0; i < fullStars; i++) {
+    stars.add(Icon(Icons.star, color: Colors.orange, size: screenWidth * 0.05));
   }
+
+  // Add half star if applicable
+  if (hasHalfStar) {
+    stars.add(Icon(Icons.star_half, color: Colors.orange, size: screenWidth * 0.05));
+  }
+
+  // Add empty stars to complete 5 stars
+  int emptyStars = 5 - stars.length;
+  for (int i = 0; i < emptyStars; i++) {
+    stars.add(Icon(Icons.star_border, color: Colors.orange, size: screenWidth * 0.05));
+  }
+
+  return Row(children: stars);
+}
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +138,7 @@ class _ProfilePageState extends State<ProfilePage> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Orange Background
+          // Orange Background positioned higher
           Container(
             height: screenHeight * 0.28,
             decoration: BoxDecoration(
@@ -397,6 +400,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 },
               ),
             ),
+            // Centered video play icon
             Positioned.fill(
               child: Align(
                 alignment: Alignment.center,
@@ -424,6 +428,7 @@ class _ProfilePageState extends State<ProfilePage> {
         );
       }
     } else {
+      // If no media, it's a caption-only post, display a 'TT' icon
       return Container(
         color: Colors.orange,
         child: Center(
