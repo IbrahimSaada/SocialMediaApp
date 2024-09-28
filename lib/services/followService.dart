@@ -4,7 +4,7 @@ import 'LoginService.dart';  // To access JWT and refresh token
 import 'SignatureService.dart';  // For signature generation
 
 class FollowService {
-  static const String baseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Users';
+  static const String baseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/UserConnections';
 
   final LoginService _loginService = LoginService();
   final SignatureService _signatureService = SignatureService();
