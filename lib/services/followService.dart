@@ -4,7 +4,7 @@ import 'LoginService.dart';  // To access JWT and refresh token
 import 'SignatureService.dart';  // For signature generation
 
 class FollowService {
-  static const String baseUrl = '***REMOVED***/api/Users';
+  static const String baseUrl = '***REMOVED***/api/UserConnections';
 
   final LoginService _loginService = LoginService();
   final SignatureService _signatureService = SignatureService();
