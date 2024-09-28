@@ -155,95 +155,132 @@ void _openEditProfilePage() async {
               },
             ),
           ),
+Padding(
+  padding: EdgeInsets.only(top: screenHeight * 0.09),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.center,
+    children: <Widget>[
+      CircleAvatar(
+        radius: screenWidth * 0.15, // Responsive size for the avatar
+        backgroundImage: userProfile != null
+            ? NetworkImage(userProfile!.profilePic)
+            : AssetImage('assets/images/default.png'),
+      ),
+      SizedBox(height: screenHeight * 0.02), // Responsive spacing
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: _openEditProfilePage,
+                child: Icon(
+                  Icons.edit, 
+                  color: Colors.orangeAccent, 
+                  size: screenWidth * 0.07,
+                ),
+              ),
+              SizedBox(width: screenWidth * 0.02),
+              Text(
+                username,
+                style: TextStyle(
+                  fontSize: screenWidth * 0.05, // Responsive font size
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+                overflow: TextOverflow.ellipsis, // Prevent text overflow
+                maxLines: 1, // Ensure the username stays on one line
+              ),
+              SizedBox(width: screenWidth * 0.02),
+              Icon(
+                Icons.qr_code,
+                size: screenWidth * 0.07,
+                color: Colors.grey,
+              ),
+            ],
+          ),
+          SizedBox(height: screenHeight * 0.01), // Spacing between username and bio
           Padding(
-            padding: EdgeInsets.only(top: screenHeight * 0.09),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                CircleAvatar(
-                  radius: 60,
-                  backgroundImage: userProfile != null
-                      ? NetworkImage(userProfile!.profilePic)
-                      : AssetImage('assets/images/default.png'),
-                ),
-                SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    GestureDetector(
-                      onTap: _openEditProfilePage,
-                      child: Icon(
-                        Icons.edit, 
-                        color: Colors.orangeAccent, 
-                        size: screenWidth * 0.07
-                      ),
-                    ),
-                    SizedBox(width: 10),
-                    Text(
-                      username,
-                      style: TextStyle(
-                        fontSize: screenWidth * 0.06,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    SizedBox(width: 10),
-                    Icon(Icons.qr_code, size: screenWidth * 0.07, color: Colors.grey),
-                  ],
-                ),
-                SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildStatItem(postNb.toString(), 'Posts', screenWidth),
-                    SizedBox(width: screenWidth * 0.08),
-                    _buildStatItem(followersNb.toString(), 'Followers', screenWidth),
-                    SizedBox(width: screenWidth * 0.08),
-                    _buildStatItem(followingNb.toString(), 'Following', screenWidth),
-                  ],
-                ),
-                SizedBox(height: 16),
-                Divider(
-                  color: Colors.orange,
-                  thickness: 2,
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          isPostsSelected = true;
-                        });
-                      },
-                      child: Icon(Icons.grid_on,
-                          color: isPostsSelected ? Colors.orange : Colors.grey,
-                          size: screenWidth * 0.07),
-                    ),
-                    SizedBox(width: screenWidth * 0.2),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          isPostsSelected = false;
-                        });
-                      },
-                      child: Icon(Icons.bookmark,
-                          color: !isPostsSelected ? Colors.orange : Colors.grey,
-                          size: screenWidth * 0.07),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 16),
-                isLoading
-                    ? Center(child: CircularProgressIndicator())
-                    : Expanded(
-                        child: isPostsSelected
-                            ? _buildPosts(screenWidth)
-                            : _buildSavedPosts(screenWidth),
-                      ),
-              ],
+            padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1), // Add padding to prevent overflow
+            child: Text(
+              bio.isNotEmpty ? bio : 'No bio available',
+              textAlign: TextAlign.center, // Center align the bio
+              style: TextStyle(
+                fontSize: screenWidth * 0.04, // Responsive font size for bio
+                color: Colors.grey,
+              ),
+              overflow: TextOverflow.ellipsis, // Handle long bio gracefully
+              maxLines: 3, // Limit the bio to 3 lines
             ),
           ),
+        ],
+      ),
+      SizedBox(height: screenHeight * 0.02), // Spacing before stats
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildStatItem(postNb.toString(), 'Posts', screenWidth),
+          SizedBox(width: screenWidth * 0.08),
+          _buildStatItem(followersNb.toString(), 'Followers', screenWidth),
+          SizedBox(width: screenWidth * 0.08),
+          _buildStatItem(followingNb.toString(), 'Following', screenWidth),
+        ],
+      ),
+      SizedBox(height: screenHeight * 0.02), // Spacing after stats
+      Divider(
+        color: Colors.orange,
+        thickness: 2,
+      ),
+      SizedBox(height: screenHeight * 0.01), // Add a little spacing before posts section
+      Expanded(
+        // Make sure the posts section is properly expanded and visible
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      isPostsSelected = true;
+                    });
+                  },
+                  child: Icon(
+                    Icons.grid_on,
+                    color: isPostsSelected ? Colors.orange : Colors.grey,
+                    size: screenWidth * 0.07,
+                  ),
+                ),
+                SizedBox(width: screenWidth * 0.2),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      isPostsSelected = false;
+                    });
+                  },
+                  child: Icon(
+                    Icons.bookmark,
+                    color: !isPostsSelected ? Colors.orange : Colors.grey,
+                    size: screenWidth * 0.07,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: screenHeight * 0.02),
+            Expanded(
+              child: isLoading
+                  ? Center(child: CircularProgressIndicator()) // Show loading indicator while loading posts
+                  : isPostsSelected
+                      ? _buildPosts(screenWidth) // Show user posts
+                      : _buildSavedPosts(screenWidth), // Show bookmarked posts
+            ),
+          ],
+        ),
+      ),
+    ],
+  ),
+),
         ],
       ),
     );
