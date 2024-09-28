@@ -6,7 +6,7 @@ import 'package:cook/models/editprofile_model.dart'; // EditUserProfile model
 class UserProfileService {
   // Fetch user profile method
   Future<UserProfile?> fetchUserProfile(int id) async {
-    final url = 'https://b4a6-185-97-92-67.ngrok-free.app/api/UserProfile/$id';
+    final url = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/UserProfile/$id';
 
     try {
       final response = await http.get(Uri.parse(url));
@@ -29,7 +29,7 @@ Future<bool> editUserProfile({
   required String id,
   required EditUserProfile editUserProfile,
 }) async {
-  final String url = "https://b4a6-185-97-92-67.ngrok-free.app/api/UserProfile/$id/edit";
+  final String url = "http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/UserProfile/$id/edit";
 
   try {
     // Sending POST request with EditUserProfile model converted to JSON
