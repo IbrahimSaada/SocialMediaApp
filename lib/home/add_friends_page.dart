@@ -117,7 +117,7 @@ class _AddFriendsPageState extends State<AddFriendsPage> with TickerProviderStat
     );
   }
 
-  Widget _friendRequestCard(String fullName, String username, int followedUserId, String bio, String phoneNumber, Function(String) onDecline) {
+  Widget _friendRequestCard(String fullName, String username, int followedUserId, String phoneNumber, Function(String) onDecline) {
     return Container(
       margin: EdgeInsets.symmetric(vertical: 5, horizontal: 20), // Reduced vertical margin
       padding: EdgeInsets.all(10), // Reduced padding
@@ -163,7 +163,6 @@ class _AddFriendsPageState extends State<AddFriendsPage> with TickerProviderStat
                           ),
                           Text('@$username', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                           SizedBox(height: 2), // Reduced spacing
-                          Text(bio, style: TextStyle(fontSize: 10, color: Colors.grey[800])),
                           Text(phoneNumber, style: TextStyle(fontSize: 10, color: Colors.grey[800])),
                         ],
                       ),
@@ -325,7 +324,6 @@ class _AddFriendsPageState extends State<AddFriendsPage> with TickerProviderStat
                                   user.fullName,
                                   user.username,
                                   user.userId,
-                                  user.bio,
                                   user.phoneNumber,
                                   (username) {
                                     setState(() {
