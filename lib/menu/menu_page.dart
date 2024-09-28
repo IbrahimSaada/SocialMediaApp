@@ -23,15 +23,20 @@ class _MenuPageState extends State<MenuPage> {
   }
 
   Future<void> _loadUserProfile() async {
-    final fetchedUserId = 1; // Replace with actual logic for fetching userId
+    // Fetch the signed-in user's ID from LoginService
+    userId = await _loginService.getUserId();
 
-    userId = fetchedUserId;
-    userProfile = await _userProfileService.fetchUserProfile(userId!);
+    if (userId != null) {
+      // Fetch the user profile using the fetched userId
+      userProfile = await _userProfileService.fetchUserProfile(userId!);
 
-    if (userProfile != null) {
-      setState(() {
-        // Once profile data is loaded, UI is refreshed
-      });
+      if (userProfile != null) {
+        setState(() {
+          // Once profile data is loaded, UI is refreshed
+        });
+      }
+    } else {
+      print('User ID is null, make sure user is logged in.');
     }
   }
 
