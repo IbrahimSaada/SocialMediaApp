@@ -126,71 +126,71 @@ Future<void> _saveChanges() async {
     return null;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
+@override
+Widget build(BuildContext context) {
+  double screenWidth = MediaQuery.of(context).size.width;
 
-    return Material(
-  type: MaterialType.transparency, // Keep this as is
-  child: Stack(
-    children: [
-      GestureDetector(
-        onTap: () => Navigator.pop(context),
-        child: Container(
-          color: Colors.transparent, // Ensures background transparency
+  return Material(
+    type: MaterialType.transparency, // Keep this as is for background transparency
+    child: Stack(
+      children: [
+        GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            color: Colors.transparent, // Ensures background transparency
+          ),
         ),
-      ),
-          Center(
-            child: SingleChildScrollView(
-              child: Container(
-                width: screenWidth * 0.85,
-                padding: const EdgeInsets.all(20.0),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 15,
-                      spreadRadius: 5,
-                      offset: Offset(0, 8),
-                    ),
-                  ],
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Align(
-                      alignment: Alignment.topRight,
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.pop(context);
-                        },
-                        child: Icon(Icons.close, color: Colors.grey, size: 24),
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    GestureDetector(
+        Center(
+          child: SingleChildScrollView(
+            child: Container(
+              width: screenWidth * 0.85,  // Size defined here
+              padding: const EdgeInsets.all(20.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 15,
+                    spreadRadius: 5,
+                    offset: Offset(0, 8),
+                  ),
+                ],
+                borderRadius: BorderRadius.circular(30), // Shape defined here
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: GestureDetector(
                       onTap: () {
-                        _showImageSourceActionSheet(context);
+                        Navigator.pop(context);
                       },
-                      child: CircleAvatar(
-                        radius: 60,
-                        backgroundImage: _imageFile != null
-                            ? FileImage(_imageFile!)
-                            : widget.currentImage != null
-                                ? FileImage(widget.currentImage!)
-                                : AssetImage('assets/images/chef-image.jpg'),
-                        child: Align(
-                          alignment: Alignment.bottomRight,
-                          child: CircleAvatar(
-                            backgroundColor: Colors.white,
-                            radius: 14,
-                            child: Icon(Icons.edit, size: 18, color: Colors.orangeAccent),
-                          ),
+                      child: Icon(Icons.close, color: Colors.grey, size: 24),
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: () {
+                      _showImageSourceActionSheet(context);
+                    },
+                    child: CircleAvatar(
+                      radius: 60,
+                      backgroundImage: _imageFile != null
+                          ? FileImage(_imageFile!)
+                          : widget.currentImage != null
+                              ? FileImage(widget.currentImage!)
+                              : AssetImage('assets/images/chef-image.jpg'),
+                      child: Align(
+                        alignment: Alignment.bottomRight,
+                        child: CircleAvatar(
+                          backgroundColor: Colors.white,
+                          radius: 14,
+                          child: Icon(Icons.edit, size: 18, color: Colors.orangeAccent),
                         ),
                       ),
                     ),
+                  ),
                     SizedBox(height: 20),
                     TextField(
                       controller: usernameController,

@@ -384,63 +384,92 @@ Row buildStars(double rating, double screenWidth) {
   }
 
   Widget _buildPostThumbnail(Post post) {
-    if (post.media.isNotEmpty) {
-      if (post.media[0].mediaType == 'video') {
-        return Stack(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-              ),
-              child: Image.network(
-                post.media[0].mediaUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return _buildErrorPlaceholder();
-                },
+  if (post.media.isNotEmpty) {
+    if (post.media[0].mediaType == 'video') {
+      return Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+            ),
+            child: Image.network(
+              post.media[0].mediaUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return _buildErrorPlaceholder();
+              },
+            ),
+          ),
+          // Centered video play icon
+          Positioned.fill(
+            child: Align(
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.play_circle_outline,
+                color: Colors.white,
+                size: 50,
               ),
             ),
-            // Centered video play icon
-            Positioned.fill(
+          ),
+        ],
+      );
+    } else {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.grey[300],
+        ),
+        child: Image.network(
+          post.media[0].mediaUrl,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return _buildErrorPlaceholder();
+          },
+        ),
+      );
+    }
+  } else {
+    // Caption-only post with gradient background similar to profile page and " " design
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.orangeAccent, Colors.deepOrangeAccent], // Reflect profile page gradient
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: Colors.orange, width: 2), // Orange border
+        borderRadius: BorderRadius.circular(0), // 90-degree corners
+      ),
+      child: Center(
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Quotation mark background decoration
+            Icon(
+              Icons.format_quote,
+              size: 60,
+              color: Colors.white.withOpacity(0.3), // Large white quotation mark in the background
+            ),
+            Positioned(
+              left: 10,
+              bottom: 10,
+              right: 10,
+              top: 10,
               child: Align(
                 alignment: Alignment.center,
                 child: Icon(
-                  Icons.play_circle_outline,
-                  color: Colors.white,
-                  size: 50,
+                  Icons.format_quote,
+                  size: 40,
+                  color: Colors.white, // White quotation mark in the foreground
                 ),
               ),
             ),
           ],
-        );
-      } else {
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-          ),
-          child: Image.network(
-            post.media[0].mediaUrl,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return _buildErrorPlaceholder();
-            },
-          ),
-        );
-      }
-    } else {
-      // If no media, it's a caption-only post, display a 'TT' icon
-      return Container(
-        color: Colors.orange,
-        child: Center(
-          child: Icon(
-            Icons.text_fields,
-            color: Colors.white,
-            size: 40,
-          ),
         ),
-      );
-    }
+      ),
+    );
   }
+}
+
 
   Widget _buildErrorPlaceholder() {
     return Container(
