@@ -4,8 +4,9 @@ import 'dart:io';
 import 'package:cook/services/LoginService.dart';
 import 'package:cook/services/Userprofile_service.dart';
 import 'package:cook/models/userprofileresponse_model.dart';
-import 'package:cook/services/Post_service.dart';
+import 'package:cook/services/userpost_service.dart';
 import 'package:cook/models/post_model.dart';
+
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -15,6 +16,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   bool isPostsSelected = true;
   bool isLoading = false;
+  bool isPaginating = false;
   String username = '';
   String bio = '';
   File? profileImage;
@@ -26,14 +28,25 @@ class _ProfilePageState extends State<ProfilePage> {
   UserProfile? userProfile;
   List<Post> userPosts = [];
   List<Post> bookmarkedPosts = [];
+  int currentPageNumber = 1;
+  int pageSize = 10;
+  final ScrollController _scrollController = ScrollController(); // Pagination controller
 
   final LoginService _loginService = LoginService();
   final UserProfileService _userProfileService = UserProfileService();
+  final UserpostService _userpostService = UserpostService(); // Updated to use UserpostService
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_scrollListener);
     _loadUserProfile();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUserProfile() async {
@@ -59,6 +72,7 @@ class _ProfilePageState extends State<ProfilePage> {
         }
         // Fetch posts and bookmarks
         await _fetchUserPosts();
+        await _fetchBookmarkedPosts();
       }
     }
 
@@ -70,14 +84,42 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _fetchUserPosts() async {
     try {
       if (userId != null) {
-        List<Post> posts = await PostService.fetchPosts(userId: userId!);
         setState(() {
-          userPosts = posts.where((post) => !post.isBookmarked).toList();
-          bookmarkedPosts = posts.where((post) => post.isBookmarked).toList();
+          isPaginating = true; // Start showing pagination loading indicator
+        });
+        List<Post> newPosts = await _userpostService.fetchUserPosts(userId!, currentPageNumber, pageSize);
+        setState(() {
+          userPosts.addAll(newPosts); // Append new posts to the list
+          currentPageNumber++; // Increment page number for the next fetch
+          isPaginating = false; // Stop showing pagination loading indicator
         });
       }
     } catch (e) {
       print("Error fetching posts: $e");
+      setState(() {
+        isPaginating = false; // Stop pagination loading if there's an error
+      });
+    }
+  }
+
+  Future<void> _fetchBookmarkedPosts() async {
+    try {
+      if (userId != null) {
+        List<Post> bookmarks = await _userpostService.fetchBookmarkedPosts(userId!, 1, 10); // Updated to use UserpostService
+        setState(() {
+          bookmarkedPosts = bookmarks;
+        });
+        print('Fetched bookmarks: ${bookmarkedPosts.length}');
+      }
+    } catch (e) {
+      print("Error fetching bookmarks: $e");
+    }
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent && !isPaginating) {
+      // User scrolled to the bottom, fetch more posts
+      _fetchUserPosts();
     }
   }
 
@@ -102,32 +144,28 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-Row buildStars(double rating, double screenWidth) {
-  // Ensure rating is between 0 and 5
-  rating = rating.clamp(0, 5);
+  Row buildStars(double rating, double screenWidth) {
+    rating = rating.clamp(0, 5);
 
-  List<Widget> stars = [];
-  int fullStars = rating.floor(); // Full stars (4 in case of 4.5)
-  bool hasHalfStar = (rating - fullStars) >= 0.5; // Half star if there's a fraction
+    List<Widget> stars = [];
+    int fullStars = rating.floor();
+    bool hasHalfStar = (rating - fullStars) >= 0.5;
 
-  // Add full stars
-  for (int i = 0; i < fullStars; i++) {
-    stars.add(Icon(Icons.star, color: Colors.orange, size: screenWidth * 0.05));
+    for (int i = 0; i < fullStars; i++) {
+      stars.add(Icon(Icons.star, color: Colors.orange, size: screenWidth * 0.05));
+    }
+
+    if (hasHalfStar) {
+      stars.add(Icon(Icons.star_half, color: Colors.orange, size: screenWidth * 0.05));
+    }
+
+    int emptyStars = 5 - stars.length;
+    for (int i = 0; i < emptyStars; i++) {
+      stars.add(Icon(Icons.star_border, color: Colors.orange, size: screenWidth * 0.05));
+    }
+
+    return Row(children: stars);
   }
-
-  // Add half star if applicable
-  if (hasHalfStar) {
-    stars.add(Icon(Icons.star_half, color: Colors.orange, size: screenWidth * 0.05));
-  }
-
-  // Add empty stars to complete 5 stars
-  int emptyStars = 5 - stars.length;
-  for (int i = 0; i < emptyStars; i++) {
-    stars.add(Icon(Icons.star_border, color: Colors.orange, size: screenWidth * 0.05));
-  }
-
-  return Row(children: stars);
-}
 
   @override
   Widget build(BuildContext context) {
@@ -138,7 +176,6 @@ Row buildStars(double rating, double screenWidth) {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Orange Background positioned higher
           Container(
             height: screenHeight * 0.28,
             decoration: BoxDecoration(
@@ -149,7 +186,6 @@ Row buildStars(double rating, double screenWidth) {
               ),
             ),
           ),
-          // Curved White Container
           Positioned(
             top: screenHeight * 0.18,
             left: 0,
@@ -165,7 +201,6 @@ Row buildStars(double rating, double screenWidth) {
               ),
             ),
           ),
-          // Back Button
           Positioned(
             top: 50,
             left: 10,
@@ -176,7 +211,6 @@ Row buildStars(double rating, double screenWidth) {
               },
             ),
           ),
-          // Settings Icon
           Positioned(
             top: 50,
             right: 10,
@@ -343,14 +377,18 @@ Row buildStars(double rating, double screenWidth) {
 
   Widget _buildPosts(double screenWidth) {
     return GridView.builder(
+      controller: _scrollController, // Attach the scroll controller for pagination
       padding: EdgeInsets.all(10.0),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: screenWidth * 0.02,
         mainAxisSpacing: screenWidth * 0.02,
       ),
-      itemCount: userPosts.length,
+      itemCount: userPosts.length + (isPaginating ? 1 : 0),
       itemBuilder: (context, index) {
+        if (index == userPosts.length) {
+          return Center(child: CircularProgressIndicator()); // Show loading indicator at the bottom
+        }
         final post = userPosts[index];
         return GestureDetector(
           onTap: () {
@@ -383,106 +421,86 @@ Row buildStars(double rating, double screenWidth) {
     );
   }
 
-  Widget _buildPostThumbnail(Post post) {
+ Widget _buildPostThumbnail(Post post) {
   if (post.media.isNotEmpty) {
-    if (post.media[0].mediaType == 'video') {
+    final firstMedia = post.media[0];
+
+    if (firstMedia.mediaType == 'video') {
       return Stack(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-            ),
-            child: Image.network(
-              post.media[0].mediaUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return _buildErrorPlaceholder();
-              },
-            ),
+          Image.network(
+            firstMedia.mediaUrl, // This is the thumbnail for the video
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stackTrace) {
+              return _buildFallbackVideoThumbnail(); // Fallback if thumbnail doesn't load
+            },
           ),
-          // Centered video play icon
-          Positioned.fill(
-            child: Align(
-              alignment: Alignment.center,
-              child: Icon(
-                Icons.play_circle_outline,
-                color: Colors.white,
-                size: 50,
-              ),
+          Positioned(
+            bottom: 8,
+            right: 8,
+            child: Icon(
+              Icons.play_circle_filled, // Video play icon
+              color: Colors.white,
+              size: 24, // Smaller video play icon
             ),
           ),
         ],
       );
     } else {
-      return Container(
-        decoration: BoxDecoration(
-          color: Colors.grey[300],
-        ),
-        child: Image.network(
-          post.media[0].mediaUrl,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildErrorPlaceholder();
-          },
-        ),
+      // Handle image thumbnails
+      return Image.network(
+        firstMedia.mediaUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildErrorPlaceholder(); // Fallback for image load failure
+        },
       );
     }
   } else {
-    // Caption-only post with gradient background similar to profile page and " " design
+    // Caption post: No media, so show an orange background with "quote" design
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.orangeAccent, Colors.deepOrangeAccent], // Reflect profile page gradient
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: Border.all(color: Colors.orange, width: 2), // Orange border
-        borderRadius: BorderRadius.circular(0), // 90-degree corners
-      ),
+      color: Colors.orange,
       child: Center(
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Quotation mark background decoration
-            Icon(
-              Icons.format_quote,
-              size: 60,
-              color: Colors.white.withOpacity(0.3), // Large white quotation mark in the background
-            ),
-            Positioned(
-              left: 10,
-              bottom: 10,
-              right: 10,
-              top: 10,
-              child: Align(
-                alignment: Alignment.center,
-                child: Icon(
-                  Icons.format_quote,
-                  size: 40,
-                  color: Colors.white, // White quotation mark in the foreground
-                ),
-              ),
-            ),
-          ],
+        child: Icon(
+          Icons.format_quote, // Quotation mark icon for captions
+          color: Colors.white,
+          size: 48,
         ),
       ),
     );
   }
 }
 
-
-  Widget _buildErrorPlaceholder() {
-    return Container(
-      color: Colors.grey[300],
-      child: Center(
-        child: Icon(
-          Icons.error,
-          color: Colors.red,
-          size: 24,
-        ),
+// Fallback for video posts if thumbnail fails to load
+Widget _buildFallbackVideoThumbnail() {
+  return Container(
+    color: Colors.black54, // Fallback background color for video
+    child: Center(
+      child: Icon(
+        Icons.videocam, // Video camera icon as fallback
+        color: Colors.white,
+        size: 50,
       ),
-    );
-  }
+    ),
+  );
+}
+
+// Placeholder for other media load errors
+Widget _buildErrorPlaceholder() {
+  return Container(
+    color: Colors.grey[300],
+    child: Center(
+      child: Icon(
+        Icons.error,
+        color: Colors.red,
+        size: 24,
+      ),
+    ),
+  );
+}
+
 
   void _openFullPost(Post post) {
     Navigator.push(
