@@ -17,6 +17,8 @@ class _ProfilePageState extends State<ProfilePage> {
   bool isPostsSelected = true;
   bool isLoading = false;
   bool isPaginating = false;
+  bool isPaginatingBookmarks = false; // To track pagination state for bookmarks
+int currentBookmarkedPageNumber = 1; // To keep track of the current page for bookmarks
   String username = '';
   String bio = '';
   File? profileImage;
@@ -102,26 +104,41 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _fetchBookmarkedPosts() async {
-    try {
-      if (userId != null) {
-        List<Post> bookmarks = await _userpostService.fetchBookmarkedPosts(userId!, 1, 10); // Updated to use UserpostService
-        setState(() {
-          bookmarkedPosts = bookmarks;
-        });
-        print('Fetched bookmarks: ${bookmarkedPosts.length}');
-      }
-    } catch (e) {
-      print("Error fetching bookmarks: $e");
-    }
-  }
+Future<void> _fetchBookmarkedPosts() async {
+  if (isPaginatingBookmarks || userId == null) return; // Prevent duplicated fetching
 
-  void _scrollListener() {
-    if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent && !isPaginating) {
-      // User scrolled to the bottom, fetch more posts
+  try {
+    setState(() {
+      isPaginatingBookmarks = true; // Start showing pagination loading indicator for bookmarks
+    });
+    List<Post> newBookmarks = await _userpostService.fetchBookmarkedPosts(
+      userId!, currentBookmarkedPageNumber, pageSize); // Fetch paginated bookmarks
+    setState(() {
+      bookmarkedPosts.addAll(newBookmarks); // Append new bookmarks to the list
+      currentBookmarkedPageNumber++; // Increment page number for the next fetch
+      isPaginatingBookmarks = false; // Stop showing pagination loading indicator for bookmarks
+    });
+  } catch (e) {
+    print("Error fetching bookmarks: $e");
+    setState(() {
+      isPaginatingBookmarks = false; // Stop pagination loading if there's an error
+    });
+  }
+}
+
+
+void _scrollListener() {
+  if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
+    if (isPostsSelected && !isPaginating) {
+      // User scrolled to the bottom of posts, fetch more posts
       _fetchUserPosts();
+    } else if (!isPostsSelected && !isPaginatingBookmarks) {
+      // User scrolled to the bottom of bookmarks, fetch more bookmarks
+      _fetchBookmarkedPosts();
     }
   }
+}
+
 
   void _openEditProfilePage() async {
     final result = await Navigator.push(
@@ -400,26 +417,42 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildSavedPosts(double screenWidth) {
-    return GridView.builder(
-      padding: EdgeInsets.all(10.0),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: screenWidth * 0.02,
-        mainAxisSpacing: screenWidth * 0.02,
+Widget _buildSavedPosts(double screenWidth) {
+  if (bookmarkedPosts.isEmpty && !isPaginatingBookmarks) {
+    // Show this message when there are no bookmarked posts
+    return Center(
+      child: Text(
+        'No bookmarked posts yet',
+        style: TextStyle(fontSize: screenWidth * 0.05, color: Colors.grey),
       ),
-      itemCount: bookmarkedPosts.length,
-      itemBuilder: (context, index) {
-        final post = bookmarkedPosts[index];
-        return GestureDetector(
-          onTap: () {
-            _openFullPost(post);
-          },
-          child: _buildPostThumbnail(post),
-        );
-      },
     );
   }
+
+  return GridView.builder(
+    controller: _scrollController, // Attach the scroll controller for pagination
+    padding: EdgeInsets.all(10.0),
+    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 3,
+      crossAxisSpacing: screenWidth * 0.02,
+      mainAxisSpacing: screenWidth * 0.02,
+    ),
+    itemCount: bookmarkedPosts.length + (isPaginatingBookmarks ? 1 : 0), // Add one more item if paginating
+    itemBuilder: (context, index) {
+      if (index == bookmarkedPosts.length) {
+        // Show loading indicator when paginating
+        return Center(child: CircularProgressIndicator());
+      }
+      final post = bookmarkedPosts[index];
+      return GestureDetector(
+        onTap: () {
+          _openFullPost(post);
+        },
+        child: _buildPostThumbnail(post),
+      );
+    },
+  );
+}
+
 
  Widget _buildPostThumbnail(Post post) {
   if (post.media.isNotEmpty) {
