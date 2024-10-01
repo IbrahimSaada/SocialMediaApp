@@ -7,7 +7,6 @@ import 'package:cook/models/userprofileresponse_model.dart';
 import 'package:cook/services/userpost_service.dart';
 import 'package:cook/models/post_model.dart';
 
-
 class ProfilePage extends StatefulWidget {
   @override
   _ProfilePageState createState() => _ProfilePageState();
@@ -17,8 +16,8 @@ class _ProfilePageState extends State<ProfilePage> {
   bool isPostsSelected = true;
   bool isLoading = false;
   bool isPaginating = false;
-  bool isPaginatingBookmarks = false; // To track pagination state for bookmarks
-int currentBookmarkedPageNumber = 1; // To keep track of the current page for bookmarks
+  bool isPaginatingBookmarks = false;
+  int currentBookmarkedPageNumber = 1;
   String username = '';
   String bio = '';
   File? profileImage;
@@ -32,11 +31,12 @@ int currentBookmarkedPageNumber = 1; // To keep track of the current page for bo
   List<Post> bookmarkedPosts = [];
   int currentPageNumber = 1;
   int pageSize = 10;
-  final ScrollController _scrollController = ScrollController(); // Pagination controller
-
+  final ScrollController _scrollController = ScrollController();
   final LoginService _loginService = LoginService();
   final UserProfileService _userProfileService = UserProfileService();
-  final UserpostService _userpostService = UserpostService(); // Updated to use UserpostService
+  final UserpostService _userpostService = UserpostService();
+
+  bool showFullBio = false; // Track if we are showing the full bio
 
   @override
   void initState() {
@@ -87,69 +87,69 @@ int currentBookmarkedPageNumber = 1; // To keep track of the current page for bo
     try {
       if (userId != null) {
         setState(() {
-          isPaginating = true; // Start showing pagination loading indicator
+          isPaginating = true;
         });
-        List<Post> newPosts = await _userpostService.fetchUserPosts(userId!, currentPageNumber, pageSize);
+        List<Post> newPosts =
+            await _userpostService.fetchUserPosts(userId!, currentPageNumber, pageSize);
         setState(() {
-          userPosts.addAll(newPosts); // Append new posts to the list
-          currentPageNumber++; // Increment page number for the next fetch
-          isPaginating = false; // Stop showing pagination loading indicator
+          userPosts.addAll(newPosts);
+          currentPageNumber++;
+          isPaginating = false;
         });
       }
     } catch (e) {
       print("Error fetching posts: $e");
       setState(() {
-        isPaginating = false; // Stop pagination loading if there's an error
+        isPaginating = false;
       });
     }
   }
 
-Future<void> _fetchBookmarkedPosts() async {
-  if (isPaginatingBookmarks || userId == null) return; // Prevent duplicated fetching
+  Future<void> _fetchBookmarkedPosts() async {
+    if (isPaginatingBookmarks || userId == null) return;
 
-  try {
-    setState(() {
-      isPaginatingBookmarks = true; // Start showing pagination loading indicator for bookmarks
-    });
-    List<Post> newBookmarks = await _userpostService.fetchBookmarkedPosts(
-      userId!, currentBookmarkedPageNumber, pageSize); // Fetch paginated bookmarks
-    setState(() {
-      bookmarkedPosts.addAll(newBookmarks); // Append new bookmarks to the list
-      currentBookmarkedPageNumber++; // Increment page number for the next fetch
-      isPaginatingBookmarks = false; // Stop showing pagination loading indicator for bookmarks
-    });
-  } catch (e) {
-    print("Error fetching bookmarks: $e");
-    setState(() {
-      isPaginatingBookmarks = false; // Stop pagination loading if there's an error
-    });
-  }
-}
-
-
-void _scrollListener() {
-  if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
-    if (isPostsSelected && !isPaginating) {
-      // User scrolled to the bottom of posts, fetch more posts
-      _fetchUserPosts();
-    } else if (!isPostsSelected && !isPaginatingBookmarks) {
-      // User scrolled to the bottom of bookmarks, fetch more bookmarks
-      _fetchBookmarkedPosts();
+    try {
+      setState(() {
+        isPaginatingBookmarks = true;
+      });
+      List<Post> newBookmarks = await _userpostService.fetchBookmarkedPosts(
+          userId!, currentBookmarkedPageNumber, pageSize);
+      setState(() {
+        bookmarkedPosts.addAll(newBookmarks);
+        currentBookmarkedPageNumber++;
+        isPaginatingBookmarks = false;
+      });
+    } catch (e) {
+      print("Error fetching bookmarks: $e");
+      setState(() {
+        isPaginatingBookmarks = false;
+      });
     }
   }
-}
 
+  void _scrollListener() {
+    if (_scrollController.position.pixels ==
+        _scrollController.position.maxScrollExtent) {
+      if (isPostsSelected && !isPaginating) {
+        _fetchUserPosts();
+      } else if (!isPostsSelected && !isPaginatingBookmarks) {
+        _fetchBookmarkedPosts();
+      }
+    }
+  }
 
   void _openEditProfilePage() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EditProfilePage(
+    final result = await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return EditProfilePage(
           currentUsername: username,
           currentBio: bio,
           currentImage: profileImage,
-        ),
-      ),
+        );
+      },
     );
 
     if (result != null) {
@@ -182,6 +182,40 @@ void _scrollListener() {
     }
 
     return Row(children: stars);
+  }
+
+  Widget _buildBioText(double screenWidth) {
+    // Decide whether to show truncated bio or full bio
+    String displayedBio = bio;
+    if (!showFullBio && bio.length > 100) {
+      displayedBio = bio.substring(0, 100) + '...';
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          displayedBio.isNotEmpty ? displayedBio : 'No bio available',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: screenWidth * 0.04,
+            color: Colors.grey,
+          ),
+        ),
+        if (bio.length > 100) // Show the "Show More" button if bio is longer than 100 chars
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                showFullBio = !showFullBio; // Toggle between showing full and truncated bio
+              });
+            },
+            child: Text(
+              showFullBio ? 'Show Less' : 'Show More',
+              style: TextStyle(color: Colors.orange, fontSize: screenWidth * 0.04),
+            ),
+          ),
+      ],
+    );
   }
 
   @override
@@ -300,16 +334,7 @@ void _scrollListener() {
                 SizedBox(height: 10),
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
-                  child: Text(
-                    bio.isNotEmpty ? bio : 'No bio available',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: screenWidth * 0.04,
-                      color: Colors.grey,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 3,
-                  ),
+                  child: _buildBioText(screenWidth), // Use the bio builder method
                 ),
                 SizedBox(height: 16),
                 Row(
@@ -394,7 +419,7 @@ void _scrollListener() {
 
   Widget _buildPosts(double screenWidth) {
     return GridView.builder(
-      controller: _scrollController, // Attach the scroll controller for pagination
+      controller: _scrollController,
       padding: EdgeInsets.all(10.0),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
@@ -404,7 +429,7 @@ void _scrollListener() {
       itemCount: userPosts.length + (isPaginating ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == userPosts.length) {
-          return Center(child: CircularProgressIndicator()); // Show loading indicator at the bottom
+          return Center(child: CircularProgressIndicator());
         }
         final post = userPosts[index];
         return GestureDetector(
@@ -417,123 +442,115 @@ void _scrollListener() {
     );
   }
 
-Widget _buildSavedPosts(double screenWidth) {
-  if (bookmarkedPosts.isEmpty && !isPaginatingBookmarks) {
-    // Show this message when there are no bookmarked posts
-    return Center(
-      child: Text(
-        'No bookmarked posts yet',
-        style: TextStyle(fontSize: screenWidth * 0.05, color: Colors.grey),
+  Widget _buildSavedPosts(double screenWidth) {
+    if (bookmarkedPosts.isEmpty && !isPaginatingBookmarks) {
+      return Center(
+        child: Text(
+          'No bookmarked posts yet',
+          style: TextStyle(fontSize: screenWidth * 0.05, color: Colors.grey),
+        ),
+      );
+    }
+
+    return GridView.builder(
+      controller: _scrollController,
+      padding: EdgeInsets.all(10.0),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: screenWidth * 0.02,
+        mainAxisSpacing: screenWidth * 0.02,
       ),
+      itemCount: bookmarkedPosts.length + (isPaginatingBookmarks ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == bookmarkedPosts.length) {
+          return Center(child: CircularProgressIndicator());
+        }
+        final post = bookmarkedPosts[index];
+        return GestureDetector(
+          onTap: () {
+            _openFullPost(post);
+          },
+          child: _buildPostThumbnail(post),
+        );
+      },
     );
   }
 
-  return GridView.builder(
-    controller: _scrollController, // Attach the scroll controller for pagination
-    padding: EdgeInsets.all(10.0),
-    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: 3,
-      crossAxisSpacing: screenWidth * 0.02,
-      mainAxisSpacing: screenWidth * 0.02,
-    ),
-    itemCount: bookmarkedPosts.length + (isPaginatingBookmarks ? 1 : 0), // Add one more item if paginating
-    itemBuilder: (context, index) {
-      if (index == bookmarkedPosts.length) {
-        // Show loading indicator when paginating
-        return Center(child: CircularProgressIndicator());
-      }
-      final post = bookmarkedPosts[index];
-      return GestureDetector(
-        onTap: () {
-          _openFullPost(post);
-        },
-        child: _buildPostThumbnail(post),
-      );
-    },
-  );
-}
+  Widget _buildPostThumbnail(Post post) {
+    if (post.media.isNotEmpty) {
+      final firstMedia = post.media[0];
 
-
- Widget _buildPostThumbnail(Post post) {
-  if (post.media.isNotEmpty) {
-    final firstMedia = post.media[0];
-
-    if (firstMedia.mediaType == 'video') {
-      return Stack(
-        children: [
-          Image.network(
-            firstMedia.mediaUrl, // This is the thumbnail for the video
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-            errorBuilder: (context, error, stackTrace) {
-              return _buildFallbackVideoThumbnail(); // Fallback if thumbnail doesn't load
-            },
-          ),
-          Positioned(
-            bottom: 8,
-            right: 8,
-            child: Icon(
-              Icons.play_circle_filled, // Video play icon
-              color: Colors.white,
-              size: 24, // Smaller video play icon
+      if (firstMedia.mediaType == 'video') {
+        return Stack(
+          children: [
+            Image.network(
+              firstMedia.mediaUrl,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) {
+                return _buildFallbackVideoThumbnail();
+              },
             ),
-          ),
-        ],
-      );
+            Positioned(
+              bottom: 8,
+              right: 8,
+              child: Icon(
+                Icons.play_circle_filled,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+          ],
+        );
+      } else {
+        return Image.network(
+          firstMedia.mediaUrl,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return _buildErrorPlaceholder();
+          },
+        );
+      }
     } else {
-      // Handle image thumbnails
-      return Image.network(
-        firstMedia.mediaUrl,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return _buildErrorPlaceholder(); // Fallback for image load failure
-        },
+      return Container(
+        color: Colors.orange,
+        child: Center(
+          child: Icon(
+            Icons.format_quote,
+            color: Colors.white,
+            size: 48,
+          ),
+        ),
       );
     }
-  } else {
-    // Caption post: No media, so show an orange background with "quote" design
+  }
+
+  Widget _buildFallbackVideoThumbnail() {
     return Container(
-      color: Colors.orange,
+      color: Colors.black54,
       child: Center(
         child: Icon(
-          Icons.format_quote, // Quotation mark icon for captions
+          Icons.videocam,
           color: Colors.white,
-          size: 48,
+          size: 50,
         ),
       ),
     );
   }
-}
 
-// Fallback for video posts if thumbnail fails to load
-Widget _buildFallbackVideoThumbnail() {
-  return Container(
-    color: Colors.black54, // Fallback background color for video
-    child: Center(
-      child: Icon(
-        Icons.videocam, // Video camera icon as fallback
-        color: Colors.white,
-        size: 50,
+  Widget _buildErrorPlaceholder() {
+    return Container(
+      color: Colors.grey[300],
+      child: Center(
+        child: Icon(
+          Icons.error,
+          color: Colors.red,
+          size: 24,
+        ),
       ),
-    ),
-  );
-}
-
-// Placeholder for other media load errors
-Widget _buildErrorPlaceholder() {
-  return Container(
-    color: Colors.grey[300],
-    child: Center(
-      child: Icon(
-        Icons.error,
-        color: Colors.red,
-        size: 24,
-      ),
-    ),
-  );
-}
-
+    );
+  }
 
   void _openFullPost(Post post) {
     Navigator.push(
@@ -545,7 +562,6 @@ Widget _buildErrorPlaceholder() {
   }
 }
 
-// Full Post Page to display the post details
 class FullPostPage extends StatelessWidget {
   final Post post;
 
