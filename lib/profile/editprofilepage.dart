@@ -131,129 +131,138 @@ Widget build(BuildContext context) {
   double screenWidth = MediaQuery.of(context).size.width;
 
   return Material(
-    type: MaterialType.transparency, // Keep this as is for background transparency
-    child: Stack(
-      children: [
-        GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            color: Colors.transparent, // Ensures background transparency
-          ),
-        ),
-        Center(
-          child: SingleChildScrollView(
-            child: Container(
-              width: screenWidth * 0.85,  // Size defined here
-              padding: const EdgeInsets.all(20.0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 15,
-                    spreadRadius: 5,
-                    offset: Offset(0, 8),
-                  ),
-                ],
-                borderRadius: BorderRadius.circular(30), // Shape defined here
+    type: MaterialType.transparency,  // Maintain background transparency
+    child: Scaffold(
+      resizeToAvoidBottomInset: true,  // Adjust layout when the keyboard is open
+      backgroundColor: Colors.transparent,  // Keep the profile page as the background
+      body: SafeArea(  // Ensure content is visible within safe areas
+        child: Stack(
+          children: [
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                color: Colors.transparent,  // Keep the background transparent
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.pop(context);
-                      },
-                      child: Icon(Icons.close, color: Colors.grey, size: 24),
-                    ),
+            ),
+            Align(
+              alignment: Alignment.center,
+              child: SingleChildScrollView(  // Allows scrolling when the keyboard appears
+                child: Container(
+                  width: screenWidth * 0.85,  // Set the width relative to screen size
+                  padding: const EdgeInsets.all(20.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 15,
+                        spreadRadius: 5,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
+                    borderRadius: BorderRadius.circular(30),  // Rounded corners for the container
                   ),
-                  SizedBox(height: 10),
-                  GestureDetector(
-                    onTap: () {
-                      _showImageSourceActionSheet(context);
-                    },
-                    child: CircleAvatar(
-                      radius: 60,
-                      backgroundImage: _imageFile != null
-                          ? FileImage(_imageFile!)
-                          : widget.currentImage != null
-                              ? FileImage(widget.currentImage!)
-                              : AssetImage('assets/images/chef-image.jpg'),
-                      child: Align(
-                        alignment: Alignment.bottomRight,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Align(
+                        alignment: Alignment.topRight,
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.pop(context);
+                          },
+                          child: Icon(Icons.close, color: Colors.grey, size: 24),
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      GestureDetector(
+                        onTap: () {
+                          _showImageSourceActionSheet(context);
+                        },
                         child: CircleAvatar(
-                          backgroundColor: Colors.white,
-                          radius: 14,
-                          child: Icon(Icons.edit, size: 18, color: Colors.orangeAccent),
-                        ),
-                      ),
-                    ),
-                  ),
-                    SizedBox(height: 20),
-                    TextField(
-                      controller: usernameController,
-                      decoration: InputDecoration(
-                        labelText: 'Username',
-                        labelStyle: TextStyle(color: Colors.orangeAccent),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide(color: Colors.orangeAccent),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide(color: Colors.grey),
-                        ),
-                        prefixIcon: Icon(Icons.person_outline, color: Colors.orangeAccent),
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    TextField(
-                      controller: bioController,
-                      maxLines: 6,
-                      maxLength: bioMaxLength,
-                      decoration: InputDecoration(
-                        labelText: 'Bio',
-                        labelStyle: TextStyle(color: Colors.orangeAccent),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide(color: Colors.orangeAccent),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide(color: Colors.grey),
-                        ),
-                        prefixIcon: Icon(Icons.info_outline, color: Colors.orangeAccent),
-                      ),
-                    ),
-                    SizedBox(height: 30),
-                    isUploading
-                        ? CircularProgressIndicator() // Show progress while uploading
-                        : SizedBox(
-                            width: screenWidth * 0.7,
-                            child: ElevatedButton.icon(
-                              icon: Icon(Icons.check, color: Colors.white),
-                              label: Text('Save', style: TextStyle(color: Colors.white, fontSize: 16)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.orangeAccent,
-                                padding: EdgeInsets.symmetric(vertical: 15),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(50),
-                                ),
-                              ),
-                              onPressed: _saveChanges,
+                          radius: 60,
+                          backgroundImage: _imageFile != null
+                              ? FileImage(_imageFile!)
+                              : widget.currentImage != null
+                                  ? FileImage(widget.currentImage!)
+                                  : AssetImage('assets/images/chef-image.jpg'),
+                          child: Align(
+                            alignment: Alignment.bottomRight,
+                            child: CircleAvatar(
+                              backgroundColor: Colors.white,
+                              radius: 14,
+                              child: Icon(Icons.edit, size: 18, color: Colors.orangeAccent),
                             ),
                           ),
-                  ],
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      TextField(
+                        controller: usernameController,
+                        decoration: InputDecoration(
+                          labelText: 'Username',
+                          labelStyle: TextStyle(color: Colors.orangeAccent),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: BorderSide(color: Colors.orangeAccent),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: BorderSide(color: Colors.grey),
+                          ),
+                          prefixIcon: Icon(Icons.person_outline, color: Colors.orangeAccent),
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      TextField(
+                        controller: bioController,
+                        maxLines: 6,
+                        maxLength: 100,  // Limit the bio to 100 characters
+                        decoration: InputDecoration(
+                          labelText: 'Bio (max 100 characters)',
+                          labelStyle: TextStyle(color: Colors.orangeAccent),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: BorderSide(color: Colors.orangeAccent),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: BorderSide(color: Colors.grey),
+                          ),
+                          prefixIcon: Icon(Icons.info_outline, color: Colors.orangeAccent),
+                          counterText: '',  // Hide character counter display
+                        ),
+                      ),
+                      SizedBox(height: 30),
+                      isUploading
+                          ? CircularProgressIndicator()  // Show progress while uploading
+                          : SizedBox(
+                              width: screenWidth * 0.7,
+                              child: ElevatedButton.icon(
+                                icon: Icon(Icons.check, color: Colors.white),
+                                label: Text('Save', style: TextStyle(color: Colors.white, fontSize: 16)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orangeAccent,
+                                  padding: EdgeInsets.symmetric(vertical: 15),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(50),
+                                  ),
+                                ),
+                                onPressed: _saveChanges,
+                              ),
+                            ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   void _showImageSourceActionSheet(BuildContext context) {
     showModalBottomSheet(
