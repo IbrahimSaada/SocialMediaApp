@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '***REMOVED***/menu/editprofilepage.dart';
+import '***REMOVED***/profile/editprofilepage.dart';
 import 'dart:io';
 import '***REMOVED***/services/LoginService.dart';
 import '***REMOVED***/services/Userprofile_service.dart';

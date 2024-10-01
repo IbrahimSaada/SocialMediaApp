@@ -254,35 +254,13 @@ IconButton(
     ),
   ),
   onPressed: () {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final screenWidth = MediaQuery.of(context).size.width;
-        return Dialog(
-          insetPadding: EdgeInsets.zero, // No padding for the menu, start from left
-          backgroundColor: Colors.transparent, // Transparent background to show the border
-          child: Align(
-            alignment: Alignment.centerLeft, // Start menu from the left side
-            child: Container(
-              width: screenWidth * 0.8, // Set the width to 80% of the screen width
-              height: double.infinity, // Full height of the screen
-              decoration: BoxDecoration(
-                color: Colors.white, // Menu background color
-                border: Border.all(
-                  color: Colors.orange, // Orange border color
-                  width: 3, // Border width
-                ),
-                borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(20), // Rounded top-right corner
-                  bottomRight: Radius.circular(20), // Rounded bottom-right corner
-                ),
-              ),
-              child:  MenuPage(), // Display the MenuPage without its own border
-            ),
-          ),
-        );
-      },
-    );
+  showDialog(
+  context: context,
+  builder: (context) {
+    return MenuPage(); // Directly use the MenuPage without adding extra borders
+  },
+);
+
   },
 ),
 
