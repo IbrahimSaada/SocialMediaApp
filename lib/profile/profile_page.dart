@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cook/menu/editprofilepage.dart';
+import 'package:cook/profile/editprofilepage.dart';
 import 'dart:io';
 import 'package:cook/services/LoginService.dart';
 import 'package:cook/services/Userprofile_service.dart';
