@@ -87,12 +87,14 @@ class PostMedia {
   final String mediaUrl;
   final String mediaType;
   final int postId;
+  final String? thumbnailurl;
 
   PostMedia({
     required this.mediaId,
     required this.mediaUrl,
     required this.mediaType,
     required this.postId,
+    this.thumbnailurl,
   });
 
   factory PostMedia.fromJson(Map<String, dynamic> json) {
@@ -101,6 +103,7 @@ class PostMedia {
       mediaUrl: json['media_url'],
       mediaType: json['media_type'],
       postId: json['post_id'],
+      thumbnailurl: json['thumbnail_url'],
     );
   }
 
@@ -110,6 +113,7 @@ class PostMedia {
       'media_url': mediaUrl,
       'media_type': mediaType,
       'post_id': postId,
+      'thumbnail_url':thumbnailurl,
     };
   }
 }
