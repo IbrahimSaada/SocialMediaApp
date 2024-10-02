@@ -36,7 +36,7 @@ class LoginService {
       var token = data['token']; // Access token
       var refreshToken = data['refreshToken']; // Refresh token
       var userId = data['userId']; // Get user ID from the response
-      var profilePic = data['ProfilePic'];
+      var profilePic = data['profilePic'];
       var expiration = DateTime.now().add(Duration(minutes: 2)); // Set token expiration time
       await _storeTokenAndUserId(token, refreshToken, userId, expiration, profilePic);
     } else {
@@ -136,9 +136,13 @@ class LoginService {
     await _secureStorage.write(key: 'userId', value: userId.toString());
     await _secureStorage.write(
         key: 'expiration', value: expiration.toIso8601String());
-    if (profilePic != null) {
-      await _secureStorage.write(key: 'profilePic', value: profilePic);
-    }
+  if (profilePic != null) {
+    await _secureStorage.write(key: 'profilePic', value: profilePic);
+    print('Profile Pic URL saved: $profilePic');
+  }
+  else {
+    print('Profile pic is null');
+  }
   }
 
   // Get the JWT token from secure storage

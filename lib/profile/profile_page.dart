@@ -417,114 +417,120 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildPosts(double screenWidth) {
-    return GridView.builder(
-      controller: _scrollController,
-      padding: EdgeInsets.all(10.0),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: screenWidth * 0.02,
-        mainAxisSpacing: screenWidth * 0.02,
-      ),
-      itemCount: userPosts.length + (isPaginating ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == userPosts.length) {
-          return Center(child: CircularProgressIndicator());
-        }
-        final post = userPosts[index];
-        return GestureDetector(
-          onTap: () {
-            _openFullPost(post);
-          },
-          child: _buildPostThumbnail(post),
-        );
-      },
-    );
-  }
-
-  Widget _buildSavedPosts(double screenWidth) {
-    if (bookmarkedPosts.isEmpty && !isPaginatingBookmarks) {
-      return Center(
-        child: Text(
-          'No bookmarked posts yet',
-          style: TextStyle(fontSize: screenWidth * 0.05, color: Colors.grey),
-        ),
-      );
-    }
-
-    return GridView.builder(
-      controller: _scrollController,
-      padding: EdgeInsets.all(10.0),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: screenWidth * 0.02,
-        mainAxisSpacing: screenWidth * 0.02,
-      ),
-      itemCount: bookmarkedPosts.length + (isPaginatingBookmarks ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == bookmarkedPosts.length) {
-          return Center(child: CircularProgressIndicator());
-        }
-        final post = bookmarkedPosts[index];
-        return GestureDetector(
-          onTap: () {
-            _openFullPost(post);
-          },
-          child: _buildPostThumbnail(post),
-        );
-      },
-    );
-  }
-
-  Widget _buildPostThumbnail(Post post) {
-    if (post.media.isNotEmpty) {
-      final firstMedia = post.media[0];
-
-      if (firstMedia.mediaType == 'video') {
-        return Stack(
-          children: [
-            Image.network(
-              firstMedia.mediaUrl,
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-              errorBuilder: (context, error, stackTrace) {
-                return _buildFallbackVideoThumbnail();
-              },
-            ),
-            Positioned(
-              bottom: 8,
-              right: 8,
-              child: Icon(
-                Icons.play_circle_filled,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-          ],
-        );
-      } else {
-        return Image.network(
-          firstMedia.mediaUrl,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildErrorPlaceholder();
-          },
-        );
+Widget _buildPosts(double screenWidth) {
+  return GridView.builder(
+    controller: _scrollController,
+    padding: EdgeInsets.all(10.0),
+    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 3,
+      crossAxisSpacing: screenWidth * 0.02,
+      mainAxisSpacing: screenWidth * 0.02,
+    ),
+    itemCount: userPosts.length + (isPaginating ? 1 : 0),
+    itemBuilder: (context, index) {
+      if (index == userPosts.length) {
+        return Center(child: CircularProgressIndicator());
       }
-    } else {
-      return Container(
-        color: Colors.orange,
-        child: Center(
-          child: Icon(
-            Icons.format_quote,
-            color: Colors.white,
-            size: 48,
+      final post = userPosts[index];
+      return GestureDetector(
+        onTap: () {
+          _openFullPost(post);
+        },
+        child: _buildPostThumbnail(post), // Updated to use the thumbnail
+      );
+    },
+  );
+}
+
+
+ Widget _buildSavedPosts(double screenWidth) {
+  if (bookmarkedPosts.isEmpty && !isPaginatingBookmarks) {
+    return Center(
+      child: Text(
+        'No bookmarked posts yet',
+        style: TextStyle(fontSize: screenWidth * 0.05, color: Colors.grey),
+      ),
+    );
+  }
+
+  return GridView.builder(
+    controller: _scrollController,
+    padding: EdgeInsets.all(10.0),
+    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 3,
+      crossAxisSpacing: screenWidth * 0.02,
+      mainAxisSpacing: screenWidth * 0.02,
+    ),
+    itemCount: bookmarkedPosts.length + (isPaginatingBookmarks ? 1 : 0),
+    itemBuilder: (context, index) {
+      if (index == bookmarkedPosts.length) {
+        return Center(child: CircularProgressIndicator());
+      }
+      final post = bookmarkedPosts[index];
+      return GestureDetector(
+        onTap: () {
+          _openFullPost(post);
+        },
+        child: _buildPostThumbnail(post), // Updated to use the thumbnail
+      );
+    },
+  );
+}
+
+
+Widget _buildPostThumbnail(Post post) {
+  if (post.media.isNotEmpty) {
+    final firstMedia = post.media[0];
+
+    if (firstMedia.mediaType == 'video') {
+      return Stack(
+        children: [
+          // Use the thumbnail URL if available, else fallback to the media URL
+          Image.network(
+            firstMedia.thumbnailurl ?? firstMedia.mediaUrl,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stackTrace) {
+              return _buildFallbackVideoThumbnail();
+            },
           ),
-        ),
+          Positioned(
+            bottom: 8,
+            right: 8,
+            child: Icon(
+              Icons.play_circle_filled,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+        ],
+      );
+    } else {
+      // If it's an image, just display it
+      return Image.network(
+        firstMedia.thumbnailurl ?? firstMedia.mediaUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildErrorPlaceholder();
+        },
       );
     }
+  } else {
+    // For caption-only posts, show a placeholder or icon
+    return Container(
+      color: Colors.orange,
+      child: Center(
+        child: Icon(
+          Icons.format_quote,
+          color: Colors.white,
+          size: 48,
+        ),
+      ),
+    );
   }
+}
+
 
   Widget _buildFallbackVideoThumbnail() {
     return Container(
