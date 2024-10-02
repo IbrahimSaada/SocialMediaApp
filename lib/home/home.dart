@@ -247,24 +247,34 @@ PreferredSizeWidget buildAppBar() {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     // Menu Icon
-IconButton(
-  icon: const CircleAvatar(
-    backgroundImage: NetworkImage(
-      'https://your_image_url.com',
-    ),
-  ),
-  onPressed: () {
-  showDialog(
-  context: context,
-  builder: (context) {
-    return MenuPage(); // Directly use the MenuPage without adding extra borders
-  },
-);
-
-  },
-),
-
-
+                  IconButton(
+                    icon: FutureBuilder<String?>(
+                      future: LoginService().getProfilePic(),  // Fetch the profile picture URL
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const CircleAvatar(
+                            backgroundImage: AssetImage('assets/images/default.png'), // Show a default image while loading
+                          );
+                        } else if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
+                          return const CircleAvatar(
+                            backgroundImage: AssetImage('assets/images/default.png'), // Show a default image if error or no data
+                          );
+                        } else {
+                          return CircleAvatar(
+                            backgroundImage: NetworkImage(snapshot.data!),  // Load the profile picture
+                          );
+                        }
+                      },
+                    ),
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) {
+                          return MenuPage(); // Open the Menu Page
+                        },
+                      );
+                    },
+                  ),
                     // App Title
                     const Text(
                       'MyApp',
