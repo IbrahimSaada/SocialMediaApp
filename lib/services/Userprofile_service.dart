@@ -56,7 +56,7 @@ Future<bool> editUserProfile({
   }
 }
   Future<FollowStatusResponse?> checkFollowStatus(int profileId, int currentUserId) async {
-    final String url = 'https://44ae-185-97-92-63.ngrok-free.app/api/UserProfile/$profileId/follow-status?currentUserId=$currentUserId';
+    final String url = '***REMOVED***/api/UserProfile/$profileId/follow-status?currentUserId=$currentUserId';
 
     try {
       final response = await http.get(Uri.parse(url));
