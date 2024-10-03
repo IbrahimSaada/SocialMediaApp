@@ -8,6 +8,8 @@ import 'package:cook/services/GenerateReportService.dart';
 import 'package:cook/models/ReportRequest_model.dart';
 import 'package:cook/maintenance/expiredtoken.dart';
 import 'package:shimmer/shimmer.dart'; // Import shimmer package
+import 'package:cook/profile/otheruserprofilepage.dart';
+import 'package:cook/profile/profile_page.dart';
 
 class CommentPage extends StatefulWidget {
   final int postId;
@@ -508,24 +510,71 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
   }
 
   Widget _buildComment({
-    required Comment comment,
-    required Function() onReplyPressed,
-    String? parentFullName, // This will hold the parent's full name
-  }) {
-    final DateTime commentTime = comment.localCreatedAt;
-    final String timeDisplay = timeago.format(commentTime, locale: 'en_short');
+  required Comment comment,
+  required Function() onReplyPressed,
+  String? parentFullName, // This will hold the parent's full name
+}) {
+  final DateTime commentTime = comment.localCreatedAt;
+  final String timeDisplay = timeago.format(commentTime, locale: 'en_short');
 
-    return GestureDetector(
-      onTapDown: (details) => _showCommentOptions(context, details, comment),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
+  return GestureDetector(
+    onTapDown: (details) => _showCommentOptions(context, details, comment),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () async {
+            int? currentUserId = await LoginService().getUserId(); // Fetch current user's ID
+            if (currentUserId == comment.userId) {
+              // If it's the logged-in user, navigate to ProfilePage
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProfilePage(), // Navigate to ProfilePage
+                ),
+              );
+            } else {
+              // If it's another user, navigate to OtherUserProfilePage
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => OtherUserProfilePage(
+                    otherUserId: comment.userId, // Navigate to the other user's profile
+                  ),
+                ),
+              );
+            }
+          },
+          child: CircleAvatar(
             backgroundImage: NetworkImage(comment.userProfilePic),
             radius: 20.0,
           ),
-          const SizedBox(width: 12.0),
-          Expanded(
+        ),
+        const SizedBox(width: 12.0),
+        GestureDetector(
+          onTap: () async {
+            int? currentUserId = await LoginService().getUserId(); // Fetch current user's ID
+            if (currentUserId == comment.userId) {
+              // If it's the logged-in user, navigate to ProfilePage
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProfilePage(), // Navigate to ProfilePage
+                ),
+              );
+            } else {
+              // If it's another user, navigate to OtherUserProfilePage
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => OtherUserProfilePage(
+                    otherUserId: comment.userId, // Navigate to the other user's profile
+                  ),
+                ),
+              );
+            }
+          },
+          child: Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -546,8 +595,7 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
                     ),
                   ],
                 ),
-                if (parentFullName !=
-                    null) // Display the username being replied to
+                if (parentFullName != null) // Display the username being replied to
                   Padding(
                     padding: const EdgeInsets.only(top: 4.0),
                     child: Text(
@@ -563,10 +611,12 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
+
 
   Widget _buildDivider() {
     return Column(

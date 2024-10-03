@@ -5,6 +5,8 @@ import 'package:cook/services/search_service.dart';
 import 'package:cook/services/loginservice.dart';
 import 'package:cook/services/followService.dart';
 import 'package:cook/maintenance/expiredtoken.dart'; // Import the expired session handler
+import 'package:cook/profile/otheruserprofilepage.dart';
+import 'package:cook/profile/profile_page.dart';
 
 class AddFriendsPage extends StatefulWidget {
   @override
@@ -117,67 +119,92 @@ class _AddFriendsPageState extends State<AddFriendsPage> with TickerProviderStat
     );
   }
 
-  Widget _friendRequestCard(String fullName, String username, int followedUserId, String phoneNumber, Function(String) onDecline) {
-    return Container(
-      margin: EdgeInsets.symmetric(vertical: 5, horizontal: 20), // Reduced vertical margin
-      padding: EdgeInsets.all(10), // Reduced padding
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.orange, width: 2),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.orange.withOpacity(0.3),
-            blurRadius: 10, // Reduced blur radius
-            spreadRadius: 3, // Reduced spread radius
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
+ Widget _friendRequestCard(String fullName, String username, int followedUserId, String phoneNumber, Function(String) onDecline) {
+  return Container(
+    margin: EdgeInsets.symmetric(vertical: 5, horizontal: 20), // Reduced vertical margin
+    padding: EdgeInsets.all(10), // Reduced padding
+    decoration: BoxDecoration(
+      color: Colors.white,
+      border: Border.all(color: Colors.orange, width: 2),
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.orange.withOpacity(0.3),
+          blurRadius: 10, // Reduced blur radius
+          spreadRadius: 3, // Reduced spread radius
+          offset: Offset(0, 5),
+        ),
+      ],
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () async {
+            int? currentUserId = await _loginService.getUserId(); // Fetch current user ID
+            if (currentUserId == followedUserId) {
+              // If the tapped user is the logged-in user, navigate to ProfilePage
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProfilePage(), // Navigate to ProfilePage
+                ),
+              );
+            } else {
+              // If the tapped user is another user, navigate to OtherUserProfilePage
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => OtherUserProfilePage(
+                    otherUserId: followedUserId, // Navigate to other user's profile
+                  ),
+                ),
+              );
+            }
+          },
+          child: CircleAvatar(
             backgroundImage: AssetImage('assets/profile.png'),
             radius: 25, // Reduced radius
           ),
-          SizedBox(width: 10), // Reduced spacing
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            fullName,
-                            style: TextStyle(
-                              fontSize: 16, // Reduced font size
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
+        ),
+        SizedBox(width: 10), // Reduced spacing
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          fullName,
+                          style: TextStyle(
+                            fontSize: 16, // Reduced font size
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
                           ),
-                          Text('@$username', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                          SizedBox(height: 2), // Reduced spacing
-                          Text(phoneNumber, style: TextStyle(fontSize: 10, color: Colors.grey[800])),
-                        ],
-                      ),
+                        ),
+                        Text('@$username', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                        SizedBox(height: 2), // Reduced spacing
+                        Text(phoneNumber, style: TextStyle(fontSize: 10, color: Colors.grey[800])),
+                      ],
                     ),
-                    // Action buttons on the same line
-                    _actionButtons(username, followedUserId, onDecline),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                  // Action buttons on the same line
+                  _actionButtons(username, followedUserId, onDecline),
+                ],
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
+
 
   Widget _actionButtons(String username, int followedUserId, Function(String) onDecline) {
     bool isFollowing = requestStatus[username] == 'Following';

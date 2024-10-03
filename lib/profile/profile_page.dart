@@ -6,6 +6,7 @@ import 'package:cook/services/Userprofile_service.dart';
 import 'package:cook/models/userprofileresponse_model.dart';
 import 'package:cook/services/userpost_service.dart';
 import 'package:cook/models/post_model.dart';
+import 'package:cook/profile/profilepostdetails.dart';
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -427,18 +428,18 @@ Widget _buildPosts(double screenWidth) {
       mainAxisSpacing: screenWidth * 0.02,
     ),
     itemCount: userPosts.length + (isPaginating ? 1 : 0),
-    itemBuilder: (context, index) {
-      if (index == userPosts.length) {
-        return Center(child: CircularProgressIndicator());
-      }
-      final post = userPosts[index];
-      return GestureDetector(
-        onTap: () {
-          _openFullPost(post);
-        },
-        child: _buildPostThumbnail(post), // Updated to use the thumbnail
-      );
-    },
+      itemBuilder: (context, index) {
+        if (index == userPosts.length) {
+          return Center(child: CircularProgressIndicator());
+        }
+        final post = userPosts[index];
+        return GestureDetector(
+          onTap: () {
+            _openFullPost(index);  // Pass the index of the clicked post
+          },
+          child: _buildPostThumbnail(post),
+        );
+      },
   );
 }
 
@@ -462,18 +463,18 @@ Widget _buildPosts(double screenWidth) {
       mainAxisSpacing: screenWidth * 0.02,
     ),
     itemCount: bookmarkedPosts.length + (isPaginatingBookmarks ? 1 : 0),
-    itemBuilder: (context, index) {
-      if (index == bookmarkedPosts.length) {
-        return Center(child: CircularProgressIndicator());
-      }
-      final post = bookmarkedPosts[index];
-      return GestureDetector(
-        onTap: () {
-          _openFullPost(post);
-        },
-        child: _buildPostThumbnail(post), // Updated to use the thumbnail
-      );
-    },
+      itemBuilder: (context, index) {
+        if (index == bookmarkedPosts.length) {
+          return Center(child: CircularProgressIndicator());
+        }
+        final post = bookmarkedPosts[index];
+        return GestureDetector(
+          onTap: () {
+            _openFullPost(index);  // Pass the index of the clicked post
+          },
+          child: _buildPostThumbnail(post),  // Updated to use the thumbnail
+        );
+      },
   );
 }
 
@@ -558,52 +559,20 @@ Widget _buildPostThumbnail(Post post) {
     );
   }
 
-  void _openFullPost(Post post) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => FullPostPage(post: post),
+void _openFullPost(int index) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => ProfilePostDetails(
+        userPosts: userPosts,  // Pass the full list of posts
+        initialIndex: index,    // Pass the index of the clicked post
+        userId: userId!,        // Pass the user ID for pagination if needed
       ),
-    );
-  }
+    ),
+  );
 }
 
-class FullPostPage extends StatelessWidget {
-  final Post post;
 
-  const FullPostPage({Key? key, required this.post}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Post Details'),
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (post.media.isNotEmpty)
-              if (post.media[0].mediaType == 'video')
-                Container(
-                  height: 200,
-                  color: Colors.black,
-                  child: Center(child: Icon(Icons.videocam, color: Colors.white, size: 100)),
-                )
-              else
-                Image.network(post.media[0].mediaUrl),
-            if (post.caption.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 16.0),
-                child: Text(
-                  post.caption,
-                  style: TextStyle(fontSize: 16),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
 }
+
+

@@ -7,6 +7,7 @@ import 'package:cook/services/search_service.dart';
 import 'package:cook/services/LoginService.dart';
 import 'package:cook/services/followService.dart';
 import 'package:cook/maintenance/expiredtoken.dart';  // Import expired token handler
+import 'package:cook/profile/otheruserprofilepage.dart';
 
 class Search extends StatefulWidget {
   const Search({super.key});
@@ -359,30 +360,41 @@ class _SearchState extends State<Search> {
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       Expanded(
-                        child: ListView.builder(
-                          controller: _scrollController,
-                          itemCount: searchResults.length + (isFetchingMore ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index == searchResults.length) {
-                              return const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 10),
-                                child: Center(child: CircularProgressIndicator()),
-                              );
-                            }
-                            final user = searchResults[index];
-                            return ListTile(
-                              leading: CircleAvatar(
-                                backgroundImage: NetworkImage(user.profilePic),
-                              ),
-                              title: Text(user.username),
-                              subtitle: Text(user.fullName),
-                              // Pass both user and currentUserId to the buildFollowButton
-                              trailing: buildFollowButton(user, currentUserId!), // Ensure currentUserId is passed
-                              onTap: () => selectUser(user),  // Select user to save them
-                            );
-                          },
-                        ),
-                      ),
+  child: ListView.builder(
+    controller: _scrollController,
+    itemCount: searchResults.length + (isFetchingMore ? 1 : 0),
+    itemBuilder: (context, index) {
+      if (index == searchResults.length) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: 10),
+          child: Center(child: CircularProgressIndicator()),
+        );
+      }
+      final user = searchResults[index];
+      return ListTile(
+        leading: CircleAvatar(
+          backgroundImage: NetworkImage(user.profilePic),
+        ),
+        title: Text(user.username),
+        subtitle: Text(user.fullName),
+        // Pass both user and currentUserId to the buildFollowButton
+        trailing: buildFollowButton(user, currentUserId!), // Ensure currentUserId is passed
+        onTap: () {
+          // Navigate to the OtherUserProfilePage when a user is tapped
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OtherUserProfilePage(
+                otherUserId: user.userId, // Pass the user ID to the OtherUserProfilePage
+              ),
+            ),
+          );
+        },
+      );
+    },
+  ),
+),
+
                     ],
                   ),
                 ),
