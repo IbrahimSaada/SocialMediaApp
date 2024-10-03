@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '***REMOVED***/models/userprofileresponse_model.dart'; // UserProfile model
 import '***REMOVED***/models/editprofile_model.dart'; // EditUserProfile model
+import '***REMOVED***/models/FollowStatusResponse.dart';
 
 class UserProfileService {
   // Fetch user profile method
@@ -54,4 +55,22 @@ Future<bool> editUserProfile({
     return false;
   }
 }
+  Future<FollowStatusResponse?> checkFollowStatus(int profileId, int currentUserId) async {
+    final String url = 'https://44ae-185-97-92-63.ngrok-free.app/api/UserProfile/$profileId/follow-status?currentUserId=$currentUserId';
+
+    try {
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        return FollowStatusResponse.fromJson(json);
+      } else {
+        print('Failed to load follow status. Status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching follow status: $e');
+    }
+
+    return null;
+  }
 }

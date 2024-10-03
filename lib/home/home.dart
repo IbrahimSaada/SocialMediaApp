@@ -31,7 +31,8 @@ import '***REMOVED***/services/storyview_Service.dart';
 import '***REMOVED***/askquestion/qna_page.dart';
 import '***REMOVED***/maintenance/expiredtoken.dart';  // Importing the expired token handler
 import '***REMOVED***/models/bookmarkrequest_model.dart';
-
+import '***REMOVED***/profile/otheruserprofilepage.dart';
+import '***REMOVED***/profile/profile_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -746,7 +747,7 @@ Future<void> _toggleBookmark() async {
     );
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 8.0),
@@ -765,28 +766,76 @@ Future<void> _toggleBookmark() async {
               // Header with avatar and post info
               Row(
                 children: [
-                  CircleAvatar(
-                    backgroundImage: NetworkImage(widget.post.profilePic),
+                  GestureDetector(
+                    onTap: () async {
+                      int? currentUserId = await LoginService().getUserId(); // Fetch current user's ID
+                      if (currentUserId == widget.post.userId) {
+                        // If it's the logged-in user, navigate to ProfilePage
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ProfilePage(), // Navigate to ProfilePage
+                          ),
+                        );
+                      } else {
+                        // If it's another user, navigate to OtherUserProfilePage
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => OtherUserProfilePage(
+                              otherUserId: widget.post.userId, // Navigate to the other user's profile
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    child: CircleAvatar(
+                      backgroundImage: NetworkImage(widget.post.profilePic),
+                    ),
                   ),
                   const SizedBox(width: 8.0),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.post.fullName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black, // Black for the username/fullname
+                  GestureDetector(
+                    onTap: () async {
+                      int? currentUserId = await LoginService().getUserId(); // Fetch current user's ID
+                      if (currentUserId == widget.post.userId) {
+                        // If it's the logged-in user, navigate to ProfilePage
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ProfilePage(), // Navigate to ProfilePage
+                          ),
+                        );
+                      } else {
+                        // If it's another user, navigate to OtherUserProfilePage
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => OtherUserProfilePage(
+                              otherUserId: widget.post.userId, // Navigate to the other user's profile
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.post.fullName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black, // Black for the username/fullname
+                          ),
                         ),
-                      ),
-                      Text(
-                        timeago.format(widget.post.localCreatedAt),
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12.0,
+                        Text(
+                          timeago.format(widget.post.localCreatedAt),
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12.0,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   const Spacer(),
                   if (_currentUserId != widget.post.userId)
@@ -971,7 +1020,6 @@ Future<void> _toggleBookmark() async {
     );
   }
 }
-
 
 class FullscreenImagePage extends StatelessWidget {
   final List<String> mediaUrls;
