@@ -9,6 +9,8 @@ import '***REMOVED***/services/userpost_service.dart';
 import '***REMOVED***/models/post_model.dart';
 import '***REMOVED***/profile/profilepostdetails.dart';
 import '***REMOVED***/profile/editprofilepage.dart';
+import '***REMOVED***/settings/settings_page.dart';
+
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -278,15 +280,19 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
             Positioned(
-              top: 50,
-              right: 10,
-              child: IconButton(
-                icon: Icon(Icons.settings, color: Colors.white),
-                onPressed: () {
-                  // Add settings functionality
-                },
+                top: 50,
+                right: 10,
+                child: IconButton(
+                  icon: Icon(Icons.settings, color: Colors.white),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => SettingsPage()),
+                    );
+                  },
+                ),
               ),
-            ),
+
             Padding(
               padding: EdgeInsets.only(top: screenHeight * 0.09),
               child: Column(
