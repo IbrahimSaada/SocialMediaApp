@@ -139,6 +139,18 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _refreshUserProfile() async {
+    // Reset the user profile data
+    setState(() {
+      userPosts.clear();
+      bookmarkedPosts.clear();
+      currentPageNumber = 1;
+      currentBookmarkedPageNumber = 1;
+    });
+
+    await _loadUserProfile(); // Reload profile data
+  }
+
   void _openEditProfilePage() async {
     final result = await showModalBottomSheet(
       context: context,
@@ -225,171 +237,175 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          Container(
-            height: screenHeight * 0.28,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.orangeAccent, Colors.deepOrangeAccent],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-          Positioned(
-            top: screenHeight * 0.18,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: screenHeight * 0.8,
+      body: RefreshIndicator(
+        onRefresh: _refreshUserProfile, // Pull-to-refresh functionality
+        color: Colors.orange, // Orange loading indicator
+        child: Stack(
+          children: [
+            Container(
+              height: screenHeight * 0.28,
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(60),
-                  topRight: Radius.circular(60),
+                gradient: LinearGradient(
+                  colors: [Colors.orangeAccent, Colors.deepOrangeAccent],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
             ),
-          ),
-          Positioned(
-            top: 50,
-            left: 10,
-            child: IconButton(
-              icon: Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () {
-                Navigator.pop(context);
-              },
-            ),
-          ),
-          Positioned(
-            top: 50,
-            right: 10,
-            child: IconButton(
-              icon: Icon(Icons.settings, color: Colors.white),
-              onPressed: () {
-                // Add settings functionality
-              },
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.only(top: screenHeight * 0.09),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                CircleAvatar(
-                  radius: 60,
-                  backgroundImage: userProfile != null
-                      ? CachedNetworkImageProvider(userProfile!.profilePic)
-                      : AssetImage('assets/images/default.png') as ImageProvider,
+            Positioned(
+              top: screenHeight * 0.18,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: screenHeight * 0.8,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(60),
+                    topRight: Radius.circular(60),
+                  ),
                 ),
-                SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    GestureDetector(
-                      onTap: _openEditProfilePage,
-                      child: Icon(
-                        Icons.edit,
-                        color: Colors.orangeAccent,
-                        size: screenWidth * 0.07,
-                      ),
-                    ),
-                    SizedBox(width: 10),
-                    Text(
-                      username,
-                      style: TextStyle(
-                        fontSize: screenWidth * 0.06,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    SizedBox(width: 10),
-                    Icon(Icons.qr_code, size: screenWidth * 0.07, color: Colors.grey),
-                  ],
-                ),
-                SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        rating.toStringAsFixed(1),
-                        style: TextStyle(
-                          fontSize: screenWidth * 0.05,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange,
+              ),
+            ),
+            Positioned(
+              top: 50,
+              left: 10,
+              child: IconButton(
+                icon: Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+            Positioned(
+              top: 50,
+              right: 10,
+              child: IconButton(
+                icon: Icon(Icons.settings, color: Colors.white),
+                onPressed: () {
+                  // Add settings functionality
+                },
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.only(top: screenHeight * 0.09),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  CircleAvatar(
+                    radius: 60,
+                    backgroundImage: userProfile != null
+                        ? CachedNetworkImageProvider(userProfile!.profilePic)
+                        : AssetImage('assets/images/default.png') as ImageProvider,
+                  ),
+                  SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: _openEditProfilePage,
+                        child: Icon(
+                          Icons.edit,
+                          color: Colors.orangeAccent,
+                          size: screenWidth * 0.07,
                         ),
                       ),
-                    ),
-                    SizedBox(width: 10),
-                    buildStars(rating, screenWidth),
-                  ],
-                ),
-                SizedBox(height: 10),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
-                  child: _buildBioText(screenWidth),
-                ),
-                SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildStatItem(postNb.toString(), 'Posts', screenWidth),
-                    SizedBox(width: screenWidth * 0.08),
-                    _buildStatItem(followersNb.toString(), 'Followers', screenWidth),
-                    SizedBox(width: screenWidth * 0.08),
-                    _buildStatItem(followingNb.toString(), 'Following', screenWidth),
-                  ],
-                ),
-                SizedBox(height: 16),
-                Divider(
-                  color: Colors.orange,
-                  thickness: 2,
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          isPostsSelected = true;
-                        });
-                      },
-                      child: Icon(Icons.grid_on,
-                          color: isPostsSelected ? Colors.orange : Colors.grey,
-                          size: screenWidth * 0.07),
-                    ),
-                    SizedBox(width: screenWidth * 0.2),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          isPostsSelected = false;
-                        });
-                      },
-                      child: Icon(Icons.bookmark,
-                          color: !isPostsSelected ? Colors.orange : Colors.grey,
-                          size: screenWidth * 0.07),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 16),
-                Expanded(
-                  child: isLoading
-                      ? _buildShimmerGrid()
-                      : isPostsSelected
-                          ? _buildPosts(screenWidth)
-                          : _buildSavedPosts(screenWidth),
-                ),
-              ],
+                      SizedBox(width: 10),
+                      Text(
+                        username,
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.06,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      Icon(Icons.qr_code, size: screenWidth * 0.07, color: Colors.grey),
+                    ],
+                  ),
+                  SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          rating.toStringAsFixed(1),
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.05,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      buildStars(rating, screenWidth),
+                    ],
+                  ),
+                  SizedBox(height: 10),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
+                    child: _buildBioText(screenWidth),
+                  ),
+                  SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildStatItem(postNb.toString(), 'Posts', screenWidth),
+                      SizedBox(width: screenWidth * 0.08),
+                      _buildStatItem(followersNb.toString(), 'Followers', screenWidth),
+                      SizedBox(width: screenWidth * 0.08),
+                      _buildStatItem(followingNb.toString(), 'Following', screenWidth),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  Divider(
+                    color: Colors.orange,
+                    thickness: 2,
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            isPostsSelected = true;
+                          });
+                        },
+                        child: Icon(Icons.grid_on,
+                            color: isPostsSelected ? Colors.orange : Colors.grey,
+                            size: screenWidth * 0.07),
+                      ),
+                      SizedBox(width: screenWidth * 0.2),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            isPostsSelected = false;
+                          });
+                        },
+                        child: Icon(Icons.bookmark,
+                            color: !isPostsSelected ? Colors.orange : Colors.grey,
+                            size: screenWidth * 0.07),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  Expanded(
+                    child: isLoading
+                        ? _buildShimmerGrid()
+                        : isPostsSelected
+                            ? _buildPosts(screenWidth)
+                            : _buildSavedPosts(screenWidth),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -453,7 +469,7 @@ class _ProfilePageState extends State<ProfilePage> {
       itemCount: userPosts.length + (isPaginating ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == userPosts.length) {
-          return Center(child: CircularProgressIndicator());
+          return Center(child: CircularProgressIndicator(color: Colors.orange)); // Orange loading indicator
         }
         final post = userPosts[index];
         return GestureDetector(
@@ -487,7 +503,7 @@ class _ProfilePageState extends State<ProfilePage> {
       itemCount: bookmarkedPosts.length + (isPaginatingBookmarks ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == bookmarkedPosts.length) {
-          return Center(child: CircularProgressIndicator());
+          return Center(child: CircularProgressIndicator(color: Colors.orange)); // Orange loading indicator
         }
         final post = bookmarkedPosts[index];
         return GestureDetector(
@@ -500,67 +516,54 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-Widget _buildPostThumbnail(Post post, double screenWidth) {
-  if (post.media.isNotEmpty) {
-    final firstMedia = post.media[0];
+  Widget _buildPostThumbnail(Post post, double screenWidth) {
+    if (post.media.isNotEmpty) {
+      final firstMedia = post.media[0];
 
-    if (firstMedia.mediaType == 'video') {
-      return Stack(
-        children: [
-          CachedNetworkImage(
-            imageUrl: firstMedia.thumbnailurl ?? firstMedia.mediaUrl,  // Ensure this URL is valid
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-            placeholder: (context, url) => _buildShimmerEffect(), // Placeholder while loading
-            errorWidget: (context, url, error) => _buildErrorPlaceholder(),  // Error widget
-          ),
-          Positioned(
-            bottom: screenWidth * 0.02,
-            right: screenWidth * 0.02,
-            child: Icon(
-              Icons.play_circle_filled,
-              color: Colors.white,
-              size: screenWidth * 0.07,
+      if (firstMedia.mediaType == 'video') {
+        return Stack(
+          children: [
+            CachedNetworkImage(
+              imageUrl: firstMedia.thumbnailurl ?? firstMedia.mediaUrl,  // Ensure this URL is valid
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              placeholder: (context, url) => _buildShimmerEffect(), // Placeholder while loading
+              errorWidget: (context, url, error) => _buildErrorPlaceholder(),  // Error widget
             ),
-          ),
-        ],
-      );
+            Positioned(
+              bottom: screenWidth * 0.02,
+              right: screenWidth * 0.02,
+              child: Icon(
+                Icons.play_circle_filled,
+                color: Colors.white,
+                size: screenWidth * 0.07,
+              ),
+            ),
+          ],
+        );
+      } else {
+        // If it's an image, display it
+        return CachedNetworkImage(
+          imageUrl: firstMedia.thumbnailurl ?? firstMedia.mediaUrl,
+          fit: BoxFit.cover,
+          errorWidget: (context, url, error) => _buildErrorPlaceholder(),
+          placeholder: (context, url) => _buildShimmerEffect(),
+        );
+      }
     } else {
-      // If it's an image, display it
-      return CachedNetworkImage(
-        imageUrl: firstMedia.thumbnailurl ?? firstMedia.mediaUrl,
-        fit: BoxFit.cover,
-        errorWidget: (context, url, error) => _buildErrorPlaceholder(),
-        placeholder: (context, url) => _buildShimmerEffect(),
+      // Handle caption-only posts
+      return Container(
+        color: Colors.orange,
+        child: Center(
+          child: Icon(
+            Icons.format_quote,
+            color: Colors.white,
+            size: screenWidth * 0.1,
+          ),
+        ),
       );
     }
-  } else {
-    // Handle caption-only posts
-    return Container(
-      color: Colors.orange,
-      child: Center(
-        child: Icon(
-          Icons.format_quote,
-          color: Colors.white,
-          size: screenWidth * 0.1,
-        ),
-      ),
-    );
-  }
-}
-
-  Widget _buildFallbackVideoThumbnail() {
-    return Container(
-      color: Colors.black54,
-      child: Center(
-        child: Icon(
-          Icons.videocam,
-          color: Colors.white,
-          size: 50,
-        ),
-      ),
-    );
   }
 
   Widget _buildErrorPlaceholder() {
@@ -576,19 +579,18 @@ Widget _buildPostThumbnail(Post post, double screenWidth) {
     );
   }
 
-void _openFullPost(int index) {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => ProfilePostDetails(
-        userPosts: userPosts,  // Already passed
-        bookmarkedPosts: bookmarkedPosts, // Pass this as well
-        initialIndex: index,  // Already passed
-        userId: userId!,  // Already passed
-        isPostsSelected: isPostsSelected,  // Add this parameter
+  void _openFullPost(int index) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfilePostDetails(
+          userPosts: userPosts,  // Already passed
+          bookmarkedPosts: bookmarkedPosts, // Pass this as well
+          initialIndex: index,  // Already passed
+          userId: userId!,  // Already passed
+          isPostsSelected: isPostsSelected,  // Add this parameter
+        ),
       ),
-    ),
-  );
-}
-
+    );
+  }
 }
