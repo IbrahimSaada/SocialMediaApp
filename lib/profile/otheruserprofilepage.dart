@@ -420,63 +420,77 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     );
   }
 
-  Widget _buildFollowAndMessageButtons(double screenWidth) {
-    String followButtonText = "FOLLOW";
-    Color followButtonColor = Colors.orange;
+Widget _buildFollowAndMessageButtons(double screenWidth) {
+  String followButtonText = "FOLLOW";
+  Color followButtonColor = Colors.orange;
 
-    if (amFollowing && !isFollowing) {
-      followButtonText = "FOLLOW BACK";
-      followButtonColor = Colors.orange;
-    } else if (isFollowing && !amFollowing) {
-      followButtonText = "FOLLOWING";
-      followButtonColor = Colors.grey;
-    } else if (!amFollowing && !isFollowing) {
-      followButtonText = "FOLLOW";
-      followButtonColor = Colors.orange;
-    } else if (amFollowing && isFollowing) {
-      followButtonText = "FOLLOWING";
-      followButtonColor = Colors.orange;
-    }
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        ElevatedButton(
-          onPressed: _toggleFollow,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: followButtonColor,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            padding: EdgeInsets.symmetric(
-                horizontal: screenWidth * 0.02, vertical: screenWidth * 0.01),
-          ),
-          child: Text(
-            followButtonText,
-            style: TextStyle(letterSpacing: 1.5, fontSize: screenWidth * 0.03),
-          ),
-        ),
-        SizedBox(width: screenWidth * 0.02),
-        ElevatedButton(
-          onPressed: () {},
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Color.fromARGB(153, 20, 8, 189),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            padding: EdgeInsets.symmetric(
-                horizontal: screenWidth * 0.02, vertical: screenWidth * 0.01),
-          ),
-          child: Text(
-            "MESSAGE",
-            style: TextStyle(letterSpacing: 1.5, fontSize: screenWidth * 0.03),
-          ),
-        ),
-      ],
-    );
+  if (amFollowing && !isFollowing) {
+    followButtonText = "FOLLOW BACK";
+    followButtonColor = Colors.orangeAccent.shade200;
+  } else if (isFollowing && !amFollowing) {
+    followButtonText = "FOLLOWING";
+    followButtonColor = Colors.grey.shade400;
+  } else if (!amFollowing && !isFollowing) {
+    followButtonText = "FOLLOW";
+    followButtonColor = Colors.orange;
+  } else if (amFollowing && isFollowing) {
+    followButtonText = "FOLLOWING";
+    followButtonColor = Colors.orangeAccent.shade100;
   }
+
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      ElevatedButton(
+        onPressed: _toggleFollow,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: followButtonColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: EdgeInsets.symmetric(
+              horizontal: screenWidth * 0.05, vertical: screenWidth * 0.02),
+          elevation: 5,  // Adds a soft shadow to elevate the button
+        ),
+        child: Text(
+          followButtonText,
+          style: TextStyle(
+            fontFamily: 'Raleway',  // Use an elegant font
+            fontWeight: FontWeight.w600,  // Semi-bold for strength
+            fontSize: screenWidth * 0.035,
+            color: Colors.white,
+            letterSpacing: 1.2,  // Adds some spacing for a premium look
+          ),
+        ),
+      ),
+      SizedBox(width: screenWidth * 0.05),
+      ElevatedButton(
+        onPressed: () {},
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.grey.shade100,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.orangeAccent, width: 2),  // Adds orange border
+          ),
+          padding: EdgeInsets.symmetric(
+              horizontal: screenWidth * 0.05, vertical: screenWidth * 0.02),
+          elevation: 5,  // Adds a soft shadow to elevate the button
+        ),
+        child: Text(
+          "MESSAGE",
+          style: TextStyle(
+            fontFamily: 'Raleway',  // Matching elegant font
+            fontWeight: FontWeight.w600,  // Semi-bold for strength
+            fontSize: screenWidth * 0.035,
+            color: Colors.orangeAccent,
+            letterSpacing: 1.2,  // Consistent premium letter spacing
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
 
   Row buildStars(double rating, double screenWidth) {
     rating = rating.clamp(0, 5);
