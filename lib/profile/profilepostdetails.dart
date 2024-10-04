@@ -13,14 +13,18 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 class ProfilePostDetails extends StatefulWidget {
   final List<Post> userPosts;
+  final List<Post> bookmarkedPosts;
   final int initialIndex;
   final int userId;
+  final bool isPostsSelected; // Added to indicate which section is selected
 
   const ProfilePostDetails({
     Key? key,
     required this.userPosts,
+    required this.bookmarkedPosts, // Pass bookmarks as well
     required this.initialIndex,
     required this.userId,
+    required this.isPostsSelected, // Indicate which section is selected
   }) : super(key: key);
 
   @override
@@ -29,7 +33,7 @@ class ProfilePostDetails extends StatefulWidget {
 
 class _ProfilePostDetailsState extends State<ProfilePostDetails> {
   late ScrollController _scrollController;
-  List<Post> allUserPosts = [];
+  late List<Post> displayedPosts; // Posts to display based on the section
 
   @override
   void initState() {
@@ -37,7 +41,8 @@ class _ProfilePostDetailsState extends State<ProfilePostDetails> {
     _scrollController = ScrollController(
       initialScrollOffset: widget.initialIndex * 300.0, // Approximate height per PostCard
     );
-    allUserPosts = List.from(widget.userPosts);
+    // Set the displayed posts based on whether the posts section or bookmarks section is selected
+    displayedPosts = widget.isPostsSelected ? widget.userPosts : widget.bookmarkedPosts;
   }
 
   @override
@@ -57,44 +62,40 @@ class _ProfilePostDetailsState extends State<ProfilePostDetails> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildCustomAppBar(),
-      backgroundColor: Colors.grey[100], // Slightly off-white background for contrast
+      backgroundColor: Colors.grey[100],
       body: ListView.builder(
-        controller: _scrollController,
-        itemCount: allUserPosts.length,
-        itemBuilder: (context, index) {
-          final post = allUserPosts[index];
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0), // Minimal spacing
-            child: PostCard(post: post),
-          );
-        },
-      ),
+  controller: _scrollController,
+  itemCount: displayedPosts.length,
+  padding: EdgeInsets.zero, // Remove extra padding around the list
+  itemBuilder: (context, index) {
+    final post = displayedPosts[index]; // Render based on displayed posts
+    return PostCard(post: post); // No padding inside itemBuilder
+  },
+),
     );
   }
 
-  AppBar _buildCustomAppBar() {
-    return AppBar(
-      automaticallyImplyLeading: false,
-      elevation: 0,
-      backgroundColor: Colors.white,
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(4.0),
-        child: Container(
-          color: Colors.orange, // Orange bottom border
-          height: 2.0,
-        ),
+AppBar _buildCustomAppBar() {
+  return AppBar(
+    leading: IconButton(
+      icon: Icon(Icons.arrow_back, color: Colors.orange),
+      onPressed: () {
+        Navigator.pop(context);  // This takes the user back to the previous page
+      },
+    ),
+    title: const Text(
+      "POSTS",
+      style: TextStyle(
+        color: Colors.orange,
+        fontWeight: FontWeight.bold,
       ),
-      title: const Text(
-        "POSTS",
-        style: TextStyle(
-          color: Colors.orange, // Title in orange
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      centerTitle: true, // Center the title
-    );
-  }
+    ),
+    centerTitle: true,
+  );
 }
+
+}
+
 
 class PostCard extends StatefulWidget {
   final Post post;
@@ -174,9 +175,12 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
+    // Use MediaQuery to get screen width for responsiveness
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Container(
-      // Removed width: double.infinity for dynamic sizing
-      margin: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 0.0), // Handled by Padding in ListView.builder
+      width: screenWidth, // Full width of the screen
+      margin: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 8.0), // Adjust margin as needed
       padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -205,7 +209,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
             ),
           if (widget.post.media.isNotEmpty) ...[
             const SizedBox(height: 8.0), // Reduced height
-            _buildMedia(),
+            _buildMedia(screenWidth), // Pass the screen width to the media
           ],
           const SizedBox(height: 8.0), // Reduced height
           _buildPostActions(),
@@ -239,18 +243,17 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     );
   }
 
-  Widget _buildMedia() {
+  Widget _buildMedia(double screenWidth) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Get the available width of the screen and adjust the media size
-        double mediaHeight = constraints.maxWidth * 0.75;
+        double mediaHeight = screenWidth * 0.75; // Set height relative to screen width
         double maxHeight = 300.0; // Maximum height for media
         if (mediaHeight > maxHeight) {
           mediaHeight = maxHeight;
         }
         return SizedBox(
-          height: mediaHeight, // Responsive height with a cap
-          width: double.infinity,
+          height: mediaHeight, // Set responsive height with a cap
+          width: double.infinity, // Make it full width
           child: PageView.builder(
             itemCount: widget.post.media.length,
             itemBuilder: (context, index) {
@@ -261,6 +264,8 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                   child: CachedNetworkImage(
                     imageUrl: media.mediaUrl,
                     fit: BoxFit.cover,
+                    width: screenWidth, // Set full width
+                    height: mediaHeight, // Set responsive height
                     placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
                     errorWidget: (context, url, error) => const Icon(Icons.error),
                   ),
@@ -312,6 +317,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     );
   }
 }
+
 
 class VideoPost extends StatefulWidget {
   final String mediaUrl;

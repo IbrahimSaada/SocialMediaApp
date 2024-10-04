@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:cook/services/Userprofile_service.dart';
 import 'package:cook/services/userpost_service.dart';
 import 'package:cook/models/userprofileresponse_model.dart';
 import 'package:cook/models/post_model.dart';
 import 'package:cook/services/FollowService.dart';
-import 'package:cook/models/FollowStatusResponse.dart'; // Import the FollowStatusResponse model
+import 'package:cook/models/FollowStatusResponse.dart';
 import 'package:cook/profile/profilepostdetails.dart';
 
 class OtherUserProfilePage extends StatefulWidget {
-  final int otherUserId; // Pass the ID of the other user
+  final int otherUserId;
 
   OtherUserProfilePage({required this.otherUserId});
 
@@ -38,8 +40,8 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   final UserpostService _userpostService = UserpostService();
   final FollowService _followService = FollowService();
 
-  bool isFollowing = false; // Follow/Unfollow status
-  bool amFollowing = false; // Am I being followed
+  bool isFollowing = false;
+  bool amFollowing = false;
 
   @override
   void initState() {
@@ -69,16 +71,14 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
         followersNb = userProfile!.followersNb;
         followingNb = userProfile!.followingNb;
       });
-      // Fetch posts and bookmarks
       await _fetchUserPosts();
       await _fetchBookmarkedPosts();
-      
-      // Check follow status using the new method
+
       final followStatus = await _checkFollowStatus();
       if (followStatus != null) {
         setState(() {
-          isFollowing = followStatus.isFollowing; // Current user follows other user
-          amFollowing = followStatus.amFollowing; // Other user follows current user
+          isFollowing = followStatus.isFollowing;
+          amFollowing = followStatus.amFollowing;
         });
       }
     }
@@ -93,7 +93,8 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
       setState(() {
         isPaginating = true;
       });
-      List<Post> newPosts = await _userpostService.fetchUserPosts(widget.otherUserId, currentPageNumber, pageSize);
+      List<Post> newPosts =
+          await _userpostService.fetchUserPosts(widget.otherUserId, currentPageNumber, pageSize);
       setState(() {
         userPosts.addAll(newPosts);
         currentPageNumber++;
@@ -114,7 +115,8 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
       setState(() {
         isPaginatingBookmarks = true;
       });
-      List<Post> newBookmarks = await _userpostService.fetchBookmarkedPosts(widget.otherUserId, currentBookmarkedPageNumber, pageSize);
+      List<Post> newBookmarks = await _userpostService.fetchBookmarkedPosts(
+          widget.otherUserId, currentBookmarkedPageNumber, pageSize);
       setState(() {
         bookmarkedPosts.addAll(newBookmarks);
         currentBookmarkedPageNumber++;
@@ -138,7 +140,6 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     }
   }
 
-  // New method to check follow status using the API
   Future<FollowStatusResponse?> _checkFollowStatus() async {
     int currentUserId = 1; // Replace with actual current user ID
     return await _userProfileService.checkFollowStatus(widget.otherUserId, currentUserId);
@@ -146,25 +147,13 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
 
   void _toggleFollow() async {
     setState(() {
-      if (!isFollowing) {
-        // If you are not following the other user, follow them
-        isFollowing = true;
-
-        // If the other user is already following you (amFollowing is true), this means it's a "Follow Back"
-        if (amFollowing) {
-          isFollowing = true; // Follow back action
-        }
-      } else {
-        // If you are already following the user, unfollow them
-        isFollowing = false;
-      }
+      isFollowing = !isFollowing;
     });
 
-    // Perform the follow/unfollow action in the backend
     if (isFollowing) {
-      await _followService.followUser(1, widget.otherUserId); // Replace 1 with actual current user ID
+      await _followService.followUser(1, widget.otherUserId);
     } else {
-      await _followService.unfollowUser(1, widget.otherUserId); // Replace 1 with actual current user ID
+      await _followService.unfollowUser(1, widget.otherUserId);
     }
   }
 
@@ -177,7 +166,6 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Gradient Background
           Container(
             height: screenHeight * 0.28,
             decoration: BoxDecoration(
@@ -188,7 +176,6 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
               ),
             ),
           ),
-          // White Container with Rounded Corners
           Positioned(
             top: screenHeight * 0.18,
             left: 0,
@@ -204,7 +191,6 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
               ),
             ),
           ),
-          // Back Button
           Positioned(
             top: 50,
             left: 10,
@@ -215,100 +201,114 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
               },
             ),
           ),
-          // Main Content
           Padding(
             padding: EdgeInsets.only(top: screenHeight * 0.09),
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: <Widget>[
-                  // Profile Picture
-                  CircleAvatar(
-                    radius: screenWidth * 0.15, // Responsive radius
-                    backgroundImage: userProfile != null
-                        ? NetworkImage(userProfile!.profilePic)
-                        : AssetImage('assets/images/default.png') as ImageProvider,
-                  ),
-                  SizedBox(height: screenHeight * 0.01),
-                  // Username
-                  Text(
-                    username,
-                    style: TextStyle(
-                      fontSize: screenWidth * 0.06,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                CircleAvatar(
+                  radius: 60,
+                  backgroundImage: userProfile != null
+                      ? CachedNetworkImageProvider(userProfile!.profilePic)
+                      : AssetImage('assets/images/default.png') as ImageProvider,
+                ),
+                SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      username,
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.06,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: screenHeight * 0.01),
-                  // Follow and Message Buttons
-                  _buildFollowAndMessageButtons(screenWidth),
-                  SizedBox(height: screenHeight * 0.01),
-                  // Rating
-                  _buildRating(screenWidth),
-                  SizedBox(height: screenHeight * 0.01),
-                  // Bio
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
-                    child: _buildBioText(screenWidth),
-                  ),
-                  SizedBox(height: screenHeight * 0.02),
-                  // Stats: Posts, Followers, Following
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildStatItem(postNb.toString(), 'Posts', screenWidth),
-                      SizedBox(width: screenWidth * 0.08),
-                      _buildStatItem(followersNb.toString(), 'Followers', screenWidth),
-                      SizedBox(width: screenWidth * 0.08),
-                      _buildStatItem(followingNb.toString(), 'Following', screenWidth),
-                    ],
-                  ),
-                  SizedBox(height: screenHeight * 0.02),
-                  // Divider
-                  Divider(
-                    color: Colors.orange,
-                    thickness: 2,
-                  ),
-                  // Toggle Icons: Posts and Bookmarks
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            isPostsSelected = true;
-                          });
-                        },
-                        child: Icon(Icons.grid_on,
-                            color: isPostsSelected ? Colors.orange : Colors.grey,
-                            size: screenWidth * 0.07),
+                    SizedBox(width: 10),
+                    Icon(Icons.qr_code, size: screenWidth * 0.07, color: Colors.grey),
+                  ],
+                ),
+                SizedBox(height: 10),
+                _buildFollowAndMessageButtons(screenWidth),
+                SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        shape: BoxShape.circle,
                       ),
-                      SizedBox(width: screenWidth * 0.2),
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            isPostsSelected = false;
-                          });
-                        },
-                        child: Icon(Icons.bookmark,
-                            color: !isPostsSelected ? Colors.orange : Colors.grey,
-                            size: screenWidth * 0.07),
+                      child: Text(
+                        rating.toStringAsFixed(1),
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.05,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange,
+                        ),
                       ),
-                    ],
-                  ),
-                  SizedBox(height: screenHeight * 0.02),
-                  // Posts or Bookmarks
-                  Container(
-                    height: screenHeight * 0.5, // Adjust as needed
-                    child: isLoading
-                        ? Center(child: CircularProgressIndicator())
-                        : isPostsSelected
-                            ? _buildPosts(screenWidth)
-                            : _buildSavedPosts(screenWidth),
-                  ),
-                ],
-              ),
+                    ),
+                    SizedBox(width: 10),
+                    buildStars(rating, screenWidth),
+                  ],
+                ),
+                SizedBox(height: 10),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
+                  child: _buildBioText(screenWidth),
+                ),
+                SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildStatItem(postNb.toString(), 'Posts', screenWidth),
+                    SizedBox(width: screenWidth * 0.08),
+                    _buildStatItem(followersNb.toString(), 'Followers', screenWidth),
+                    SizedBox(width: screenWidth * 0.08),
+                    _buildStatItem(followingNb.toString(), 'Following', screenWidth),
+                  ],
+                ),
+                SizedBox(height: 16),
+                Divider(
+                  color: Colors.orange,
+                  thickness: 2,
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          isPostsSelected = true;
+                        });
+                      },
+                      child: Icon(Icons.grid_on,
+                          color: isPostsSelected ? Colors.orange : Colors.grey,
+                          size: screenWidth * 0.07),
+                    ),
+                    SizedBox(width: screenWidth * 0.2),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          isPostsSelected = false;
+                        });
+                      },
+                      child: Icon(Icons.bookmark,
+                          color: !isPostsSelected ? Colors.orange : Colors.grey,
+                          size: screenWidth * 0.07),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                Expanded(
+                  child: isLoading
+                      ? _buildShimmerGrid()
+                      : isPostsSelected
+                          ? _buildPosts(screenWidth)
+                          : _buildSavedPosts(screenWidth),
+                ),
+              ],
             ),
           ),
         ],
@@ -316,12 +316,10 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     );
   }
 
-  /// Adjusted _buildFollowAndMessageButtons method with smaller buttons and responsive sizing
   Widget _buildFollowAndMessageButtons(double screenWidth) {
-    String followButtonText = "FOLLOW"; // Default follow button text in uppercase
-    Color followButtonColor = Colors.orange; // Default follow button color
+    String followButtonText = "FOLLOW";
+    Color followButtonColor = Colors.orange;
 
-    // Determine button text and color based on follow status
     if (amFollowing && !isFollowing) {
       followButtonText = "FOLLOW BACK";
       followButtonColor = Colors.orange;
@@ -336,83 +334,61 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
       followButtonColor = Colors.orange;
     }
 
-    // Further reduce the padding and font size based on screen width
-    double buttonHorizontalPadding = screenWidth * 0.02; // Reduced from 0.03
-    double buttonVerticalPadding = screenWidth * 0.01; // Reduced from 0.015
-    double fontSize = screenWidth * 0.03; // Reduced from 0.035
-
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // Follow Button
         ElevatedButton(
           onPressed: _toggleFollow,
           style: ElevatedButton.styleFrom(
             backgroundColor: followButtonColor,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8), // Rounded corners
+              borderRadius: BorderRadius.circular(8),
             ),
             padding: EdgeInsets.symmetric(
-                horizontal: buttonHorizontalPadding,
-                vertical: buttonVerticalPadding),
+                horizontal: screenWidth * 0.02, vertical: screenWidth * 0.01),
           ),
           child: Text(
             followButtonText,
-            style: TextStyle(
-              letterSpacing: 1.5,
-              fontSize: fontSize,
-            ),
+            style: TextStyle(letterSpacing: 1.5, fontSize: screenWidth * 0.03),
           ),
         ),
-        SizedBox(width: screenWidth * 0.02), // Reduced spacing
-        // Message Button
+        SizedBox(width: screenWidth * 0.02),
         ElevatedButton(
-          onPressed: () {
-            // Handle message button tap here
-            // For example, navigate to the message/chat page
-          },
+          onPressed: () {},
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color.fromARGB(153, 20, 8, 189), // Blue color
+            backgroundColor: Color.fromARGB(153, 20, 8, 189),
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8), // Rounded corners
+              borderRadius: BorderRadius.circular(8),
             ),
             padding: EdgeInsets.symmetric(
-                horizontal: buttonHorizontalPadding,
-                vertical: buttonVerticalPadding),
+                horizontal: screenWidth * 0.02, vertical: screenWidth * 0.01),
           ),
           child: Text(
             "MESSAGE",
-            style: TextStyle(
-              letterSpacing: 1.5,
-              fontSize: fontSize,
-            ),
+            style: TextStyle(letterSpacing: 1.5, fontSize: screenWidth * 0.03),
           ),
         ),
       ],
     );
   }
 
-  /// Builds the rating section with stars
   Row buildStars(double rating, double screenWidth) {
-    rating = rating.clamp(0, 5); // Ensure rating is between 0 and 5
+    rating = rating.clamp(0, 5);
 
     List<Widget> stars = [];
-    int fullStars = rating.floor(); // Full stars
-    bool hasHalfStar = (rating - fullStars) >= 0.5; // Check if there's a half star
+    int fullStars = rating.floor();
+    bool hasHalfStar = (rating - fullStars) >= 0.5;
 
-    // Add full stars
     for (int i = 0; i < fullStars; i++) {
       stars.add(Icon(Icons.star, color: Colors.orange, size: screenWidth * 0.05));
     }
 
-    // Add half star if needed
     if (hasHalfStar) {
       stars.add(Icon(Icons.star_half, color: Colors.orange, size: screenWidth * 0.05));
     }
 
-    // Add empty stars
     int emptyStars = 5 - stars.length;
     for (int i = 0; i < emptyStars; i++) {
       stars.add(Icon(Icons.star_border, color: Colors.orange, size: screenWidth * 0.05));
@@ -421,33 +397,17 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     return Row(children: stars);
   }
 
-  /// Builds the rating widget
-  Widget _buildRating(double screenWidth) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          padding: EdgeInsets.all(screenWidth * 0.02),
-          decoration: BoxDecoration(
-            color: Colors.orange.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Text(
-            rating.toStringAsFixed(1),
-            style: TextStyle(
-              fontSize: screenWidth * 0.05,
-              fontWeight: FontWeight.bold,
-              color: Colors.orange,
-            ),
-          ),
-        ),
-        SizedBox(width: screenWidth * 0.02),
-        buildStars(rating, screenWidth),
-      ],
+  Widget _buildBioText(double screenWidth) {
+    return Text(
+      bio,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: screenWidth * 0.04,
+        color: Colors.grey,
+      ),
     );
   }
 
-  /// Builds a single stat item (Posts, Followers, Following)
   Widget _buildStatItem(String count, String label, double screenWidth) {
     return Column(
       children: [
@@ -471,31 +431,39 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     );
   }
 
-  /// Builds the bio text
-  Widget _buildBioText(double screenWidth) {
-    // Show full bio or truncated bio
-    return Text(
-      bio,
-      textAlign: TextAlign.center,
-      style: TextStyle(
-        fontSize: screenWidth * 0.04,
-        color: Colors.grey,
+  Widget _buildShimmerEffect() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Container(
+        color: Colors.grey[300],
       ),
     );
   }
 
-  /// Builds the grid of user posts
+  Widget _buildShimmerGrid() {
+    return GridView.builder(
+      itemCount: 9,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemBuilder: (context, index) {
+        return _buildShimmerEffect();
+      },
+    );
+  }
+
   Widget _buildPosts(double screenWidth) {
     return GridView.builder(
       controller: _scrollController,
-      padding: EdgeInsets.all(screenWidth * 0.02),
+      padding: EdgeInsets.all(10.0),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: screenWidth * 0.02,
         mainAxisSpacing: screenWidth * 0.02,
       ),
-      shrinkWrap: true,
-      physics: NeverScrollableScrollPhysics(),
       itemCount: userPosts.length + (isPaginating ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == userPosts.length) {
@@ -512,7 +480,6 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     );
   }
 
-  /// Builds the grid of bookmarked posts
   Widget _buildSavedPosts(double screenWidth) {
     if (bookmarkedPosts.isEmpty && !isPaginatingBookmarks) {
       return Center(
@@ -525,14 +492,12 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
 
     return GridView.builder(
       controller: _scrollController,
-      padding: EdgeInsets.all(screenWidth * 0.02),
+      padding: EdgeInsets.all(10.0),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: screenWidth * 0.02,
         mainAxisSpacing: screenWidth * 0.02,
       ),
-      shrinkWrap: true,
-      physics: NeverScrollableScrollPhysics(),
       itemCount: bookmarkedPosts.length + (isPaginatingBookmarks ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == bookmarkedPosts.length) {
@@ -549,59 +514,57 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     );
   }
 
-  /// Builds a single post thumbnail
-  Widget _buildPostThumbnail(Post post, double screenWidth) {
-    if (post.media.isNotEmpty) {
-      final firstMedia = post.media[0];
+ Widget _buildPostThumbnail(Post post, double screenWidth) {
+  if (post.media.isNotEmpty) {
+    final firstMedia = post.media[0];
 
-      if (firstMedia.mediaType == 'video') {
-        return Stack(
-          children: [
-            Image.network(
-              firstMedia.thumbnailurl ?? firstMedia.mediaUrl,
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-              errorBuilder: (context, error, stackTrace) {
-                return _buildFallbackVideoThumbnail();
-              },
-            ),
-            Positioned(
-              bottom: screenWidth * 0.02,
-              right: screenWidth * 0.02,
-              child: Icon(
-                Icons.play_circle_filled,
-                color: Colors.white,
-                size: screenWidth * 0.07,
-              ),
-            ),
-          ],
-        );
-      } else {
-        return Image.network(
-          firstMedia.thumbnailurl ?? firstMedia.mediaUrl,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildErrorPlaceholder();
-          },
-        );
-      }
-    } else {
-      // For caption-only posts
-      return Container(
-        color: Colors.orange,
-        child: Center(
-          child: Icon(
-            Icons.format_quote,
-            color: Colors.white,
-            size: screenWidth * 0.1,
+    if (firstMedia.mediaType == 'video') {
+      return Stack(
+        children: [
+          CachedNetworkImage(
+            imageUrl: firstMedia.thumbnailurl ?? firstMedia.mediaUrl,  // Ensure this URL is valid
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            placeholder: (context, url) => _buildShimmerEffect(), // Placeholder while loading
+            errorWidget: (context, url, error) => _buildErrorPlaceholder(),  // Error widget
           ),
-        ),
+          Positioned(
+            bottom: screenWidth * 0.02,
+            right: screenWidth * 0.02,
+            child: Icon(
+              Icons.play_circle_filled,
+              color: Colors.white,
+              size: screenWidth * 0.07,
+            ),
+          ),
+        ],
+      );
+    } else {
+      // If it's an image, display it
+      return CachedNetworkImage(
+        imageUrl: firstMedia.thumbnailurl ?? firstMedia.mediaUrl,
+        fit: BoxFit.cover,
+        errorWidget: (context, url, error) => _buildErrorPlaceholder(),
+        placeholder: (context, url) => _buildShimmerEffect(),
       );
     }
+  } else {
+    // Handle caption-only posts
+    return Container(
+      color: Colors.orange,
+      child: Center(
+        child: Icon(
+          Icons.format_quote,
+          color: Colors.white,
+          size: screenWidth * 0.1,
+        ),
+      ),
+    );
   }
+}
 
-  /// Fallback thumbnail for videos
+
   Widget _buildFallbackVideoThumbnail() {
     return Container(
       color: Colors.black54,
@@ -615,7 +578,6 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     );
   }
 
-  /// Placeholder for image loading errors
   Widget _buildErrorPlaceholder() {
     return Container(
       color: Colors.grey[300],
@@ -629,17 +591,20 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     );
   }
 
-  /// Opens the full post details page
-  void _openFullPost(int index) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProfilePostDetails(
-          userPosts: userPosts,
-          initialIndex: index,
-          userId: widget.otherUserId,
-        ),
+void _openFullPost(int index) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => ProfilePostDetails(
+        userPosts: userPosts,  // Pass the userPosts list
+        bookmarkedPosts: bookmarkedPosts, // Pass the bookmarkedPosts list
+        initialIndex: index,  // Set the initial post index
+        userId: widget.otherUserId,  // Pass the other user's ID
+        isPostsSelected: isPostsSelected,  // Ensure whether posts or bookmarks are selected
       ),
-    );
-  }
+    ),
+  );
+}
+
+
 }
