@@ -4,6 +4,7 @@ import '***REMOVED***/models/userprofileresponse_model.dart';
 import '***REMOVED***/profile/profile_page.dart';
 import '***REMOVED***/services/LoginService.dart';
 import '***REMOVED***/login/login_page.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class MenuPage extends StatefulWidget {
   @override
@@ -143,7 +144,9 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
                               children: [
                                 CircleAvatar(
                                   radius: screenWidth * 0.1,
-                                  backgroundImage: NetworkImage(userProfile!.profilePic),
+                                  backgroundImage: CachedNetworkImageProvider(userProfile!.profilePic),
+                                   onBackgroundImageError: (_, __) {
+                                   }
                                 ),
                                 SizedBox(height: screenHeight * 0.02),
                                 Text(
