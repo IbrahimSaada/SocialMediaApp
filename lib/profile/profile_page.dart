@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '***REMOVED***/profile/editprofilepage.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import 'dart:io';
 import '***REMOVED***/services/LoginService.dart';
 import '***REMOVED***/services/Userprofile_service.dart';
@@ -7,6 +8,7 @@ import '***REMOVED***/models/userprofileresponse_model.dart';
 import '***REMOVED***/services/userpost_service.dart';
 import '***REMOVED***/models/post_model.dart';
 import '***REMOVED***/profile/profilepostdetails.dart';
+import '***REMOVED***/profile/editprofilepage.dart';
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -37,7 +39,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final UserProfileService _userProfileService = UserProfileService();
   final UserpostService _userpostService = UserpostService();
 
-  bool showFullBio = false; // Track if we are showing the full bio
+  bool showFullBio = false;
 
   @override
   void initState() {
@@ -73,7 +75,6 @@ class _ProfilePageState extends State<ProfilePage> {
             followingNb = userProfile!.followingNb;
           });
         }
-        // Fetch posts and bookmarks
         await _fetchUserPosts();
         await _fetchBookmarkedPosts();
       }
@@ -129,8 +130,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _scrollListener() {
-    if (_scrollController.position.pixels ==
-        _scrollController.position.maxScrollExtent) {
+    if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
       if (isPostsSelected && !isPaginating) {
         _fetchUserPosts();
       } else if (!isPostsSelected && !isPaginatingBookmarks) {
@@ -186,7 +186,6 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildBioText(double screenWidth) {
-    // Decide whether to show truncated bio or full bio
     String displayedBio = bio;
     if (!showFullBio && bio.length > 100) {
       displayedBio = bio.substring(0, 100) + '...';
@@ -203,11 +202,11 @@ class _ProfilePageState extends State<ProfilePage> {
             color: Colors.grey,
           ),
         ),
-        if (bio.length > 100) // Show the "Show More" button if bio is longer than 100 chars
+        if (bio.length > 100)
           GestureDetector(
             onTap: () {
               setState(() {
-                showFullBio = !showFullBio; // Toggle between showing full and truncated bio
+                showFullBio = !showFullBio;
               });
             },
             child: Text(
@@ -281,8 +280,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 CircleAvatar(
                   radius: 60,
                   backgroundImage: userProfile != null
-                      ? NetworkImage(userProfile!.profilePic)
-                      : AssetImage('assets/images/default.png'),
+                      ? CachedNetworkImageProvider(userProfile!.profilePic)
+                      : AssetImage('assets/images/default.png') as ImageProvider,
                 ),
                 SizedBox(height: 10),
                 Row(
@@ -335,7 +334,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 SizedBox(height: 10),
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
-                  child: _buildBioText(screenWidth), // Use the bio builder method
+                  child: _buildBioText(screenWidth),
                 ),
                 SizedBox(height: 16),
                 Row(
@@ -382,7 +381,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 SizedBox(height: 16),
                 Expanded(
                   child: isLoading
-                      ? Center(child: CircularProgressIndicator())
+                      ? _buildShimmerGrid()
                       : isPostsSelected
                           ? _buildPosts(screenWidth)
                           : _buildSavedPosts(screenWidth),
@@ -392,6 +391,30 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildShimmerEffect() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Container(
+        color: Colors.grey[300],
+      ),
+    );
+  }
+
+  Widget _buildShimmerGrid() {
+    return GridView.builder(
+      itemCount: 9,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemBuilder: (context, index) {
+        return _buildShimmerEffect();
+      },
     );
   }
 
@@ -418,16 +441,16 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-Widget _buildPosts(double screenWidth) {
-  return GridView.builder(
-    controller: _scrollController,
-    padding: EdgeInsets.all(10.0),
-    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: 3,
-      crossAxisSpacing: screenWidth * 0.02,
-      mainAxisSpacing: screenWidth * 0.02,
-    ),
-    itemCount: userPosts.length + (isPaginating ? 1 : 0),
+  Widget _buildPosts(double screenWidth) {
+    return GridView.builder(
+      controller: _scrollController,
+      padding: EdgeInsets.all(10.0),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: screenWidth * 0.02,
+        mainAxisSpacing: screenWidth * 0.02,
+      ),
+      itemCount: userPosts.length + (isPaginating ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == userPosts.length) {
           return Center(child: CircularProgressIndicator());
@@ -435,34 +458,33 @@ Widget _buildPosts(double screenWidth) {
         final post = userPosts[index];
         return GestureDetector(
           onTap: () {
-            _openFullPost(index);  // Pass the index of the clicked post
+            _openFullPost(index);
           },
-          child: _buildPostThumbnail(post),
+          child: _buildPostThumbnail(post, screenWidth),
         );
       },
-  );
-}
-
-
- Widget _buildSavedPosts(double screenWidth) {
-  if (bookmarkedPosts.isEmpty && !isPaginatingBookmarks) {
-    return Center(
-      child: Text(
-        'No bookmarked posts yet',
-        style: TextStyle(fontSize: screenWidth * 0.05, color: Colors.grey),
-      ),
     );
   }
 
-  return GridView.builder(
-    controller: _scrollController,
-    padding: EdgeInsets.all(10.0),
-    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: 3,
-      crossAxisSpacing: screenWidth * 0.02,
-      mainAxisSpacing: screenWidth * 0.02,
-    ),
-    itemCount: bookmarkedPosts.length + (isPaginatingBookmarks ? 1 : 0),
+  Widget _buildSavedPosts(double screenWidth) {
+    if (bookmarkedPosts.isEmpty && !isPaginatingBookmarks) {
+      return Center(
+        child: Text(
+          'No bookmarked posts yet',
+          style: TextStyle(fontSize: screenWidth * 0.05, color: Colors.grey),
+        ),
+      );
+    }
+
+    return GridView.builder(
+      controller: _scrollController,
+      padding: EdgeInsets.all(10.0),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: screenWidth * 0.02,
+        mainAxisSpacing: screenWidth * 0.02,
+      ),
+      itemCount: bookmarkedPosts.length + (isPaginatingBookmarks ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == bookmarkedPosts.length) {
           return Center(child: CircularProgressIndicator());
@@ -470,68 +492,63 @@ Widget _buildPosts(double screenWidth) {
         final post = bookmarkedPosts[index];
         return GestureDetector(
           onTap: () {
-            _openFullPost(index);  // Pass the index of the clicked post
+            _openFullPost(index);
           },
-          child: _buildPostThumbnail(post),  // Updated to use the thumbnail
+          child: _buildPostThumbnail(post, screenWidth),
         );
       },
-  );
-}
+    );
+  }
 
-
-Widget _buildPostThumbnail(Post post) {
+Widget _buildPostThumbnail(Post post, double screenWidth) {
   if (post.media.isNotEmpty) {
     final firstMedia = post.media[0];
 
     if (firstMedia.mediaType == 'video') {
       return Stack(
         children: [
-          // Use the thumbnail URL if available, else fallback to the media URL
-          Image.network(
-            firstMedia.thumbnailurl ?? firstMedia.mediaUrl,
+          CachedNetworkImage(
+            imageUrl: firstMedia.thumbnailurl ?? firstMedia.mediaUrl,  // Ensure this URL is valid
             fit: BoxFit.cover,
             width: double.infinity,
             height: double.infinity,
-            errorBuilder: (context, error, stackTrace) {
-              return _buildFallbackVideoThumbnail();
-            },
+            placeholder: (context, url) => _buildShimmerEffect(), // Placeholder while loading
+            errorWidget: (context, url, error) => _buildErrorPlaceholder(),  // Error widget
           ),
           Positioned(
-            bottom: 8,
-            right: 8,
+            bottom: screenWidth * 0.02,
+            right: screenWidth * 0.02,
             child: Icon(
               Icons.play_circle_filled,
               color: Colors.white,
-              size: 24,
+              size: screenWidth * 0.07,
             ),
           ),
         ],
       );
     } else {
-      // If it's an image, just display it
-      return Image.network(
-        firstMedia.thumbnailurl ?? firstMedia.mediaUrl,
+      // If it's an image, display it
+      return CachedNetworkImage(
+        imageUrl: firstMedia.thumbnailurl ?? firstMedia.mediaUrl,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return _buildErrorPlaceholder();
-        },
+        errorWidget: (context, url, error) => _buildErrorPlaceholder(),
+        placeholder: (context, url) => _buildShimmerEffect(),
       );
     }
   } else {
-    // For caption-only posts, show a placeholder or icon
+    // Handle caption-only posts
     return Container(
       color: Colors.orange,
       child: Center(
         child: Icon(
           Icons.format_quote,
           color: Colors.white,
-          size: 48,
+          size: screenWidth * 0.1,
         ),
       ),
     );
   }
 }
-
 
   Widget _buildFallbackVideoThumbnail() {
     return Container(
@@ -564,15 +581,14 @@ void _openFullPost(int index) {
     context,
     MaterialPageRoute(
       builder: (context) => ProfilePostDetails(
-        userPosts: userPosts,  // Pass the full list of posts
-        initialIndex: index,    // Pass the index of the clicked post
-        userId: userId!,        // Pass the user ID for pagination if needed
+        userPosts: userPosts,  // Already passed
+        bookmarkedPosts: bookmarkedPosts, // Pass this as well
+        initialIndex: index,  // Already passed
+        userId: userId!,  // Already passed
+        isPostsSelected: isPostsSelected,  // Add this parameter
       ),
     ),
   );
 }
 
-
 }
-
-
