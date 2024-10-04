@@ -157,6 +157,76 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     }
   }
 
+  // Adding refresh functionality
+  Future<void> _refreshUserProfile() async {
+    await _loadUserProfile(); // Reload the profile on refresh
+  }
+
+  void _showReportOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white, 
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      builder: (BuildContext context) {
+        return Padding(
+          padding: EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Report User",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange,
+                ),
+              ),
+              Divider(color: Colors.orange),
+              ListTile(
+                title: Text('Spam'),
+                leading: Icon(Icons.error, color: Colors.orange),
+                onTap: () {
+                  Navigator.pop(context);
+                  _reportUser();
+                },
+              ),
+              ListTile(
+                title: Text('Harassment'),
+                leading: Icon(Icons.report_problem, color: Colors.orange),
+                onTap: () {
+                  Navigator.pop(context);
+                  _reportUser();
+                },
+              ),
+              ListTile(
+                title: Text('Inappropriate Content'),
+                leading: Icon(Icons.block, color: Colors.orange),
+                onTap: () {
+                  Navigator.pop(context);
+                  _reportUser();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _reportUser() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("User reported successfully!"),
+        backgroundColor: Colors.orange,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     double screenHeight = MediaQuery.of(context).size.height;
@@ -164,154 +234,188 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          Container(
-            height: screenHeight * 0.28,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.orangeAccent, Colors.deepOrangeAccent],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-          Positioned(
-            top: screenHeight * 0.18,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: screenHeight * 0.8,
+      body: RefreshIndicator(
+        onRefresh: _refreshUserProfile, // Pull-to-refresh functionality
+        color: Colors.orange, // Orange loading indicator
+        child: Stack(
+          children: [
+            Container(
+              height: screenHeight * 0.28,
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(60),
-                  topRight: Radius.circular(60),
+                gradient: LinearGradient(
+                  colors: [Colors.orangeAccent, Colors.deepOrangeAccent],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
             ),
-          ),
-          Positioned(
-            top: 50,
-            left: 10,
-            child: IconButton(
-              icon: Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () {
-                Navigator.pop(context);
-              },
+            Positioned(
+              top: screenHeight * 0.18,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: screenHeight * 0.8,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(60),
+                    topRight: Radius.circular(60),
+                  ),
+                ),
+              ),
             ),
-          ),
-          Padding(
-            padding: EdgeInsets.only(top: screenHeight * 0.09),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                CircleAvatar(
-                  radius: 60,
-                  backgroundImage: userProfile != null
-                      ? CachedNetworkImageProvider(userProfile!.profilePic)
-                      : AssetImage('assets/images/default.png') as ImageProvider,
-                ),
-                SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      username,
-                      style: TextStyle(
-                        fontSize: screenWidth * 0.06,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
+            Positioned(
+              top: 50,
+              left: 10,
+              child: IconButton(
+                icon: Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+            // Three dots menu (More options)
+            Positioned(
+              top: 50,
+              right: 10,
+              child: PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert, color: Colors.white),
+                color: Colors.white, // Orange and white theme
+                onSelected: (value) {
+                  if (value == "report") {
+                    _showReportOptions(); // Show the report user options
+                  }
+                },
+                itemBuilder: (BuildContext context) {
+                  return [
+                    PopupMenuItem<String>(
+                      value: "report",
+                      child: Text("Report User", style: TextStyle(color: Colors.orange)),
                     ),
-                    SizedBox(width: 10),
-                    Icon(Icons.qr_code, size: screenWidth * 0.07, color: Colors.grey),
-                  ],
-                ),
-                SizedBox(height: 10),
-                _buildFollowAndMessageButtons(screenWidth),
-                SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        rating.toStringAsFixed(1),
+                    PopupMenuItem<String>(
+                      value: "block",
+                      child: Text("Block User", style: TextStyle(color: Colors.orange)),
+                    ),
+                    PopupMenuItem<String>(
+                      value: "share",
+                      child: Text("Share Profile", style: TextStyle(color: Colors.orange)),
+                    ),
+                  ];
+                },
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.only(top: screenHeight * 0.09),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  CircleAvatar(
+                    radius: 60,
+                    backgroundImage: userProfile != null
+                        ? CachedNetworkImageProvider(userProfile!.profilePic)
+                        : AssetImage('assets/images/default.png') as ImageProvider,
+                  ),
+                  SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        username,
                         style: TextStyle(
-                          fontSize: screenWidth * 0.05,
+                          fontSize: screenWidth * 0.06,
                           fontWeight: FontWeight.bold,
-                          color: Colors.orange,
+                          color: Colors.black87,
                         ),
                       ),
-                    ),
-                    SizedBox(width: 10),
-                    buildStars(rating, screenWidth),
-                  ],
-                ),
-                SizedBox(height: 10),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
-                  child: _buildBioText(screenWidth),
-                ),
-                SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildStatItem(postNb.toString(), 'Posts', screenWidth),
-                    SizedBox(width: screenWidth * 0.08),
-                    _buildStatItem(followersNb.toString(), 'Followers', screenWidth),
-                    SizedBox(width: screenWidth * 0.08),
-                    _buildStatItem(followingNb.toString(), 'Following', screenWidth),
-                  ],
-                ),
-                SizedBox(height: 16),
-                Divider(
-                  color: Colors.orange,
-                  thickness: 2,
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          isPostsSelected = true;
-                        });
-                      },
-                      child: Icon(Icons.grid_on,
-                          color: isPostsSelected ? Colors.orange : Colors.grey,
-                          size: screenWidth * 0.07),
-                    ),
-                    SizedBox(width: screenWidth * 0.2),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          isPostsSelected = false;
-                        });
-                      },
-                      child: Icon(Icons.bookmark,
-                          color: !isPostsSelected ? Colors.orange : Colors.grey,
-                          size: screenWidth * 0.07),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 16),
-                Expanded(
-                  child: isLoading
-                      ? _buildShimmerGrid()
-                      : isPostsSelected
-                          ? _buildPosts(screenWidth)
-                          : _buildSavedPosts(screenWidth),
-                ),
-              ],
+                      SizedBox(width: 10),
+                      Icon(Icons.qr_code, size: screenWidth * 0.07, color: Colors.grey),
+                    ],
+                  ),
+                  SizedBox(height: 10),
+                  _buildFollowAndMessageButtons(screenWidth),
+                  SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          rating.toStringAsFixed(1),
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.05,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      buildStars(rating, screenWidth),
+                    ],
+                  ),
+                  SizedBox(height: 10),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
+                    child: _buildBioText(screenWidth),
+                  ),
+                  SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildStatItem(postNb.toString(), 'Posts', screenWidth),
+                      SizedBox(width: screenWidth * 0.08),
+                      _buildStatItem(followersNb.toString(), 'Followers', screenWidth),
+                      SizedBox(width: screenWidth * 0.08),
+                      _buildStatItem(followingNb.toString(), 'Following', screenWidth),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  Divider(
+                    color: Colors.orange,
+                    thickness: 2,
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            isPostsSelected = true;
+                          });
+                        },
+                        child: Icon(Icons.grid_on,
+                            color: isPostsSelected ? Colors.orange : Colors.grey,
+                            size: screenWidth * 0.07),
+                      ),
+                      SizedBox(width: screenWidth * 0.2),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            isPostsSelected = false;
+                          });
+                        },
+                        child: Icon(Icons.bookmark,
+                            color: !isPostsSelected ? Colors.orange : Colors.grey,
+                            size: screenWidth * 0.07),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  Expanded(
+                    child: isLoading
+                        ? _buildShimmerGrid()
+                        : isPostsSelected
+                            ? _buildPosts(screenWidth)
+                            : _buildSavedPosts(screenWidth),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -467,7 +571,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
       itemCount: userPosts.length + (isPaginating ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == userPosts.length) {
-          return Center(child: CircularProgressIndicator());
+          return Center(child: CircularProgressIndicator(color: Colors.orange)); // Orange loading indicator
         }
         final post = userPosts[index];
         return GestureDetector(
@@ -501,7 +605,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
       itemCount: bookmarkedPosts.length + (isPaginatingBookmarks ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == bookmarkedPosts.length) {
-          return Center(child: CircularProgressIndicator());
+          return Center(child: CircularProgressIndicator(color: Colors.orange)); // Orange loading indicator
         }
         final post = bookmarkedPosts[index];
         return GestureDetector(
@@ -514,68 +618,54 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     );
   }
 
- Widget _buildPostThumbnail(Post post, double screenWidth) {
-  if (post.media.isNotEmpty) {
-    final firstMedia = post.media[0];
+  Widget _buildPostThumbnail(Post post, double screenWidth) {
+    if (post.media.isNotEmpty) {
+      final firstMedia = post.media[0];
 
-    if (firstMedia.mediaType == 'video') {
-      return Stack(
-        children: [
-          CachedNetworkImage(
-            imageUrl: firstMedia.thumbnailurl ?? firstMedia.mediaUrl,  // Ensure this URL is valid
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-            placeholder: (context, url) => _buildShimmerEffect(), // Placeholder while loading
-            errorWidget: (context, url, error) => _buildErrorPlaceholder(),  // Error widget
-          ),
-          Positioned(
-            bottom: screenWidth * 0.02,
-            right: screenWidth * 0.02,
-            child: Icon(
-              Icons.play_circle_filled,
-              color: Colors.white,
-              size: screenWidth * 0.07,
+      if (firstMedia.mediaType == 'video') {
+        return Stack(
+          children: [
+            CachedNetworkImage(
+              imageUrl: firstMedia.thumbnailurl ?? firstMedia.mediaUrl,  // Ensure this URL is valid
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              placeholder: (context, url) => _buildShimmerEffect(), // Placeholder while loading
+              errorWidget: (context, url, error) => _buildErrorPlaceholder(),  // Error widget
             ),
-          ),
-        ],
-      );
+            Positioned(
+              bottom: screenWidth * 0.02,
+              right: screenWidth * 0.02,
+              child: Icon(
+                Icons.play_circle_filled,
+                color: Colors.white,
+                size: screenWidth * 0.07,
+              ),
+            ),
+          ],
+        );
+      } else {
+        // If it's an image, display it
+        return CachedNetworkImage(
+          imageUrl: firstMedia.thumbnailurl ?? firstMedia.mediaUrl,
+          fit: BoxFit.cover,
+          errorWidget: (context, url, error) => _buildErrorPlaceholder(),
+          placeholder: (context, url) => _buildShimmerEffect(),
+        );
+      }
     } else {
-      // If it's an image, display it
-      return CachedNetworkImage(
-        imageUrl: firstMedia.thumbnailurl ?? firstMedia.mediaUrl,
-        fit: BoxFit.cover,
-        errorWidget: (context, url, error) => _buildErrorPlaceholder(),
-        placeholder: (context, url) => _buildShimmerEffect(),
+      // Handle caption-only posts
+      return Container(
+        color: Colors.orange,
+        child: Center(
+          child: Icon(
+            Icons.format_quote,
+            color: Colors.white,
+            size: screenWidth * 0.1,
+          ),
+        ),
       );
     }
-  } else {
-    // Handle caption-only posts
-    return Container(
-      color: Colors.orange,
-      child: Center(
-        child: Icon(
-          Icons.format_quote,
-          color: Colors.white,
-          size: screenWidth * 0.1,
-        ),
-      ),
-    );
-  }
-}
-
-
-  Widget _buildFallbackVideoThumbnail() {
-    return Container(
-      color: Colors.black54,
-      child: Center(
-        child: Icon(
-          Icons.videocam,
-          color: Colors.white,
-          size: 50,
-        ),
-      ),
-    );
   }
 
   Widget _buildErrorPlaceholder() {
@@ -591,20 +681,18 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     );
   }
 
-void _openFullPost(int index) {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => ProfilePostDetails(
-        userPosts: userPosts,  // Pass the userPosts list
-        bookmarkedPosts: bookmarkedPosts, // Pass the bookmarkedPosts list
-        initialIndex: index,  // Set the initial post index
-        userId: widget.otherUserId,  // Pass the other user's ID
-        isPostsSelected: isPostsSelected,  // Ensure whether posts or bookmarks are selected
+  void _openFullPost(int index) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfilePostDetails(
+          userPosts: userPosts,  // Pass the userPosts list
+          bookmarkedPosts: bookmarkedPosts, // Pass the bookmarkedPosts list
+          initialIndex: index,  // Set the initial post index
+          userId: widget.otherUserId,  // Pass the other user's ID
+          isPostsSelected: isPostsSelected,  // Ensure whether posts or bookmarks are selected
+        ),
       ),
-    ),
-  );
-}
-
-
+    );
+  }
 }
