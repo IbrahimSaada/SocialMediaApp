@@ -262,8 +262,12 @@ PreferredSizeWidget buildAppBar() {
                           );
                         } else {
                           return CircleAvatar(
-                            backgroundImage: NetworkImage(snapshot.data!),  // Load the profile picture
-                          );
+                      backgroundImage: CachedNetworkImageProvider(snapshot.data!),
+                      // Fallback to a default image if needed
+                      onBackgroundImageError: (_, __) {
+                        // Handle image load error if necessary
+                      },
+                    );
                         }
                       },
                     ),
@@ -445,9 +449,12 @@ Widget buildStoriesSection() {
                       child: Column(
                         children: [
                           CircleAvatar(
-                            backgroundImage: NetworkImage(story.profilePicUrl),
-                            radius: 25.0,
+                            backgroundImage: CachedNetworkImageProvider(story.profilePicUrl),
+                            onBackgroundImageError: (_, __) {
+                              // Optionally handle the error, e.g., set a default image
+                            },
                           ),
+
                           const SizedBox(height: 4.0),
                           Text(
                             story.fullName,
@@ -790,8 +797,12 @@ Future<void> _toggleBookmark() async {
                       }
                     },
                     child: CircleAvatar(
-                      backgroundImage: NetworkImage(widget.post.profilePic),
-                    ),
+                          backgroundImage: CachedNetworkImageProvider(widget.post.profilePic),
+                          onBackgroundImageError: (_, __) {
+                            // Optionally handle the error
+                          },
+                        )
+
                   ),
                   const SizedBox(width: 8.0),
                   GestureDetector(
@@ -1139,8 +1150,12 @@ class RepostCard extends StatelessWidget {
               Row(
                 children: [
                   CircleAvatar(
-                    backgroundImage: NetworkImage(repost.sharerProfileUrl),
+                    backgroundImage: CachedNetworkImageProvider(repost.sharerProfileUrl),
+                    onBackgroundImageError: (_, __) {
+                      // Optionally handle the error
+                    },
                   ),
+
                   const SizedBox(width: 8.0),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
