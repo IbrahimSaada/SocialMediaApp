@@ -14,7 +14,7 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
-    final primaryColor = Color(0xFFF45F67); // Your orange color theme
+    final primaryColor = Color(0xFFF45F67); // Updated color
 
     return Scaffold(
       appBar: AppBar(
@@ -24,7 +24,7 @@ class _SettingsPageState extends State<SettingsPage> {
         title: Text(
           'Settings',
           style: TextStyle(
-            color: primaryColor, // Orange text
+            color: primaryColor, // Updated color
             fontWeight: FontWeight.bold,
             fontSize: 24, // Cleaner font size
           ),
@@ -141,10 +141,12 @@ class _SettingsPageState extends State<SettingsPage> {
     required Function(bool) onChanged,
   }) {
     double screenWidth = MediaQuery.of(context).size.width;
-    final primaryColor = Color(0xFFF45F67); // Orange accent color
+    final primaryColor = Color(0xFFF45F67); // Updated color
 
     return SwitchListTile(
-      activeColor: primaryColor, // Orange color for switch
+      activeColor: primaryColor, // Color for switch when active
+      inactiveThumbColor: Colors.grey, // Color for thumb when inactive
+      inactiveTrackColor: Colors.grey.shade300, // Track color when inactive
       title: Text(
         title,
         style: TextStyle(fontSize: screenWidth * 0.045, color: Colors.black87),
