@@ -13,7 +13,6 @@ class ForgotpasswrodverPage extends StatefulWidget {
   const ForgotpasswrodverPage({super.key, required this.emailOrPhone});
 
   @override
-  // ignore: library_private_types_in_public_api
   _ForgotpasswrodverPageState createState() => _ForgotpasswrodverPageState();
 }
 
@@ -54,20 +53,17 @@ class _ForgotpasswrodverPageState extends State<ForgotpasswrodverPage> {
         code,
       );
       if (isValid) {
-        // ignore: use_build_context_synchronously
         Navigator.of(context).push(
           MaterialPageRoute(
               builder: (context) => NewpasswordPage(
                   emailOrPhone: widget.emailOrPhone, verificationCode: code)),
         );
       } else {
-        // ignore: use_build_context_synchronously
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Invalid verification code')),
         );
       }
     } catch (e) {
-      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
@@ -77,12 +73,10 @@ class _ForgotpasswrodverPageState extends State<ForgotpasswrodverPage> {
   Future<void> _resendCode() async {
     try {
       await PasswordResetService().requestPasswordReset(widget.emailOrPhone);
-      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Verification code resent')),
       );
     } catch (e) {
-      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
@@ -91,6 +85,8 @@ class _ForgotpasswrodverPageState extends State<ForgotpasswrodverPage> {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -98,18 +94,16 @@ class _ForgotpasswrodverPageState extends State<ForgotpasswrodverPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             colors: [
-              Colors.orange.shade900,
-              Colors.orange.shade800,
-              Colors.orange.shade400,
+              primaryColor.withOpacity(0.9),
+              primaryColor.withOpacity(0.8),
+              primaryColor.withOpacity(0.4),
             ],
           ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            const SizedBox(
-              height: 80,
-            ),
+            const SizedBox(height: 80),
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -186,7 +180,7 @@ class _ForgotpasswrodverPageState extends State<ForgotpasswrodverPage> {
                         child: MaterialButton(
                           onPressed: _verifyCode,
                           height: 50,
-                          color: Colors.orange[900],
+                          color: primaryColor,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(50),
                           ),
@@ -207,7 +201,7 @@ class _ForgotpasswrodverPageState extends State<ForgotpasswrodverPage> {
                         child: MaterialButton(
                           onPressed: _resendCode,
                           height: 50,
-                          color: Colors.orange[900],
+                          color: primaryColor,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(50),
                           ),
