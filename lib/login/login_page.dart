@@ -71,13 +71,13 @@ class _LoginPageState extends State<LoginPage> {
         width: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            colors: [
-              primaryColor.withOpacity(0.9),
-              primaryColor.withOpacity(0.8),
-              primaryColor.withOpacity(0.4),
-            ],
-          ),
+              begin: Alignment.topCenter,
+              colors: [
+                primaryColor, // Use the primary color directly for a uniform look
+                primaryColor, // Repeat to maintain the same color throughout
+              ],
+            ),
+
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -224,8 +224,7 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               child: _isLoading
                                   ? const CircularProgressIndicator(
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          Colors.white),
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                     )
                                   : const Center(
                                       child: Text(
@@ -233,7 +232,6 @@ class _LoginPageState extends State<LoginPage> {
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold,
-
                                         ),
                                       ),
                                     ),
@@ -263,8 +261,7 @@ class _LoginPageState extends State<LoginPage> {
                               onTap: () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
-                                    builder: (context) =>
-                                        const ForgotpasswrodhomePage(),
+                                    builder: (context) => const ForgotpasswrodhomePage(),
                                   ),
                                 );
                               },
