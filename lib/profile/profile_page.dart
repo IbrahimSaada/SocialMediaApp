@@ -178,22 +178,21 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Row buildStars(double rating, double screenWidth) {
     rating = rating.clamp(0, 5);
-
     List<Widget> stars = [];
     int fullStars = rating.floor();
     bool hasHalfStar = (rating - fullStars) >= 0.5;
 
     for (int i = 0; i < fullStars; i++) {
-      stars.add(Icon(Icons.star, color: Colors.orange, size: screenWidth * 0.05));
+      stars.add(Icon(Icons.star, color: Color(0xFFF45F67), size: screenWidth * 0.05));
     }
 
     if (hasHalfStar) {
-      stars.add(Icon(Icons.star_half, color: Colors.orange, size: screenWidth * 0.05));
+      stars.add(Icon(Icons.star_half, color: Color(0xFFF45F67), size: screenWidth * 0.05));
     }
 
     int emptyStars = 5 - stars.length;
     for (int i = 0; i < emptyStars; i++) {
-      stars.add(Icon(Icons.star_border, color: Colors.orange, size: screenWidth * 0.05));
+      stars.add(Icon(Icons.star_border, color: Color(0xFFF45F67), size: screenWidth * 0.05));
     }
 
     return Row(children: stars);
@@ -225,7 +224,7 @@ class _ProfilePageState extends State<ProfilePage> {
             },
             child: Text(
               showFullBio ? 'Show Less' : 'Show More',
-              style: TextStyle(color: Colors.orange, fontSize: screenWidth * 0.04),
+              style: TextStyle(color: Color(0xFFF45F67), fontSize: screenWidth * 0.04),
             ),
           ),
       ],
@@ -237,23 +236,24 @@ class _ProfilePageState extends State<ProfilePage> {
     double screenHeight = MediaQuery.of(context).size.height;
     double screenWidth = MediaQuery.of(context).size.width;
 
-    return Scaffold(
+      return Scaffold(
       backgroundColor: Colors.white,
       body: RefreshIndicator(
-        onRefresh: _refreshUserProfile, // Pull-to-refresh functionality
-        color: Colors.orange, // Orange loading indicator
+        onRefresh: _refreshUserProfile,
+        color: Color(0xFFF45F67), // Updated loading indicator color
         child: Stack(
           children: [
             Container(
               height: screenHeight * 0.28,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.orangeAccent, Colors.deepOrangeAccent],
+                  colors: [Color(0xFFF45F67), Color(0xFFF45F67).withOpacity(0.8)], // Using primary color
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
               ),
             ),
+
             Positioned(
               top: screenHeight * 0.18,
               left: 0,
@@ -312,7 +312,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         onTap: _openEditProfilePage,
                         child: Icon(
                           Icons.edit,
-                          color: Colors.orangeAccent,
+                          color: Color(0xFFF45F67),
                           size: screenWidth * 0.07,
                         ),
                       ),
@@ -336,7 +336,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       Container(
                         padding: EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.1),
+                          color:  Color(0xFFF45F67).withOpacity(0.1),
                           shape: BoxShape.circle,
                         ),
                         child: Text(
@@ -344,7 +344,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           style: TextStyle(
                             fontSize: screenWidth * 0.05,
                             fontWeight: FontWeight.bold,
-                            color: Colors.orange,
+                            color: Color(0xFFF45F67),
                           ),
                         ),
                       ),
@@ -369,10 +369,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ],
                   ),
                   SizedBox(height: 16),
-                  Divider(
-                    color: Colors.orange,
-                    thickness: 2,
-                  ),
+                  Divider(color: Color(0xFFF45F67), thickness: 2),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -383,7 +380,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           });
                         },
                         child: Icon(Icons.grid_on,
-                            color: isPostsSelected ? Colors.orange : Colors.grey,
+                            color: isPostsSelected ? Color(0xFFF45F67) : Colors.grey,
                             size: screenWidth * 0.07),
                       ),
                       SizedBox(width: screenWidth * 0.2),
@@ -394,7 +391,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           });
                         },
                         child: Icon(Icons.bookmark,
-                            color: !isPostsSelected ? Colors.orange : Colors.grey,
+                           color: isPostsSelected ? Color(0xFFF45F67) : Colors.grey,
                             size: screenWidth * 0.07),
                       ),
                     ],
@@ -475,7 +472,7 @@ class _ProfilePageState extends State<ProfilePage> {
       itemCount: userPosts.length + (isPaginating ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == userPosts.length) {
-          return Center(child: CircularProgressIndicator(color: Colors.orange)); // Orange loading indicator
+          return Center(child: CircularProgressIndicator(color: Color(0xFFF45F67),)); // Orange loading indicator
         }
         final post = userPosts[index];
         return GestureDetector(
@@ -509,7 +506,7 @@ class _ProfilePageState extends State<ProfilePage> {
       itemCount: bookmarkedPosts.length + (isPaginatingBookmarks ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == bookmarkedPosts.length) {
-          return Center(child: CircularProgressIndicator(color: Colors.orange)); // Orange loading indicator
+          return Center(child: CircularProgressIndicator(color: Color(0xFFF45F67),)); // Orange loading indicator
         }
         final post = bookmarkedPosts[index];
         return GestureDetector(
@@ -560,7 +557,7 @@ class _ProfilePageState extends State<ProfilePage> {
     } else {
       // Handle caption-only posts
       return Container(
-        color: Colors.orange,
+        color: Color(0xFFF45F67),
         child: Center(
           child: Icon(
             Icons.format_quote,

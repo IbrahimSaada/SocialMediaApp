@@ -183,13 +183,13 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.orange,
+                  color: Color(0xFFF45F67)
                 ),
               ),
-              Divider(color: Colors.orange),
+              Divider(color: Color(0xFFF45F67)),
               ListTile(
                 title: Text('Spam'),
-                leading: Icon(Icons.error, color: Colors.orange),
+                leading: Icon(Icons.error, color: Color(0xFFF45F67)),
                 onTap: () {
                   Navigator.pop(context);
                   _reportUser();
@@ -197,7 +197,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
               ),
               ListTile(
                 title: Text('Harassment'),
-                leading: Icon(Icons.report_problem, color: Colors.orange),
+                leading: Icon(Icons.report_problem, color: Color(0xFFF45F67)),
                 onTap: () {
                   Navigator.pop(context);
                   _reportUser();
@@ -205,7 +205,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
               ),
               ListTile(
                 title: Text('Inappropriate Content'),
-                leading: Icon(Icons.block, color: Colors.orange),
+                leading: Icon(Icons.block, color: Color(0xFFF45F67)),
                 onTap: () {
                   Navigator.pop(context);
                   _reportUser();
@@ -222,7 +222,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text("User reported successfully!"),
-        backgroundColor: Colors.orange,
+        backgroundColor: Color(0xFFF45F67),
       ),
     );
   }
@@ -236,19 +236,20 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
       backgroundColor: Colors.white,
       body: RefreshIndicator(
         onRefresh: _refreshUserProfile, // Pull-to-refresh functionality
-        color: Colors.orange, // Orange loading indicator
+        color: Color(0xFFF45F67), //  loading indicator
         child: Stack(
           children: [
             Container(
               height: screenHeight * 0.28,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.orangeAccent, Colors.deepOrangeAccent],
+                  colors: [Color(0xFFF45F67), Color(0xFFF45F67).withOpacity(0.8)], // Using primary color
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
               ),
             ),
+
             Positioned(
               top: screenHeight * 0.18,
               left: 0,
@@ -290,15 +291,15 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                   return [
                     PopupMenuItem<String>(
                       value: "report",
-                      child: Text("Report User", style: TextStyle(color: Colors.orange)),
+                      child: Text("Report User", style: TextStyle(color: Color(0xFFF45F67))),
                     ),
                     PopupMenuItem<String>(
                       value: "block",
-                      child: Text("Block User", style: TextStyle(color: Colors.orange)),
+                      child: Text("Block User", style: TextStyle(color: Color(0xFFF45F67))),
                     ),
                     PopupMenuItem<String>(
                       value: "share",
-                      child: Text("Share Profile", style: TextStyle(color: Colors.orange)),
+                      child: Text("Share Profile", style: TextStyle(color: Color(0xFFF45F67))),
                     ),
                   ];
                 },
@@ -340,7 +341,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                       Container(
                         padding: EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.1),
+                          color: Color(0xFFF45F67).withOpacity(0.1),
                           shape: BoxShape.circle,
                         ),
                         child: Text(
@@ -348,7 +349,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                           style: TextStyle(
                             fontSize: screenWidth * 0.05,
                             fontWeight: FontWeight.bold,
-                            color: Colors.orange,
+                            color: Color(0xFFF45F67),
                           ),
                         ),
                       ),
@@ -374,7 +375,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                   ),
                   SizedBox(height: 16),
                   Divider(
-                    color: Colors.orange,
+                    color: Color(0xFFF45F67),
                     thickness: 2,
                   ),
                   Row(
@@ -387,7 +388,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                           });
                         },
                         child: Icon(Icons.grid_on,
-                            color: isPostsSelected ? Colors.orange : Colors.grey,
+                            color: isPostsSelected ? Color(0xFFF45F67) : Colors.grey,
                             size: screenWidth * 0.07),
                       ),
                       SizedBox(width: screenWidth * 0.2),
@@ -398,7 +399,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                           });
                         },
                         child: Icon(Icons.bookmark,
-                            color: !isPostsSelected ? Colors.orange : Colors.grey,
+                            color: !isPostsSelected ? Color(0xFFF45F67) : Colors.grey,
                             size: screenWidth * 0.07),
                       ),
                     ],
@@ -422,20 +423,20 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
 
 Widget _buildFollowAndMessageButtons(double screenWidth) {
   String followButtonText = "FOLLOW";
-  Color followButtonColor = Colors.orange;
+  Color followButtonColor = Color(0xFFF45F67);
 
   if (amFollowing && !isFollowing) {
     followButtonText = "FOLLOW BACK";
-    followButtonColor = Colors.orangeAccent.shade200;
+    followButtonColor = Color(0xFFF45F67);
   } else if (isFollowing && !amFollowing) {
     followButtonText = "FOLLOWING";
     followButtonColor = Colors.grey.shade400;
   } else if (!amFollowing && !isFollowing) {
     followButtonText = "FOLLOW";
-    followButtonColor = Colors.orange;
+    followButtonColor = Color(0xFFF45F67);
   } else if (amFollowing && isFollowing) {
     followButtonText = "FOLLOWING";
-    followButtonColor = Colors.orangeAccent.shade100;
+    followButtonColor = Colors.grey.shade300;
   }
 
   return Row(
@@ -446,50 +447,49 @@ Widget _buildFollowAndMessageButtons(double screenWidth) {
         style: ElevatedButton.styleFrom(
           backgroundColor: followButtonColor,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(30), // Softer border radius
           ),
           padding: EdgeInsets.symmetric(
-              horizontal: screenWidth * 0.05, vertical: screenWidth * 0.02),
-          elevation: 5,  // Adds a soft shadow to elevate the button
+            horizontal: screenWidth * 0.07,
+            vertical: screenWidth * 0.025,
+          ),
+          elevation: 8, // Deeper shadow for elegance
         ),
         child: Text(
           followButtonText,
           style: TextStyle(
-            fontFamily: 'Raleway',  // Use an elegant font
-            fontWeight: FontWeight.w600,  // Semi-bold for strength
-            fontSize: screenWidth * 0.035,
+            fontWeight: FontWeight.w500, // Lighter weight for softer look
+            fontSize: screenWidth * 0.038,
             color: Colors.white,
-            letterSpacing: 1.2,  // Adds some spacing for a premium look
           ),
         ),
       ),
       SizedBox(width: screenWidth * 0.05),
-      ElevatedButton(
+      OutlinedButton(
         onPressed: () {},
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.grey.shade100,
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: Color(0xFFF45F67), width: 1.5),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: Colors.orangeAccent, width: 2),  // Adds orange border
+            borderRadius: BorderRadius.circular(30), // Matching radius
           ),
           padding: EdgeInsets.symmetric(
-              horizontal: screenWidth * 0.05, vertical: screenWidth * 0.02),
-          elevation: 5,  // Adds a soft shadow to elevate the button
+            horizontal: screenWidth * 0.07,
+            vertical: screenWidth * 0.025,
+          ),
         ),
         child: Text(
           "MESSAGE",
           style: TextStyle(
-            fontFamily: 'Raleway',  // Matching elegant font
-            fontWeight: FontWeight.w600,  // Semi-bold for strength
-            fontSize: screenWidth * 0.035,
-            color: Colors.orangeAccent,
-            letterSpacing: 1.2,  // Consistent premium letter spacing
+            fontWeight: FontWeight.w500,
+            fontSize: screenWidth * 0.038,
+            color: Color(0xFFF45F67),
           ),
         ),
       ),
     ],
   );
 }
+
 
 
   Row buildStars(double rating, double screenWidth) {
@@ -500,16 +500,16 @@ Widget _buildFollowAndMessageButtons(double screenWidth) {
     bool hasHalfStar = (rating - fullStars) >= 0.5;
 
     for (int i = 0; i < fullStars; i++) {
-      stars.add(Icon(Icons.star, color: Colors.orange, size: screenWidth * 0.05));
+      stars.add(Icon(Icons.star, color: Color(0xFFF45F67), size: screenWidth * 0.05));
     }
 
     if (hasHalfStar) {
-      stars.add(Icon(Icons.star_half, color: Colors.orange, size: screenWidth * 0.05));
+      stars.add(Icon(Icons.star_half, color: Color(0xFFF45F67), size: screenWidth * 0.05));
     }
 
     int emptyStars = 5 - stars.length;
     for (int i = 0; i < emptyStars; i++) {
-      stars.add(Icon(Icons.star_border, color: Colors.orange, size: screenWidth * 0.05));
+      stars.add(Icon(Icons.star_border, color: Color(0xFFF45F67), size: screenWidth * 0.05));
     }
 
     return Row(children: stars);
@@ -585,7 +585,7 @@ Widget _buildFollowAndMessageButtons(double screenWidth) {
       itemCount: userPosts.length + (isPaginating ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == userPosts.length) {
-          return Center(child: CircularProgressIndicator(color: Colors.orange)); // Orange loading indicator
+          return Center(child: CircularProgressIndicator(color: Color(0xFFF45F67))); // Orange loading indicator
         }
         final post = userPosts[index];
         return GestureDetector(
@@ -619,7 +619,7 @@ Widget _buildFollowAndMessageButtons(double screenWidth) {
       itemCount: bookmarkedPosts.length + (isPaginatingBookmarks ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == bookmarkedPosts.length) {
-          return Center(child: CircularProgressIndicator(color: Colors.orange)); // Orange loading indicator
+          return Center(child: CircularProgressIndicator(color: Color(0xFFF45F67))); // Orange loading indicator
         }
         final post = bookmarkedPosts[index];
         return GestureDetector(
@@ -670,7 +670,7 @@ Widget _buildFollowAndMessageButtons(double screenWidth) {
     } else {
       // Handle caption-only posts
       return Container(
-        color: Colors.orange,
+        color: Color(0xFFF45F67),
         child: Center(
           child: Icon(
             Icons.format_quote,

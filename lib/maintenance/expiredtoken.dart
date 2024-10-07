@@ -4,6 +4,7 @@ import 'package:cook/services/LoginService.dart';
 void main() {
   runApp(const MyApp());
 }
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -12,13 +13,13 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       theme: ThemeData(
         colorScheme: ColorScheme.fromSwatch().copyWith(
-          primary: const Color(0xFF557C56), // Earthy green theme color
+          primary: const Color(0xFFF45F67), // Pinkish-red theme color
         ),
         scaffoldBackgroundColor: const Color(0xFFF0F0F0),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.white,
-            side: const BorderSide(color: Color(0xFF557C56), width: 2),
+            side: const BorderSide(color: Color(0xFFF45F67), width: 2),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
@@ -54,7 +55,7 @@ void handleSessionExpired(BuildContext context) {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFF557C56), width: 2), // Theme color
+            border: Border.all(color: const Color(0xFFF45F67), width: 2), // Theme color
             boxShadow: const [
               BoxShadow(
                 color: Colors.black26,
@@ -68,7 +69,7 @@ void handleSessionExpired(BuildContext context) {
             children: [
               const Icon(
                 Icons.error_outline,
-                color: Color(0xFF557C56), // Theme color for the icon
+                color: Color(0xFFF45F67), // Theme color for the icon
                 size: 40,
               ),
               const SizedBox(height: 10),
@@ -77,7 +78,7 @@ void handleSessionExpired(BuildContext context) {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF557C56), // Theme color for text
+                  color: Color(0xFFF45F67), // Theme color for text
                 ),
               ),
               const SizedBox(height: 10),
@@ -93,12 +94,11 @@ void handleSessionExpired(BuildContext context) {
               ElevatedButton(
                 onPressed: () async {
                   await LoginService().logout(); // Handle the logout action
-                  // ignore: use_build_context_synchronously
                   Navigator.pushReplacementNamed(context, '/login'); // Navigate to login page
                 },
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                  backgroundColor: const Color(0xFF557C56), // Button background color
+                  backgroundColor: const Color(0xFFF45F67), // Button background color
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),

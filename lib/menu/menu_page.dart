@@ -67,9 +67,8 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
   void _handleDragUpdate(DragUpdateDetails details) {
     setState(() {
       _dragPosition += details.delta.dx;
-      // Limit drag position to the left
       if (_dragPosition > 0) {
-        _dragPosition = 0; // Prevent dragging to the right
+        _dragPosition = 0;
       }
     });
   }
@@ -79,7 +78,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
       _handleCloseMenu();
     } else {
       setState(() {
-        _dragPosition = 0; // Reset position if not dragged enough
+        _dragPosition = 0;
       });
     }
   }
@@ -94,6 +93,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
   Widget build(BuildContext context) {
     double screenHeight = MediaQuery.of(context).size.height;
     double screenWidth = MediaQuery.of(context).size.width;
+    final primaryColor = Color(0xFFF45F67); // Your primary color
 
     return Scaffold(
       backgroundColor: Colors.black.withOpacity(0.3),
@@ -117,7 +117,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
                 decoration: BoxDecoration(
                   color: Colors.white,
                   border: Border.all(
-                    color: Colors.orange,
+                    color: primaryColor, // Updated color
                     width: 3,
                   ),
                   borderRadius: const BorderRadius.only(
@@ -145,8 +145,6 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
                                 CircleAvatar(
                                   radius: screenWidth * 0.1,
                                   backgroundImage: CachedNetworkImageProvider(userProfile!.profilePic),
-                                   onBackgroundImageError: (_, __) {
-                                   }
                                 ),
                                 SizedBox(height: screenHeight * 0.02),
                                 Text(
@@ -211,61 +209,47 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
                             ),
                           )
                         : Center(
-                            child: BouncingChefHat(),
+                            child: BouncingChefHat(primaryColor: primaryColor),
                           ),
                     SizedBox(height: screenHeight * 0.03),
-                    ListTile(
-                      leading: Icon(Icons.people, color: Colors.orange, size: screenWidth * 0.07),
-                      title: Text(
-                        'Friends',
-                        style: TextStyle(fontSize: screenWidth * 0.045),
-                      ),
+                    _buildMenuItem(
+                      icon: Icons.people,
+                      text: 'Friends',
+                      color: primaryColor,
                     ),
-                    ListTile(
-                      leading: Icon(Icons.bookmark, color: Colors.orange, size: screenWidth * 0.07),
-                      title: Text(
-                        'Saved Post',
-                        style: TextStyle(fontSize: screenWidth * 0.045),
-                      ),
+                    _buildMenuItem(
+                      icon: Icons.bookmark,
+                      text: 'Saved Post',
+                      color: primaryColor,
                     ),
-                    ListTile(
-                      leading: Icon(Icons.settings, color: Colors.orange, size: screenWidth * 0.07),
-                      title: Text(
-                        'Settings',
-                        style: TextStyle(fontSize: screenWidth * 0.045),
-                      ),
+                    _buildMenuItem(
+                      icon: Icons.settings,
+                      text: 'Settings',
+                      color: primaryColor,
                       onTap: () {
                         // Navigate to Settings
                       },
                     ),
-                    ListTile(
-                      leading: Icon(Icons.feedback, color: Colors.orange, size: screenWidth * 0.07),
-                      title: Text(
-                        'Feedback',
-                        style: TextStyle(fontSize: screenWidth * 0.045),
-                      ),
+                    _buildMenuItem(
+                      icon: Icons.feedback,
+                      text: 'Feedback',
+                      color: primaryColor,
                     ),
-                    ListTile(
-                      leading: Icon(Icons.help_outline, color: Colors.orange, size: screenWidth * 0.07),
-                      title: Text(
-                        'Help & Support',
-                        style: TextStyle(fontSize: screenWidth * 0.045),
-                      ),
+                    _buildMenuItem(
+                      icon: Icons.help_outline,
+                      text: 'Help & Support',
+                      color: primaryColor,
                     ),
-                    ListTile(
-                      leading: Icon(Icons.privacy_tip, color: Colors.orange, size: screenWidth * 0.07),
-                      title: Text(
-                        'Privacy Policy',
-                        style: TextStyle(fontSize: screenWidth * 0.045),
-                      ),
+                    _buildMenuItem(
+                      icon: Icons.privacy_tip,
+                      text: 'Privacy Policy',
+                      color: primaryColor,
                     ),
                     Spacer(),
-                    ListTile(
-                      leading: Icon(Icons.logout, color: Colors.orange, size: screenWidth * 0.07),
-                      title: Text(
-                        'Logout',
-                        style: TextStyle(fontSize: screenWidth * 0.045),
-                      ),
+                    _buildMenuItem(
+                      icon: Icons.logout,
+                      text: 'Logout',
+                      color: primaryColor,
                       onTap: _logout,
                     ),
                   ],
@@ -277,9 +261,32 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
       ),
     );
   }
+
+  Widget _buildMenuItem({
+    required IconData icon,
+    required String text,
+    required Color color,
+    VoidCallback? onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: color, size: 24),
+      title: Text(
+        text,
+        style: TextStyle(
+          fontSize: 16,
+          color: Colors.black87,
+        ),
+      ),
+      onTap: onTap,
+    );
+  }
 }
 
 class BouncingChefHat extends StatefulWidget {
+  final Color primaryColor;
+
+  const BouncingChefHat({required this.primaryColor});
+
   @override
   _BouncingChefHatState createState() => _BouncingChefHatState();
 }
@@ -317,7 +324,7 @@ class _BouncingChefHatState extends State<BouncingChefHat> with SingleTickerProv
           offset: Offset(0, -_animation.value),
           child: Icon(
             Icons.restaurant_menu,
-            color: Colors.orangeAccent,
+            color: widget.primaryColor,
             size: 50.0,
           ),
         );

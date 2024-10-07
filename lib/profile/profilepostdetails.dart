@@ -16,15 +16,15 @@ class ProfilePostDetails extends StatefulWidget {
   final List<Post> bookmarkedPosts;
   final int initialIndex;
   final int userId;
-  final bool isPostsSelected; // Added to indicate which section is selected
+  final bool isPostsSelected;
 
   const ProfilePostDetails({
     Key? key,
     required this.userPosts,
-    required this.bookmarkedPosts, // Pass bookmarks as well
+    required this.bookmarkedPosts,
     required this.initialIndex,
     required this.userId,
-    required this.isPostsSelected, // Indicate which section is selected
+    required this.isPostsSelected,
   }) : super(key: key);
 
   @override
@@ -33,15 +33,14 @@ class ProfilePostDetails extends StatefulWidget {
 
 class _ProfilePostDetailsState extends State<ProfilePostDetails> {
   late ScrollController _scrollController;
-  late List<Post> displayedPosts; // Posts to display based on the section
+  late List<Post> displayedPosts;
 
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController(
-      initialScrollOffset: widget.initialIndex * 300.0, // Approximate height per PostCard
+      initialScrollOffset: widget.initialIndex * 300.0,
     );
-    // Set the displayed posts based on whether the posts section or bookmarks section is selected
     displayedPosts = widget.isPostsSelected ? widget.userPosts : widget.bookmarkedPosts;
   }
 
@@ -51,51 +50,44 @@ class _ProfilePostDetailsState extends State<ProfilePostDetails> {
     super.dispose();
   }
 
-  // Function to scroll to the initial index if needed
-  void _scrollToInitialIndex() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollController.jumpTo(widget.initialIndex * 300.0); // Adjust based on item height
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildCustomAppBar(),
       backgroundColor: Colors.grey[100],
       body: ListView.builder(
-  controller: _scrollController,
-  itemCount: displayedPosts.length,
-  padding: EdgeInsets.zero, // Remove extra padding around the list
-  itemBuilder: (context, index) {
-    final post = displayedPosts[index]; // Render based on displayed posts
-    return PostCard(post: post); // No padding inside itemBuilder
-  },
-),
+        controller: _scrollController,
+        itemCount: displayedPosts.length,
+        padding: EdgeInsets.zero,
+        itemBuilder: (context, index) {
+          final post = displayedPosts[index];
+          return PostCard(post: post);
+        },
+      ),
     );
   }
 
-AppBar _buildCustomAppBar() {
-  return AppBar(
-    leading: IconButton(
-      icon: Icon(Icons.arrow_back, color: Colors.orange),
-      onPressed: () {
-        Navigator.pop(context);  // This takes the user back to the previous page
-      },
-    ),
-    title: const Text(
-      "POSTS",
-      style: TextStyle(
-        color: Colors.orange,
-        fontWeight: FontWeight.bold,
+  AppBar _buildCustomAppBar() {
+    return AppBar(
+      backgroundColor: Colors.white, // Set AppBar background to white
+      leading: IconButton(
+        icon: Icon(Icons.arrow_back, color: Color(0xFFF45F67)),
+        onPressed: () {
+          Navigator.pop(context);
+        },
       ),
-    ),
-    centerTitle: true,
-  );
+      title: const Text(
+        "POSTS",
+        style: TextStyle(
+          color: Color(0xFFF45F67), // Set text color to primary color
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      centerTitle: true,
+      iconTheme: IconThemeData(color: Color(0xFFF45F67)), // Icon color for actions
+    );
+  }
 }
-
-}
-
 
 class PostCard extends StatefulWidget {
   final Post post;
@@ -175,16 +167,15 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
-    // Use MediaQuery to get screen width for responsiveness
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Container(
-      width: screenWidth, // Full width of the screen
-      margin: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 8.0), // Adjust margin as needed
+      width: screenWidth,
+      margin: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 8.0),
       padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12.0), // Enhanced border radius
+        borderRadius: BorderRadius.circular(12.0),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -196,10 +187,10 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min, // Only take the height needed by content
+        mainAxisSize: MainAxisSize.min,
         children: [
           _buildHeader(),
-          const SizedBox(height: 8.0), // Reduced height
+          const SizedBox(height: 8.0),
           if (widget.post.caption.isNotEmpty)
             Text(
               widget.post.caption,
@@ -208,10 +199,10 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
               overflow: TextOverflow.ellipsis,
             ),
           if (widget.post.media.isNotEmpty) ...[
-            const SizedBox(height: 8.0), // Reduced height
-            _buildMedia(screenWidth), // Pass the screen width to the media
+            const SizedBox(height: 8.0),
+            _buildMedia(screenWidth),
           ],
-          const SizedBox(height: 8.0), // Reduced height
+          const SizedBox(height: 8.0),
           _buildPostActions(),
         ],
       ),
@@ -223,7 +214,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
       children: [
         CircleAvatar(
           backgroundImage: NetworkImage(widget.post.profilePic),
-          radius: 18, // Slightly larger avatar
+          radius: 18,
         ),
         const SizedBox(width: 8.0),
         Column(
@@ -246,14 +237,14 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
   Widget _buildMedia(double screenWidth) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        double mediaHeight = screenWidth * 0.75; // Set height relative to screen width
-        double maxHeight = 300.0; // Maximum height for media
+        double mediaHeight = screenWidth * 0.75;
+        double maxHeight = 300.0;
         if (mediaHeight > maxHeight) {
           mediaHeight = maxHeight;
         }
         return SizedBox(
-          height: mediaHeight, // Set responsive height with a cap
-          width: double.infinity, // Make it full width
+          height: mediaHeight,
+          width: double.infinity,
           child: PageView.builder(
             itemCount: widget.post.media.length,
             itemBuilder: (context, index) {
@@ -264,8 +255,8 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                   child: CachedNetworkImage(
                     imageUrl: media.mediaUrl,
                     fit: BoxFit.cover,
-                    width: screenWidth, // Set full width
-                    height: mediaHeight, // Set responsive height
+                    width: screenWidth,
+                    height: mediaHeight,
                     placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
                     errorWidget: (context, url, error) => const Icon(Icons.error),
                   ),
@@ -276,7 +267,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                   child: VideoPost(mediaUrl: media.mediaUrl),
                 );
               } else {
-                return const SizedBox.shrink(); // Handle other media types if any
+                return const SizedBox.shrink();
               }
             },
           ),
@@ -291,7 +282,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
         IconButton(
           icon: Icon(
             _isLiked ? Icons.favorite : Icons.favorite_border,
-            color: _isLiked ? Colors.red : Colors.grey, // Changed to red for better visibility
+            color: _isLiked ? Colors.red : Colors.grey,
           ),
           onPressed: _handleLike,
         ),
@@ -308,7 +299,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
           child: IconButton(
             icon: Icon(
               _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-              color: _isBookmarked ? Colors.blue : Colors.grey, // Changed to blue for better visibility
+              color: _isBookmarked ? Color(0xFFF45F67) : Colors.grey,
             ),
             onPressed: _handleBookmark,
           ),
@@ -317,7 +308,6 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     );
   }
 }
-
 
 class VideoPost extends StatefulWidget {
   final String mediaUrl;
@@ -342,14 +332,10 @@ class _VideoPostState extends State<VideoPost> {
 
   Future<void> _initializeVideo() async {
     try {
-      // Attempt to get the cached file. If it's not cached, download and cache it.
       final file = await DefaultCacheManager().getSingleFile(widget.mediaUrl);
-      
-      // Initialize the VideoPlayerController with the cached file.
       _videoPlayerController = VideoPlayerController.file(file);
       await _videoPlayerController!.initialize();
-      
-      // Initialize ChewieController with the VideoPlayerController.
+
       _chewieController = ChewieController(
         videoPlayerController: _videoPlayerController!,
         autoPlay: false,
