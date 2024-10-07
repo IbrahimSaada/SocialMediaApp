@@ -191,13 +191,13 @@ class _SearchState extends State<Search> {
   return StatefulBuilder(builder: (context, setState) {
     // Initialize buttonText and buttonColor with default values
     String buttonText = "Follow"; // Default text (safe fallback)
-    Color buttonColor = Colors.orange; // Default color (safe fallback)
+    Color buttonColor = Color(0xFFF45F67); // Default color (safe fallback)
 
     // Handle the button text and color based on the following states
     if (user.isFollowing && !user.amFollowing) {
       // Case 1: They are following you, but you are not following them
       buttonText = "Follow Back";
-      buttonColor = Colors.orange;
+      buttonColor = Color(0xFFF45F67);
     } else if (!user.isFollowing && user.amFollowing) {
       // Case 2: You are following them, but they are not following you
       buttonText = "Following";
@@ -205,7 +205,7 @@ class _SearchState extends State<Search> {
     } else if (!user.isFollowing && !user.amFollowing) {
       // Case 3: Neither of you are following each other
       buttonText = "Follow";
-      buttonColor = Colors.orange;
+      buttonColor = Color(0xFFF45F67);
     } else if (user.isFollowing && user.amFollowing) {
       // Case 4: Both of you are following each other
       buttonText = "Following";
@@ -269,18 +269,79 @@ class _SearchState extends State<Search> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        appBar: AppBar(
-          title: const Text("SEARCH"),
-          backgroundColor: Colors.orange,
-          actions: [
-            // Clear all saved users
-            if (savedUsers.isNotEmpty)
-              IconButton(
-                icon: const Icon(Icons.clear_all),
-                onPressed: clearSavedUsers,
-              ),
-          ],
+appBar: PreferredSize(
+  preferredSize: Size.fromHeight(80),
+  child: AppBar(
+    backgroundColor: Colors.white,
+    elevation: 4,
+    shadowColor: Colors.grey.shade200,
+    leading: Padding(
+      padding: const EdgeInsets.only(left: 10, top: 20), // Lower the arrow further
+      child: IconButton(
+        icon: Icon(Icons.arrow_back, color: Color(0xFFF45F67), size: 28),
+        onPressed: () {
+          Navigator.pop(context);
+        },
+      ),
+    ),
+    title: Padding(
+      padding: const EdgeInsets.only(top: 20), // Lower the title text further
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Drop shadow effect for the cooking theme
+          Text(
+            'SEARCH',
+            style: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              color: Colors.white, // Base color for the "drop" layer
+              shadows: [
+                Shadow(
+                  offset: Offset(-3, -3),
+                  blurRadius: 0,
+                  color: Color(0xFFF45F67),
+                ),
+                Shadow(
+                  offset: Offset(0, 0),
+                  blurRadius: 2,
+                  color: Color(0xFFF45F67).withOpacity(0.8), // Main drop painting effect
+                ),
+              ],
+            ),
+          ),
+          // Main visible text on top of the "drop"
+          Text(
+            'SEARCH',
+            style: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+              decoration: TextDecoration.none,
+            ),
+          ),
+        ],
+      ),
+    ),
+    centerTitle: true,
+    actions: [
+      Padding(
+        padding: const EdgeInsets.only(right: 15, top: 20), // Lower the icon further
+        child: Icon(Icons.local_dining, color: Color(0xFFF45F67), size: 28),
+      ),
+    ],
+    flexibleSpace: Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF45F67), Colors.white],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
+      ),
+    ),
+  ),
+),
+
         body: Padding(
           padding: const EdgeInsets.all(10.0),
           child: Column(
@@ -294,15 +355,15 @@ class _SearchState extends State<Search> {
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
-                    borderSide: const BorderSide(color: Colors.orange, width: 2),
+                    borderSide: const BorderSide(color: Color(0xFFF45F67), width: 2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderSide: const BorderSide(color: Colors.orange, width: 2),
+                    borderSide: const BorderSide(color: Color(0xFFF45F67), width: 2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderSide: const BorderSide(color: Colors.orange, width: 2),
+                    borderSide: const BorderSide(color: Color(0xFFF45F67), width: 2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),
@@ -347,7 +408,7 @@ class _SearchState extends State<Search> {
                 ),
 
               // Orange line between Saved Users and Search Results
-              const Divider(color: Colors.orange, thickness: 2),
+              const Divider(color: Color(0xFFF45F67), thickness: 2),
 
               // Search Results Section
               if (!isLoading && searchResults.isNotEmpty)
@@ -371,30 +432,51 @@ class _SearchState extends State<Search> {
         );
       }
       final user = searchResults[index];
-      return ListTile(
-        leading: CircleAvatar(
-          backgroundImage: NetworkImage(user.profilePic),
-        ),
-        title: Text(user.username),
-        subtitle: Text(user.fullName),
-        // Pass both user and currentUserId to the buildFollowButton
-        trailing: buildFollowButton(user, currentUserId!), // Ensure currentUserId is passed
-        onTap: () {
-          // Navigate to the OtherUserProfilePage when a user is tapped
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => OtherUserProfilePage(
-                otherUserId: user.userId, // Pass the user ID to the OtherUserProfilePage
-              ),
-            ),
-          );
-        },
-      );
-    },
+      // Inside the ListView.builder for search results
+return ListTile(
+  leading: CircleAvatar(
+    backgroundImage: NetworkImage(user.profilePic),
   ),
-),
+  title: FittedBox(
+    fit: BoxFit.scaleDown,
+    alignment: Alignment.centerLeft,
+    child: Text(
+      user.username,
+      style: TextStyle(
+        fontSize: 16,
+        color: Colors.black, // Adjusted for visibility
+      ),
+    ),
+  ),
+  subtitle: Text(
+    user.fullName,
+    overflow: TextOverflow.ellipsis,
+    maxLines: 1,
+    softWrap: false,
+    style: TextStyle(
+      color: Colors.grey[600], // Adjusted for consistency
+    ),
+  ),
+  trailing: buildFollowButton(user, currentUserId!),
+  onTap: () {
+    // Save the user to the saved list
+    selectUser(user);
+    
+    // Navigate to the OtherUserProfilePage
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OtherUserProfilePage(
+          otherUserId: user.userId,
+        ),
+      ),
+    );
+  },
+);
 
+              },
+            ),
+          ),
                     ],
                   ),
                 ),
