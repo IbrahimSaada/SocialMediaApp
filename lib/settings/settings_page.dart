@@ -14,22 +14,23 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
+    final primaryColor = Color(0xFFF45F67); // Your orange color theme
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white, // All white app bar
+        backgroundColor: Colors.white, // White app bar for clean look
         elevation: 0, // Remove shadow
         centerTitle: true, // Center the title
         title: Text(
           'Settings',
           style: TextStyle(
-            color: Colors.orangeAccent, // Orange text
+            color: primaryColor, // Orange text
             fontWeight: FontWeight.bold,
             fontSize: 24, // Cleaner font size
           ),
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.orangeAccent),
+          icon: Icon(Icons.arrow_back, color: primaryColor),
           onPressed: () {
             Navigator.pop(context);
           },
@@ -38,7 +39,6 @@ class _SettingsPageState extends State<SettingsPage> {
       body: ListView(
         padding: EdgeInsets.all(16.0),
         children: [
-          // Public/Private Profile Toggle
           _buildSwitchTile(
             title: 'Public Profile',
             value: _isProfilePublic,
@@ -51,7 +51,6 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           Divider(),
 
-          // Notifications Setting
           _buildSwitchTile(
             title: 'Enable Notifications',
             value: _notificationsEnabled,
@@ -64,9 +63,8 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           Divider(),
 
-          // Language Setting
           ListTile(
-            leading: Icon(Icons.language, color: Colors.orangeAccent),
+            leading: Icon(Icons.language, color: primaryColor),
             title: Text(
               'Language',
               style: TextStyle(fontSize: screenWidth * 0.045, color: Colors.black87),
@@ -89,7 +87,6 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           Divider(),
 
-          // Dark Mode Setting
           _buildSwitchTile(
             title: 'Dark Mode',
             value: _darkMode,
@@ -102,9 +99,8 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           Divider(),
 
-          // Change Password Option
           ListTile(
-            leading: Icon(Icons.lock, color: Colors.orangeAccent),
+            leading: Icon(Icons.lock, color: primaryColor),
             title: Text(
               'Change Password',
               style: TextStyle(fontSize: screenWidth * 0.045, color: Colors.black87),
@@ -115,9 +111,8 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           Divider(),
 
-          // About Section
           ListTile(
-            leading: Icon(Icons.info, color: Colors.orangeAccent),
+            leading: Icon(Icons.info, color: primaryColor),
             title: Text(
               'About',
               style: TextStyle(fontSize: screenWidth * 0.045, color: Colors.black87),
@@ -146,16 +141,17 @@ class _SettingsPageState extends State<SettingsPage> {
     required Function(bool) onChanged,
   }) {
     double screenWidth = MediaQuery.of(context).size.width;
+    final primaryColor = Color(0xFFF45F67); // Orange accent color
 
     return SwitchListTile(
-      activeColor: Colors.orangeAccent, // Orange color for switch
+      activeColor: primaryColor, // Orange color for switch
       title: Text(
         title,
         style: TextStyle(fontSize: screenWidth * 0.045, color: Colors.black87),
       ),
       value: value,
       onChanged: onChanged,
-      secondary: Icon(icon, color: Colors.orangeAccent),
+      secondary: Icon(icon, color: primaryColor),
     );
   }
 }

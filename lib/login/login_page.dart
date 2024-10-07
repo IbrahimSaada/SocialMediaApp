@@ -9,7 +9,6 @@ class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _LoginPageState createState() => _LoginPageState();
 }
 
@@ -28,12 +27,10 @@ class _LoginPageState extends State<LoginPage> {
         _errorMessage = null;
       });
 
-      // Check for admin credentials
       if (_emailOrPhoneController.text.trim() == 'admin@gmail.com' &&
           _passwordController.text.trim() == 'admin') {
         Navigator.of(context).pushReplacement(
-          // ignore: prefer_const_constructors
-          MaterialPageRoute(builder: (context) =>  HomePage()),
+          MaterialPageRoute(builder: (context) => HomePage()),
         );
         setState(() {
           _isLoading = false;
@@ -48,10 +45,8 @@ class _LoginPageState extends State<LoginPage> {
           _passwordController.text.trim(),
         );
 
-        // ignore: use_build_context_synchronously
         Navigator.of(context).pushReplacement(
-          // ignore: prefer_const_constructors
-          MaterialPageRoute(builder: (context) =>  HomePage()),
+          MaterialPageRoute(builder: (context) => HomePage()),
         );
       } catch (e) {
         setState(() {
@@ -69,6 +64,8 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -76,9 +73,9 @@ class _LoginPageState extends State<LoginPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             colors: [
-              Colors.orange.shade900,
-              Colors.orange.shade800,
-              Colors.orange.shade400,
+              primaryColor.withOpacity(0.9),
+              primaryColor.withOpacity(0.8),
+              primaryColor.withOpacity(0.4),
             ],
           ),
         ),
@@ -221,7 +218,7 @@ class _LoginPageState extends State<LoginPage> {
                             child: MaterialButton(
                               onPressed: _isLoading ? null : _login,
                               height: 50,
-                              color: Colors.orange[900],
+                              color: primaryColor,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(50),
                               ),
@@ -236,6 +233,7 @@ class _LoginPageState extends State<LoginPage> {
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold,
+
                                         ),
                                       ),
                                     ),

@@ -11,7 +11,6 @@ class NewpasswordPage extends StatefulWidget {
       {super.key, required this.emailOrPhone, required this.verificationCode});
 
   @override
-  // ignore: library_private_types_in_public_api
   _NewpasswordPageState createState() => _NewpasswordPageState();
 }
 
@@ -27,17 +26,13 @@ class _NewpasswordPageState extends State<NewpasswordPage> {
       try {
         await PasswordResetService().resetPassword(
             widget.emailOrPhone, widget.verificationCode, newPassword);
-        // ignore: use_build_context_synchronously
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Password has been reset successfully')),
         );
-        // ignore: use_build_context_synchronously
         Navigator.of(context).push(
-          // ignore: use_build_context_synchronously
           MaterialPageRoute(builder: (context) => const LoginPage()),
         );
       } catch (e) {
-        // ignore: use_build_context_synchronously
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')),
         );
@@ -47,6 +42,8 @@ class _NewpasswordPageState extends State<NewpasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -54,9 +51,9 @@ class _NewpasswordPageState extends State<NewpasswordPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             colors: [
-              Colors.orange.shade900,
-              Colors.orange.shade800,
-              Colors.orange.shade400,
+              primaryColor.withOpacity(0.9),
+              primaryColor.withOpacity(0.8),
+              primaryColor.withOpacity(0.4),
             ],
           ),
         ),
@@ -183,7 +180,7 @@ class _NewpasswordPageState extends State<NewpasswordPage> {
                             child: MaterialButton(
                               onPressed: _resetPassword,
                               height: 50,
-                              color: Colors.orange[900],
+                              color: primaryColor,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(50),
                               ),

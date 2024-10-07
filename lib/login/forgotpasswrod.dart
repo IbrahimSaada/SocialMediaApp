@@ -17,24 +17,22 @@ class ForgotpasswrodhomePage extends StatelessWidget {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
     final TextEditingController emailOrPhoneController =
         TextEditingController();
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     Future<void> sendResetCode() async {
       if (formKey.currentState!.validate()) {
         String input = emailOrPhoneController.text.trim();
         try {
           await PasswordResetService().requestPasswordReset(input);
-          // ignore: use_build_context_synchronously
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Verification code sent')),
           );
-          // ignore: use_build_context_synchronously
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => ForgotpasswrodverPage(emailOrPhone: input),
             ),
           );
         } catch (e) {
-          // ignore: use_build_context_synchronously
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error: $e')),
           );
@@ -49,9 +47,9 @@ class ForgotpasswrodhomePage extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             colors: [
-              Colors.orange.shade900,
-              Colors.orange.shade800,
-              Colors.orange.shade400,
+              primaryColor.withOpacity(0.9),
+              primaryColor.withOpacity(0.8),
+              primaryColor.withOpacity(0.4),
             ],
           ),
         ),
@@ -156,7 +154,7 @@ class ForgotpasswrodhomePage extends StatelessWidget {
                             child: MaterialButton(
                               onPressed: sendResetCode,
                               height: 50,
-                              color: Colors.orange[900],
+                              color: primaryColor,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(50),
                               ),

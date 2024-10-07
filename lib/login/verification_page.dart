@@ -1,25 +1,23 @@
 import 'package:flutter/material.dart';
-import '../services/UserVerificationService.dart'; // Ensure this path is correct
+import '../services/UserVerificationService.dart';
 import 'login_page.dart';
 
 void main() => runApp(const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home:
-          VerificationPage(email: 'example@example.com'), // Pass the email here
+      home: VerificationPage(email: 'example@example.com'), // Pass the email here
     ));
 
 class VerificationPage extends StatefulWidget {
-  final String email; // Pass the email to this page
+  final String email;
 
   const VerificationPage({required this.email, super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _VerificationPageState createState() => _VerificationPageState();
 }
 
 class _VerificationPageState extends State<VerificationPage> {
-  final int codeLength = 6; // Set the length of the verification code
+  final int codeLength = 6;
   final List<TextEditingController> _controllers =
       List.generate(6, (_) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
@@ -59,11 +57,9 @@ class _VerificationPageState extends State<VerificationPage> {
           widget.email, verificationCode);
 
       if (response) {
-        // ignore: use_build_context_synchronously
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Account successfully verified')),
         );
-        // ignore: use_build_context_synchronously
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const LoginPage()),
         );
@@ -81,14 +77,16 @@ class _VerificationPageState extends State<VerificationPage> {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     return Scaffold(
       body: Container(
         width: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(begin: Alignment.topCenter, colors: [
-            Colors.orange.shade900,
-            Colors.orange.shade800,
-            Colors.orange.shade400,
+            primaryColor.withOpacity(0.9),
+            primaryColor.withOpacity(0.8),
+            primaryColor.withOpacity(0.4),
           ]),
         ),
         child: Column(
@@ -155,7 +153,7 @@ class _VerificationPageState extends State<VerificationPage> {
                                   focusNode: _focusNodes[index],
                                   textAlign: TextAlign.center,
                                   decoration: const InputDecoration(
-                                    counterText: "", // Hide the counter text
+                                    counterText: "",
                                     hintText: "",
                                     border: InputBorder.none,
                                   ),
@@ -183,7 +181,7 @@ class _VerificationPageState extends State<VerificationPage> {
                         const SizedBox(height: 20),
                         MaterialButton(
                           height: 50,
-                          color: Colors.orange[900],
+                          color: primaryColor,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(50),
                           ),
