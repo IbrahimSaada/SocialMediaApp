@@ -5,9 +5,9 @@ import 'LoginService.dart';  // To access JWT and refresh token
 import 'SignatureService.dart';  // For signature generation
 
 class SearchService {
-  static const String baseUrl = 'https://461a-185-97-92-20.ngrok-free.app/api/UserConnections/search';
-  static const String followerRequestsUrl = 'https://461a-185-97-92-20.ngrok-free.app/api/UserConnections/follower-requests';
-  static const String pendingRequestsUrl = 'https://461a-185-97-92-20.ngrok-free.app/api/UserConnections/pending-follow-requests';
+  static const String baseUrl = '***REMOVED***/api/UserConnections/search';
+  static const String followerRequestsUrl = '***REMOVED***/api/UserConnections/follower-requests';
+  static const String pendingRequestsUrl = '***REMOVED***/api/UserConnections/pending-follow-requests';
   final LoginService _loginService = LoginService();
   final SignatureService _signatureService = SignatureService();
 
@@ -136,34 +136,61 @@ class SearchService {
       'Authorization': 'Bearer $token',  // Include JWT token
     });
   }
-  // Method to fetch pending follow requests without token or signature
-  Future<List<SearchUserModel>> getPendingFollowRequests(int currentUserId) async {
-    final Uri uri = Uri.parse(pendingRequestsUrl).replace(queryParameters: {
-      'currentUserId': currentUserId.toString(),
-    });
+// Method to fetch pending follow requests with token and signature
+Future<List<SearchUserModel>> getPendingFollowRequests(int currentUserId) async {
+  final Uri uri = Uri.parse(pendingRequestsUrl).replace(queryParameters: {
+    'currentUserId': currentUserId.toString(),
+  });
 
-    try {
-      // Make the API request without headers
-      var response = await http.get(uri);
-
-      // Handle success or error responses
-      if (response.statusCode == 200) {
-        print('Response Body: ${response.body}');
-
-        // Parse the response body and return a list of SearchUserModel
-        List<dynamic> data = json.decode(response.body);
-        List<SearchUserModel> pendingRequests = data
-  .map((userJson) => SearchUserModel.fromContentRequestJson(userJson as Map<String, dynamic>))
-  .toList();
-
-        print('Parsed Pending Requests: $pendingRequests');
-        return pendingRequests;
-      } else {
-        throw Exception('Failed to load pending follow requests: ${response.body}');
-      }
-    } catch (e) {
-      throw Exception('Error occurred while fetching pending follow requests: $e');
+  try {
+    // Ensure the user is logged in and get the JWT token
+    if (!await _loginService.isLoggedIn()) {
+      throw Exception("User not logged in.");
     }
+
+    String? token = await _loginService.getToken();
+
+    // Generate data to sign for the request
+    String dataToSign = '$currentUserId';
+    String signature = await _signatureService.generateHMAC(dataToSign);
+
+    // Make the API request
+    var response = await _makeRequestWithToken(uri, signature, token);
+
+    // If the response status is 401 (Unauthorized), attempt to refresh the token and retry
+    if (response.statusCode == 401) {
+      print('JWT token expired. Attempting to refresh token...');
+      await _loginService.refreshAccessToken();  // Refresh the token
+      token = await _loginService.getToken();     // Get the new token
+      print('Token refreshed successfully.');
+
+      // Retry the request with the new token
+      response = await _makeRequestWithToken(uri, signature, token);
+
+      if (response.statusCode == 401) {
+        // Token refresh failed, return an error
+        throw Exception('Session expired or refresh token invalid.');
+      }
+    }
+
+    // Handle success or error responses
+    if (response.statusCode == 200) {
+      print('Response Body: ${response.body}');
+
+      // Parse the response body and return a list of SearchUserModel
+      List<dynamic> data = json.decode(response.body);
+      List<SearchUserModel> pendingRequests = data
+          .map((userJson) => SearchUserModel.fromContentRequestJson(userJson as Map<String, dynamic>))
+          .toList();
+
+      print('Parsed Pending Requests: $pendingRequests');
+      return pendingRequests;
+    } else {
+      throw Exception('Failed to load pending follow requests: ${response.body}');
+    }
+  } catch (e) {
+    throw Exception('Error occurred while fetching pending follow requests: $e');
   }
+}
   
 }

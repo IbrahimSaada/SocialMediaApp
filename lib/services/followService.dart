@@ -4,7 +4,7 @@ import 'LoginService.dart';  // To access JWT and refresh token
 import 'SignatureService.dart';  // For signature generation
 import '***REMOVED***/models/followRequestModel.dart';
 class FollowService {
-  static const String baseUrl = 'https://461a-185-97-92-20.ngrok-free.app/api/UserConnections';
+  static const String baseUrl = 'h***REMOVED***/api/UserConnections';
 
   final LoginService _loginService = LoginService();
   final SignatureService _signatureService = SignatureService();
@@ -204,23 +204,66 @@ Future<void> updateFollowerStatus(int followedUserId, int followerUserId, String
   });
 
   try {
-    final response = await http.put(
-      Uri.parse('$baseUrl/update-follower-status'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${await _loginService.getToken()}',
-      },
-      body: body,
+    // Ensure token is valid before making request
+    if (!await _loginService.isLoggedIn()) {
+      throw Exception("User not logged in.");
+    }
+
+    String? token = await _loginService.getToken();
+
+    // Generate the signature for the request
+    String dataToSign = '$followerUserId:$followedUserId:$approvalStatus';
+    String signature = await _signatureService.generateHMAC(dataToSign);
+
+    var response = await _makePutRequestWithToken(
+      '$baseUrl/update-follower-status',
+      body,
+      signature,
+      token,
     );
+
+    if (response.statusCode == 401) {
+      // Attempt to refresh the token and retry the request
+      print('JWT token expired. Attempting to refresh token...');
+      await _loginService.refreshAccessToken();
+      token = await _loginService.getToken();
+      print('Token refreshed successfully.');
+
+      // Retry the request with the new token
+      response = await _makePutRequestWithToken(
+        '$baseUrl/update-follower-status',
+        body,
+        signature,
+        token,
+      );
+
+      if (response.statusCode == 401) {
+        throw Exception('Session expired or refresh token invalid.');
+      }
+    }
 
     if (response.statusCode != 200) {
       throw Exception('Failed to update follower status: ${response.body}');
-      
     }
   } catch (e) {
     print('Error updating follower status: $e');
     throw e;
   }
 }
+
+// Helper method to make PUT requests
+Future<http.Response> _makePutRequestWithToken(
+    String url, String body, String signature, String? token) async {
+  return await http.put(
+    Uri.parse(url),
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Signature': signature,
+      'Authorization': 'Bearer $token',
+    },
+    body: body,
+  );
+}
+
 
 }
