@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'LoginService.dart';  // To access JWT and refresh token
 import 'SignatureService.dart';  // For signature generation
-
+import 'package:cook/models/followRequestModel.dart';
 class FollowService {
-  static const String baseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/UserConnections';
+  static const String baseUrl = 'https://461a-185-97-92-20.ngrok-free.app/api/UserConnections';
 
   final LoginService _loginService = LoginService();
   final SignatureService _signatureService = SignatureService();
@@ -195,4 +195,32 @@ class FollowService {
       body: body,
     );
   }
+
+Future<void> updateFollowerStatus(int followedUserId, int followerUserId, String approvalStatus) async {
+  final body = jsonEncode({
+    'followed_user_id': followedUserId,
+    'follower_user_id': followerUserId,
+    'approval_status': approvalStatus, // "approved" or "declined"
+  });
+
+  try {
+    final response = await http.put(
+      Uri.parse('$baseUrl/update-follower-status'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${await _loginService.getToken()}',
+      },
+      body: body,
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update follower status: ${response.body}');
+      
+    }
+  } catch (e) {
+    print('Error updating follower status: $e');
+    throw e;
+  }
+}
+
 }
