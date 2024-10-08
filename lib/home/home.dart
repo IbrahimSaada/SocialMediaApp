@@ -207,170 +207,168 @@ Future<void> _initializeApp() async {
     });
   }
 
-PreferredSizeWidget buildAppBar() {
-  return PreferredSize(
-    preferredSize: const Size.fromHeight(130.0), // Slightly increased height to prevent overflow
-    child: AppBar(
-      backgroundColor: const Color(0xFF557C56), // Deep earthy green color
-      automaticallyImplyLeading: false,
-      elevation: 8.0, // Elevation for shadow effect
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          bottom: Radius.circular(12), // Rounded bottom border
-        ),
-      ),
-      flexibleSpace: Container(
-        decoration: BoxDecoration(
-          border: const Border(
-            bottom: BorderSide(
-              color: Color(0xFFD4AF37), // Light bronze for border shadow
-              width: 2.0, // Border thickness
-            ),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFD4AF37).withOpacity(0.5), // Light bronze shadow
-              spreadRadius: 4,
-              blurRadius: 8,
-              offset: const Offset(0, 4), // Shadow position
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.only(top: 20.0), // Reduced top padding
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Menu Icon
-                  IconButton(
-                    icon: FutureBuilder<String?>(
-                      future: LoginService().getProfilePic(),  // Fetch the profile picture URL
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const CircleAvatar(
-                            backgroundImage: AssetImage('assets/images/default.png'), // Show a default image while loading
-                          );
-                        } else if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
-                          return const CircleAvatar(
-                            backgroundImage: AssetImage('assets/images/default.png'), // Show a default image if error or no data
-                          );
-                        } else {
-                          return CircleAvatar(
-                      backgroundImage: CachedNetworkImageProvider(snapshot.data!),
-                      // Fallback to a default image if needed
-                      onBackgroundImageError: (_, __) {
-                        // Handle image load error if necessary
-                      },
-                    );
-                        }
-                      },
-                    ),
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) {
-                          return MenuPage(); // Open the Menu Page
-                        },
-                      );
-                    },
-                  ),
-                    // App Title
-                    const Text(
-                      'MyApp',
-                      style: TextStyle(
-                        color: Colors.white, // White text for contrast
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    // Help Icon
-                    IconButton(
-  icon: const Icon(Icons.question_mark, color: Colors.white),
-  onPressed: () {
-    // Navigate to AskQuestionPage
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => QnaPage()),
-    );
-  },
-),
-
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8), // Reduced spacing between elements
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Add Friends Icon
-                     IconButton(
-          icon: const Icon(Icons.person_add, color: Colors.white),
-          onPressed: () {
-            // Navigate to Add Friends Page
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => AddFriendsPage()), // Properly invoke AddFriendsPage
-            );
+PreferredSizeWidget buildTopAppBar(BuildContext context) {
+  return AppBar(
+    backgroundColor: const Color(0xFFF45F67), // Primary color for the app
+    automaticallyImplyLeading: false,
+    elevation: 0,
+    leading: Padding(
+      padding: const EdgeInsets.only(left: 16.0), // Consistent left padding
+      child: IconButton(
+        padding: EdgeInsets.zero, // Remove default padding
+        icon: FutureBuilder<String?>(
+          future: LoginService().getProfilePic(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const CircleAvatar(
+                backgroundImage: AssetImage('assets/images/default.png'),
+              );
+            } else if (snapshot.hasData && snapshot.data != null) {
+              return CircleAvatar(
+                backgroundImage: CachedNetworkImageProvider(snapshot.data!),
+              );
+            } else {
+              return const CircleAvatar(
+                backgroundImage: AssetImage('assets/images/default.png'),
+              );
+            }
           },
         ),
-                    // Search Icon
-                    IconButton(
-                      icon: const Icon(Icons.search, color: Colors.white),
-                      onPressed: () {
-                        // Navigate to Search Page
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const Search()),
-                        );
-                      },
-                    ),
-                    // Notifications Icon
-                    IconButton(
-                      icon: const Icon(Icons.notifications, color: Colors.white),
-                      onPressed: () {
-                        // Navigate to Notifications Page
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const NotificationPage()),
-                        );
-                      },
-                    ),
-                    // Messages Icon
-                    IconButton(
-                      icon: const Icon(Icons.message, color: Colors.white),
-                      onPressed: () {
-                        // Navigate to Contacts Page
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => ContactsPage()),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
+        onPressed: () {
+          // Open Menu Page
+          showDialog(
+            context: context,
+            builder: (context) => MenuPage(),
+          );
+        },
+      ),
+    ),
+    title: Text(
+      '***REMOVED***',
+      style: TextStyle(
+        fontSize: 28,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+        letterSpacing: 1.2,
+        shadows: [
+          Shadow(
+            blurRadius: 5.0,
+            color: Color(0xFFF45F67).withOpacity(0.6),
+            offset: Offset(2.0, 2.0),
           ),
-        ),
+          Shadow(
+            blurRadius: 5.0,
+            color: Colors.black.withOpacity(0.3),
+            offset: Offset(-2.0, -2.0),
+          ),
+        ],
+      ),
+    ),
+    centerTitle: true, // Center the title
+  );
+}
+
+
+Widget buildBottomNavigationBar() {
+  return BottomAppBar(
+    color: const Color(0xFFF45F67), // Main color for BottomAppBar
+    shape: const CircularNotchedRectangle(),
+    notchMargin: 4.0, // Margin for the center notch around the search icon
+    child: SizedBox(
+      height: 50, // Reduced height for a more compact BottomAppBar
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          // Left side icons
+          IconButton(
+            icon: const Icon(Icons.person_add_alt, size: 24, color: Colors.white), // Modern 'Add Friend' icon
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => AddFriendsPage()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.notifications_none, size: 24, color: Colors.white), // Modern 'Notification' icon
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => NotificationPage()),
+              );
+            },
+          ),
+          const SizedBox(width: 40), // Spacer to center items around the notch
+
+          // Right side icons
+          IconButton(
+            icon: const Icon(Icons.help_outline, size: 24, color: Colors.white), // Modern 'Help' icon
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => QnaPage()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline, size: 24, color: Colors.white), // Modern 'Chat' icon
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ContactsPage()),
+              );
+            },
+          ),
+        ],
       ),
     ),
   );
-
-
 }
+
+
+Widget buildSearchIcon() {
+  return Positioned(
+    bottom: -22, // Adjusted to ensure the circle sits within the bar
+    child: Container(
+      width: 48,
+      height: 48,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+      ),
+      child: IconButton(
+        icon: const Icon(Icons.search, color: Color(0xFFF45F67), size: 24), // Modern search icon inside white circle
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => Search()),
+          );
+        },
+      ),
+    ),
+  );
+}
+
+
+
+FloatingActionButton buildCenterSearchButton() {
+  return FloatingActionButton(
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const Search()),
+      );
+    },
+    backgroundColor: Colors.white,
+    child: const Icon(Icons.search, color: Color(0xFFF45F67)), // Main color for the search icon
+  );
+}
+
 
 Widget buildDivider() {
   return const Divider(
     thickness: 1.5, // Thickness of the divider
-    color: Color(0xFFD4AF37), // Light bronze color
+    color: Color(0xFFF45F67), // Light bronze color
   );
 }
 
@@ -404,7 +402,7 @@ Widget buildStoriesSection() {
                       width: 120,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(20.0), // Rounded corners
-                        border: Border.all(color: const Color(0xFFD4AF37), width: 3), // Warm gold border
+                        border: Border.all(color: Color(0xFFF45F67), width: 3), // Warm gold border
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.1), // Soft shadow for depth
@@ -503,64 +501,64 @@ Widget build(BuildContext context) {
   });
 
   return Scaffold(
-    backgroundColor: const Color(0xFFF0F0F0), // Light grey background
-    appBar: buildAppBar(),
-    body: RefreshIndicator(
-      onRefresh: _refreshPosts,
-      color: Colors.orange,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Stories section
-            buildStoriesSection(),
-            buildDivider(),
+  appBar: buildTopAppBar(context),
+  body: RefreshIndicator(
+    onRefresh: () async {},
+    child: SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Stories section
+          buildStoriesSection(),
+          buildDivider(),
 
-            // Post input section
-            buildPostInputSection(),
-            buildDivider(),
+          // Post input section
+          buildPostInputSection(),
+          buildDivider(),
 
-            // Post and Repost list
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(), // Disable scrolling within the ListView
-              itemCount: combinedPostsAndReposts.isEmpty ? 0 : combinedPostsAndReposts.length,
-              itemBuilder: (context, index) {
-                return buildPostOrRepost(combinedPostsAndReposts[index]);
-              },
-            ),
-          ],
-        ),
+          // Post and Repost list
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(), // Disable scrolling within the ListView
+            itemCount: combinedPostsAndReposts.isEmpty ? 0 : combinedPostsAndReposts.length,
+            itemBuilder: (context, index) {
+              return buildPostOrRepost(combinedPostsAndReposts[index]);
+            },
+          ),
+        ],
       ),
     ),
-  );
+  ),
+ bottomNavigationBar: buildBottomNavigationBar(),
+    floatingActionButton: buildSearchIcon(), // Embed search icon in the bar
+    floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+);
 }
 
 Widget buildPostInputSection() {
   return Padding(
-    padding: const EdgeInsets.all(16.0),
+    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
     child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFCCD5AE), // Soft green background
-        borderRadius: BorderRadius.circular(30.0), // Smooth rounded corners
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30.0),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1), // Soft shadow
+            color: Colors.black.withOpacity(0.1),
             spreadRadius: 2,
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: const Color(0xFFD4AF37), width: 2), // Gold border
+        border: Border.all(color: const Color(0xFFF45F67), width: 2),
       ),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.kitchen, color: Color(0xFF6B705C), size: 28), // Icon
+            icon: const Icon(Icons.kitchen, color: Color(0xFFF45F67)),
             onPressed: () {
-              // Handle icon action if needed
+              // Add functionality for the cuisine icon
             },
           ),
           Expanded(
@@ -569,24 +567,26 @@ Widget buildPostInputSection() {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const CreatePostPage(),  // Ensure CreatePostPage is correctly defined
+                    builder: (context) => const CreatePostPage(),
                   ),
                 );
               },
-              child: Text(
-                'What do you like to share...',  // Placeholder text
+              child: const Text(
+                'What do you want to share',
                 style: TextStyle(
-                  color: Colors.grey[700],  // Darker gray placeholder text
-                  fontStyle: FontStyle.italic,
+                  color: Color(0xFFF45F67),
                   fontSize: 16,
+                  fontStyle: FontStyle.italic,
                 ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1, // Ensures text stays on one line
               ),
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.restaurant, color: Color(0xFFD4AF37), size: 28), // Icon
+            icon: const Icon(Icons.restaurant, color: Color(0xFFF45F67)),
             onPressed: () {
-              // Handle icon action if needed
+              // Add functionality for the restaurant icon
             },
           ),
         ],
@@ -594,7 +594,10 @@ Widget buildPostInputSection() {
     ),
   );
 }
+
 }
+
+
 // PostCard widget displaying a post with like and bookmark functionality
 class PostCard extends StatefulWidget {
   final Post post;
@@ -856,9 +859,9 @@ Future<void> _toggleBookmark() async {
                           value: 'hide',
                           child: Row(
                             children: [
-                              Icon(Icons.visibility_off, color: Colors.grey.shade600),
+                              Icon(Icons.visibility_off, color: Color(0xFFF45F67)),
                               const SizedBox(width: 10),
-                              Text('Hide this post', style: TextStyle(color: Colors.grey.shade600)),
+                              Text('Hide this post', style: TextStyle(color: Color(0xFFF45F67))),
                             ],
                           ),
                         ),
@@ -866,9 +869,9 @@ Future<void> _toggleBookmark() async {
                           value: 'report',
                           child: Row(
                             children: [
-                              Icon(Icons.flag, color: Colors.grey.shade600),
+                              Icon(Icons.flag, color: Color(0xFFF45F67)),
                               const SizedBox(width: 10),
-                              Text('Report', style: TextStyle(color: Colors.grey.shade600)),
+                              Text('Report', style: TextStyle(color: Color(0xFFF45F67))),
                             ],
                           ),
                         ),
@@ -876,9 +879,9 @@ Future<void> _toggleBookmark() async {
                           value: 'block',
                           child: Row(
                             children: [
-                              Icon(Icons.block, color: Colors.grey.shade600),
+                              Icon(Icons.block, color: Color(0xFFF45F67)),
                               const SizedBox(width: 10),
-                              Text('Block', style: TextStyle(color: Colors.grey.shade600)),
+                              Text('Block', style: TextStyle(color: Color(0xFFF45F67))),
                             ],
                           ),
                         ),
@@ -894,11 +897,11 @@ Future<void> _toggleBookmark() async {
                           // Handle block action
                         }
                       },
-                      child: Icon(Icons.more_vert, color: Colors.grey.shade600),
+                      child: Icon(Icons.more_vert, color: Color(0xFFF45F67)),
                     ),
                 ],
               ),
-              const SizedBox(height: 16.0),
+              const SizedBox(height: 12.0),
 
               // Caption text
               if (widget.post.caption.isNotEmpty)
@@ -983,14 +986,14 @@ Future<void> _toggleBookmark() async {
                   IconButton(
                     icon: Icon(
                       _isLiked ? Icons.favorite : Icons.favorite_border,
-                      color: Colors.grey.shade600,
+                      color: Color(0xFFF45F67),
                     ),
                     onPressed: _handleLike,
                   ),
-                  Text('${widget.post.likeCount}', style: TextStyle(color: Colors.grey.shade600)),
+                  Text('${widget.post.likeCount}', style: TextStyle(color: Color(0xFFF45F67))),
                   const SizedBox(width: 16.0),
                   IconButton(
-                    icon: Icon(Icons.comment, color: Colors.grey.shade600),
+                    icon: Icon(Icons.comment, color: Color(0xFFF45F67)),
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -1000,9 +1003,9 @@ Future<void> _toggleBookmark() async {
                       );
                     },
                   ),
-                  Text('${widget.post.commentCount}', style: TextStyle(color: Colors.grey.shade600)),
+                  Text('${widget.post.commentCount}', style: TextStyle(color: Color(0xFFF45F67))),
                   IconButton(
-                    icon: Icon(Icons.share, color: Colors.grey.shade600),
+                    icon: Icon(Icons.share, color: Color(0xFFF45F67)),
                     onPressed: () {
                       // Show share bottom sheet
                       _showShareBottomSheet(context);
@@ -1016,7 +1019,7 @@ Future<void> _toggleBookmark() async {
                     child: IconButton(
                       icon: Icon(
                         _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                        color: Colors.grey.shade600,
+                        color: Color(0xFFF45F67),
                         size: 28,
                       ),
                       onPressed: _toggleBookmark, // Toggle bookmark state
@@ -1138,8 +1141,7 @@ class RepostCard extends StatelessWidget {
         width: MediaQuery.of(context).size.width, // Full width for repost
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(15.0), // Rounded corners
-          color: Colors.white, // White background for the RepostCard
-          // No border for the repost card itself
+          border: Border.all(color: Colors.grey.shade300, width: 1.0), // Outer border only
         ),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -1155,7 +1157,6 @@ class RepostCard extends StatelessWidget {
                       // Optionally handle the error
                     },
                   ),
-
                   const SizedBox(width: 8.0),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1185,8 +1186,8 @@ class RepostCard extends StatelessWidget {
                 ),
               const SizedBox(height: 12.0),
 
-              // Original Post content inside repost (No border around posts inside repost)
-              PostCard(post: repost.originalPost!),
+              // Original Post content inside repost (PostCard itself manages its own design)
+              PostCard(post: repost.originalPost!), // Display original post inside
             ],
           ),
         ),
@@ -1194,3 +1195,4 @@ class RepostCard extends StatelessWidget {
     );
   }
 }
+

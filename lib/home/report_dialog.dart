@@ -60,7 +60,7 @@ void showReportDialog({
         title: Container(
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Colors.redAccent, Colors.deepOrange],
+              colors: [Color(0xFFF45F67)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -160,7 +160,7 @@ void showReportDialog({
         actions: [
           TextButton(
             child: const Text('Cancel',
-                style: TextStyle(color: Colors.deepOrange, fontSize: 16)),
+                style: TextStyle(color: Color(0xFFF45F67), fontSize: 16)),
             onPressed: () {
               Navigator.of(context).pop();
             },
