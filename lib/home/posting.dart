@@ -297,14 +297,14 @@ class _CreatePostPageState extends State<CreatePostPage> {
           },
         ),
         title: const Text('Create Post',
-            style: TextStyle(color: Colors.orange, fontSize: 22)),
+            style: TextStyle(color: Color(0xFFF45F67), fontSize: 22)),
         actions: [
           TextButton(
             onPressed: _isUploading ? null : _post,
             child: Text(
               'Post',
               style: TextStyle(
-                color: _isUploading ? Colors.grey : Colors.orange,
+                color: _isUploading ? Colors.grey : Color(0xFFF45F67),
                 fontSize: 22,
               ),
             ),
@@ -355,7 +355,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                                     padding:
                                         const EdgeInsets.symmetric(horizontal: 8),
                                     backgroundColor: isPublicSelected
-                                        ? Colors.orange
+                                        ? Color(0xFFF45F67)
                                         : Colors.white,
                                     foregroundColor: isPublicSelected
                                         ? Colors.white
@@ -364,7 +364,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                                       borderRadius: BorderRadius.circular(8),
                                       side: BorderSide(
                                         color: isPublicSelected
-                                            ? Colors.orange
+                                            ? Color(0xFFF45F67)
                                             : Colors.black,
                                         width: 2,
                                       ),
@@ -384,7 +384,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                                     padding:
                                         const EdgeInsets.symmetric(horizontal: 8),
                                     backgroundColor: !isPublicSelected
-                                        ? Colors.orange
+                                        ? Color(0xFFF45F67)
                                         : Colors.white,
                                     foregroundColor: !isPublicSelected
                                         ? Colors.white
@@ -393,7 +393,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                                       borderRadius: BorderRadius.circular(8),
                                       side: BorderSide(
                                         color: !isPublicSelected
-                                            ? Colors.orange
+                                            ? Color(0xFFF45F67)
                                             : Colors.black,
                                         width: 2,
                                       ),
@@ -417,7 +417,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.orange, width: 3),
+                        border: Border.all(color: Color(0xFFF45F67), width: 3),
                       ),
                       padding: const EdgeInsets.all(16.0),
                       child: TextField(
@@ -610,14 +610,14 @@ class _CreatePostPageState extends State<CreatePostPage> {
                           child: CircularProgressIndicator(
                             value: _uploadProgress,
                             valueColor:
-                                const AlwaysStoppedAnimation<Color>(Colors.orange),
+                                const AlwaysStoppedAnimation<Color>(Color(0xFFF45F67)),
                             strokeWidth: 8,
                           ),
                         ),
                         Text(
                           '${(_uploadProgress * 100).toStringAsFixed(0)}%',
                           style: const TextStyle(
-                            color: Colors.orange,
+                            color: Color(0xFFF45F67),
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),

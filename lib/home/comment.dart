@@ -327,7 +327,7 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
       appBar: AppBar(
         title: const Text('Comments', style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.orange),
+        iconTheme: const IconThemeData(color: Color(0xFFF45F67)),
         elevation: 0,
       ),
       backgroundColor: Colors.white,
@@ -356,7 +356,7 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
               bottom: 100.0,
               right: 16.0,
               child: FloatingActionButton(
-                backgroundColor: Colors.orange,
+                backgroundColor: Color(0xFFF45F67),
                 child: const Icon(Icons.arrow_downward, color: Colors.white),
                 onPressed: () {
                   _scrollController.animateTo(
@@ -387,22 +387,22 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
                       : 'Reply to ${_replyingTo!.fullName}...',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(30.0),
-                    borderSide: const BorderSide(color: Colors.orange),
+                    borderSide: const BorderSide(color: Color(0xFFF45F67)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(30.0),
-                    borderSide: const BorderSide(color: Colors.orange),
+                    borderSide: const BorderSide(color: Color(0xFFF45F67)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(30.0),
-                    borderSide: const BorderSide(color: Colors.orange),
+                    borderSide: const BorderSide(color: Color(0xFFF45F67)),
                   ),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
                 ),
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.send, color: Colors.orange, size: 28),
+              icon: const Icon(Icons.send, color: Color(0xFFF45F67), size: 28),
               onPressed: _isPosting
                   ? null
                   : () {
@@ -437,7 +437,7 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
               onTap: () => _onReplyPressed(comment),
               child: const Text(
                 "Reply",
-                style: TextStyle(color: Colors.orange, fontSize: 16),
+                style: TextStyle(color: Color(0xFFF45F67), fontSize: 16),
               ),
             ),
             const SizedBox(width: 12.0),
@@ -451,7 +451,7 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
                 },
                 child: Text(
                   showReplies ? "Hide replies" : "Show replies",
-                  style: const TextStyle(color: Colors.orange, fontSize: 16),
+                  style: const TextStyle(color: Color(0xFFF45F67), fontSize: 16),
                 ),
               ),
           ],
@@ -491,7 +491,7 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
                 onTap: () => _onReplyPressed(reply),
                 child: const Text(
                   "Reply",
-                  style: TextStyle(color: Colors.orange, fontSize: 16),
+                  style: TextStyle(color: Color(0xFFF45F67), fontSize: 16),
                 ),
               ),
             ],

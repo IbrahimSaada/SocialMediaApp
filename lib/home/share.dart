@@ -48,7 +48,7 @@ class ShareBottomSheet extends StatelessWidget {
               width: MediaQuery.of(context).size.width,
               decoration: BoxDecoration(
                 color: Colors.white,
-                border: Border.all(color: Colors.orange, width: 1.5),
+                border: Border.all(color: Color(0xFFF45F67), width: 1.5),
                 borderRadius: BorderRadius.circular(15),
                 boxShadow: [
                   BoxShadow(
@@ -114,7 +114,7 @@ class ShareBottomSheet extends StatelessWidget {
                             }
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange,
+                            backgroundColor: Color(0xFFF45F67),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10.0),
                             ),

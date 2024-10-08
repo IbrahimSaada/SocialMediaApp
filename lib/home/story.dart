@@ -8,9 +8,9 @@ import 'package:mime/mime.dart';
 import 'package:cook/models/story_model.dart' as story_model;
 import 'package:cook/services/s3_upload_service.dart';
 import 'package:cook/models/presigned_url.dart';
-import 'package:cook/services/StoryService.dart'; // Import the story service
-import 'package:cook/services/LoginService.dart'; // Import the login service to get user ID
-import 'package:cook/models/story_request_model.dart'; // Import the story request model
+import 'package:cook/services/StoryService.dart';
+import 'package:cook/services/LoginService.dart';
+import 'package:cook/models/story_request_model.dart';
 import 'package:cook/maintenance/expiredtoken.dart';
 
 class StoryBox extends StatefulWidget {
@@ -19,7 +19,6 @@ class StoryBox extends StatefulWidget {
   const StoryBox({super.key, required this.onStoriesUpdated});
 
   @override
-  // ignore: library_private_types_in_public_api
   _StoryBoxState createState() => _StoryBoxState();
 }
 
@@ -41,7 +40,7 @@ class _StoryBoxState extends State<StoryBox> {
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15.0), // Rounded corners for the dialog
+            borderRadius: BorderRadius.circular(15.0),
           ),
           child: Container(
             padding: const EdgeInsets.all(20.0),
@@ -58,11 +57,11 @@ class _StoryBoxState extends State<StoryBox> {
                     height: 60,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(15.0),
-                      border: Border.all(color: const Color(0xFFF4A261), width: 2),
+                      border: Border.all(color: const Color(0xFFF45F67), width: 2),
                       gradient: const LinearGradient(
                         colors: [
-                          Color(0xFFF4A261), // Soft warm orange like the AppBar
-                          Color(0xFFE9C46A), // A lighter variant for a cohesive vibe
+                          Color(0xFFF45F67),
+                          Color(0xFFF45F67),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
@@ -101,11 +100,11 @@ class _StoryBoxState extends State<StoryBox> {
                     height: 60,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(15.0),
-                      border: Border.all(color: const Color(0xFFF4A261), width: 2),
+                      border: Border.all(color: const Color(0xFFF45F67), width: 2),
                       gradient: const LinearGradient(
                         colors: [
-                          Color(0xFFF4A261),
-                          Color(0xFFE9C46A),
+                          Color(0xFFF45F67),
+                          Color(0xFFF45F67),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
@@ -154,35 +153,23 @@ class _StoryBoxState extends State<StoryBox> {
     }
   }
 
-Future<bool> _checkSession(BuildContext context) async {
-  final userId = await LoginService().getUserId();
-  if (userId == null) {
-    // Show the ExpiredToken dialog when session is expired
-    handleSessionExpired(context); // Call the function from ExpiredToken.dart
-    return false; // Session expired
-  }
-  return true; // Session is valid
-}
   Future<void> _pickMedia() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.image, // Only allow image selection
+        type: FileType.image,
         allowMultiple: true,
       );
 
       if (result != null && result.files.isNotEmpty) {
         if (result.files.length > _maxMediaCount) {
-          
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('You can select a maximum of 10 media files.')),
+            const SnackBar(content: Text('You can select a maximum of 10 media files.')),
           );
         } else {
           _handlePickedFiles(result.paths.whereType<String>().toList());
         }
       }
     } catch (e) {
-      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to pick media: $e')),
       );
@@ -221,103 +208,96 @@ Future<bool> _checkSession(BuildContext context) async {
   }
 
   Future<void> _sendToStory(List<String> mediaPaths) async {
-  S3UploadService s3UploadService = S3UploadService();
-  StoryService storyService = StoryService();
+    S3UploadService s3UploadService = S3UploadService();
+    StoryService storyService = StoryService();
 
-  List<String> fileNames = mediaPaths.map((path) => path.split('/').last).toList();
+    List<String> fileNames = mediaPaths.map((path) => path.split('/').last).toList();
 
-  try {
-    int userId = await LoginService().getUserId() ?? 0;
+    try {
+      int userId = await LoginService().getUserId() ?? 0;
 
-    List<PresignedUrl> presignedUrls = await s3UploadService
-        .getPresignedUrls(fileNames, folderName: 'stories');
+      List<PresignedUrl> presignedUrls = await s3UploadService.getPresignedUrls(fileNames, folderName: 'stories');
 
-    List<MediaRequest> mediaItems = [];
-    for (int i = 0; i < presignedUrls.length; i++) {
-      String uploadedUrl = await s3UploadService.uploadFile(
-          presignedUrls[i], XFile(mediaPaths[i]));
+      List<MediaRequest> mediaItems = [];
+      for (int i = 0; i < presignedUrls.length; i++) {
+        String uploadedUrl = await s3UploadService.uploadFile(
+          presignedUrls[i], XFile(mediaPaths[i])
+        );
 
-      // Add media request without mime type since it's no longer needed
-      mediaItems.add(
-        MediaRequest(
-          mediaUrl: uploadedUrl,
-          mediaType: 'photo', // Assuming all media are photos
-        ),
-      );
+        mediaItems.add(
+          MediaRequest(
+            mediaUrl: uploadedUrl,
+            mediaType: 'photo',
+          ),
+        );
+      }
+
+      StoryRequest storyRequest = StoryRequest(userId: userId, media: mediaItems);
+      await storyService.createStory(storyRequest);
+
+      List<story_model.Story> updatedStories = await storyService.fetchStories(userId);
+      widget.onStoriesUpdated(updatedStories);
+
+      Navigator.pop(context);
+    } catch (e) {
+      if (e.toString().contains('Session expired')) {
+        Future.microtask(() => handleSessionExpired(context));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to create story: $e')),
+        );
+      }
     }
-
-    StoryRequest storyRequest =
-        StoryRequest(userId: userId, media: mediaItems);
-
-    await storyService.createStory(storyRequest);
-
-    List<story_model.Story> updatedStories =
-        await storyService.fetchStories(userId);
-    widget.onStoriesUpdated(updatedStories);
-
-    Navigator.pop(context); // After successful send, pop back
-  }catch (e) {
-  print('Error occurred: $e'); // For debugging
-  
-  if (e.toString().contains('Session expired')) {
-    // Wrap dialog call in Future.microtask to ensure it's called in the next event loop
-    Future.microtask(() => handleSessionExpired(context)); 
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Failed to create story: $e')),
-    );
   }
-}
-}
-
 
   bool _isValidMimeType(String mimeType) {
     return mimeType.startsWith('image/');
   }
 
-  @override
+@override
 Widget build(BuildContext context) {
   return GestureDetector(
     onTap: () {
-      _showOptionsDialog(context); // Show options directly without session check
+      _showOptionsDialog(context);
     },
     child: DecoratedBox(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
-            Color(0xFF4B3F72), // Deep burgundy color
-            Color(0xFFF4A261), // Warm orange color
+            Color(0xFFF45F67), // Main color gradient start
+            Color(0xFFF45F67), // Main color gradient end
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20.0),
+        border: Border.all(color: const Color(0xFFF45F67), width: 2), // Border color update
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15), // Updated shadow
+            color: Colors.black.withOpacity(0.15),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Container(
-        width: 110, 
-        height: 110, 
+        width: 110,
+        height: 110,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20.0), 
-          color: Colors.white, 
+          borderRadius: BorderRadius.circular(20.0),
+          color: Colors.white,
         ),
         child: Stack(
           alignment: Alignment.center,
           children: [
             Container(
-              width: 45, 
+              width: 45,
               height: 45,
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.1), 
+                color: const Color(0xFFF45F67), // Circle color for the + icon
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.add, color: Colors.white, size: 30), 
+              child: const Icon(Icons.add, color: Colors.white, size: 30),
             ),
           ],
         ),
@@ -374,7 +354,7 @@ class _MediaPreviewScreenState extends State<MediaPreviewScreen> {
   },
   child: Text(
     _isSending ? 'CREATING...' : 'CREATE',
-    style: const TextStyle(color: Colors.orange),
+    style: const TextStyle(color: Color(0xFFF45F67)),
   ),
 ),
         ],
