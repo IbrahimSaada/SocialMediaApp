@@ -44,4 +44,16 @@ class SearchUserModel {
       'am_following': amFollowing,
     };
   }
+  factory SearchUserModel.fromContentRequestJson(Map<String, dynamic> json) {
+  return SearchUserModel(
+    userId: json['follower_user_id'] ?? 0, // Specifically handle `follower_user_id`
+    fullName: json['fullname'] ?? '',
+    username: json['username'],  // Since `username` isn't in this response, you may skip or set a default value
+    profilePic: json['profile_pic'] ?? '',
+    bio: '',  // Skip or default as needed
+    phoneNumber: '',
+    isFollowing: false,
+    amFollowing: false,
+  );
+}
 }

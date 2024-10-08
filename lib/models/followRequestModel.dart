@@ -1,16 +1,20 @@
-// ignore_for_file: non_constant_identifier_names
+class FollowerStatusModel {
+  final int followedUserId; // The ID of the user being followed
+  final int followerUserId; // The ID of the user who is following
+  final String? approvalStatus; // Approval status: approved, pending, declined
 
-class FollowRequestModel {
-  final int followed_userId; // The ID of the user being followed
-  final int followerUserId; // The ID of the user who is following (current user)
-
-  FollowRequestModel({required this.followed_userId, required this.followerUserId});
+  FollowerStatusModel({
+    required this.followedUserId,
+    required this.followerUserId,
+    this.approvalStatus // Default status
+  });
 
   // Convert to JSON format
   Map<String, dynamic> toJson() {
     return {
-      'followed_user_id': followed_userId,
+      'followed_user_id': followedUserId,
       'follower_user_id': followerUserId,
+      'approval_status': approvalStatus,
     };
   }
 }
