@@ -5,7 +5,7 @@ import 'SignatureService.dart';  // Import the SignatureService class
 
 class LoginService {
   final String baseUrl =
-      '***REMOVED***/api'; // Base URL for API
+      'https://81a7-185-97-92-20.ngrok-free.app/api'; // Base URL for API
   final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
   final SignatureService _signatureService = SignatureService();  // Using SignatureService for HMAC
 

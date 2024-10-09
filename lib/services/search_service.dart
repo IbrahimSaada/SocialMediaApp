@@ -5,9 +5,9 @@ import 'LoginService.dart';  // To access JWT and refresh token
 import 'SignatureService.dart';  // For signature generation
 
 class SearchService {
-  static const String baseUrl = '***REMOVED***/api/UserConnections/search';
-  static const String followerRequestsUrl = '***REMOVED***/api/UserConnections/follower-requests';
-  static const String pendingRequestsUrl = '***REMOVED***/api/UserConnections/pending-follow-requests';
+  static const String baseUrl = 'https://81a7-185-97-92-20.ngrok-free.app/api/UserConnections/search';
+  static const String followerRequestsUrl = 'https://81a7-185-97-92-20.ngrok-free.app/api/UserConnections/follower-requests';
+  static const String pendingRequestsUrl = 'https://81a7-185-97-92-20.ngrok-free.app/api/UserConnections/pending-follow-requests';
   final LoginService _loginService = LoginService();
   final SignatureService _signatureService = SignatureService();
 
