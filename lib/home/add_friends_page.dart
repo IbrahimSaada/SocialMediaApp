@@ -381,81 +381,45 @@ class _AddFriendsPageState extends State<AddFriendsPage> with SingleTickerProvid
     }
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(80),
-        child: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 4,
-          shadowColor: Colors.grey.shade200,
-          leading: Padding(
-            padding: const EdgeInsets.only(top: 20, left: 10),
-            child: IconButton(
-              icon: Icon(Icons.arrow_back, color: Color(0xFFF45F67), size: 28),
-              onPressed: () {
-                Navigator.pop(context);
-              },
-            ),
-          ),
-          title: Padding(
-            padding: const EdgeInsets.only(top: 20),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Text(
-                  'Add Friends',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    shadows: [
-                      Shadow(
-                        offset: Offset(-3, -3),
-                        blurRadius: 0,
-                        color: Color(0xFFF45F67),
-                      ),
-                      Shadow(
-                        offset: Offset(0, 0),
-                        blurRadius: 2,
-                        color: Color(0xFFF45F67).withOpacity(0.8),
-                      ),
-                    ],
-                  ),
-                ),
-                Text(
-                  'Add Friends',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                    decoration: TextDecoration.none,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          centerTitle: true,
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(top: 20, right: 15),
-              child: Icon(Icons.local_dining, color: Color(0xFFF45F67), size: 28),
-            ),
-          ],
-          flexibleSpace: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFFF45F67), Colors.white],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          ),
+ appBar: PreferredSize(
+  preferredSize: Size.fromHeight(80),
+  child: AppBar(
+    backgroundColor: Color(0xFFF45F67), // Set primary color as the background
+    elevation: 4,
+    shadowColor: Colors.grey.shade200,
+    leading: Padding(
+      padding: const EdgeInsets.only(top: 20, left: 10),
+      child: IconButton(
+        icon: Icon(Icons.arrow_back, color: Colors.white, size: 28), // Icon color in white
+        onPressed: () {
+          Navigator.pop(context);
+        },
+      ),
+    ),
+    title: Padding(
+      padding: const EdgeInsets.only(top: 20),
+      child: Text(
+        'Add Friends',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.bold,
+          color: Colors.white, // Set the title text color to white
         ),
       ),
+    ),
+    centerTitle: true,
+    actions: [
+      Padding(
+        padding: const EdgeInsets.only(top: 20, right: 15),
+        child: Icon(Icons.local_dining, color: Colors.white, size: 28), // Icon color in white
+      ),
+    ],
+  ),
+),
       body: Column(
         children: [
           // Tab Bar
