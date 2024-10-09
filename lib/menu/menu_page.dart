@@ -45,13 +45,13 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
     }
   }
 
-  Future<void> _logout() async {
-    await _loginService.logout();
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const LoginPage()),
-    );
-  }
+Future<void> _logout() async {
+  await _loginService.logout();
+  Navigator.of(context).pushAndRemoveUntil(
+    MaterialPageRoute(builder: (context) => const LoginPage()),
+    (route) => false, // This removes all previous routes from the stack
+  );
+}
 
   void _handleCloseMenu() {
     if (_isMenuOpen) {
