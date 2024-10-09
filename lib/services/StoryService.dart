@@ -10,7 +10,7 @@ import '***REMOVED***/services/SignatureService.dart'; // Import SignatureServic
 class StoryService {
   // Define the base URLs for GET and POST requests
   final String getUrl =
-      'h***REMOVED***/api/Stories/user/';
+      '***REMOVED***/api/Stories/user/';
   final String postUrl =
       '***REMOVED***/api/Stories';
 
