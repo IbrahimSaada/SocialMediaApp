@@ -354,7 +354,7 @@ class _MediaPreviewScreenState extends State<MediaPreviewScreen> {
   },
   child: Text(
     _isSending ? 'CREATING...' : 'CREATE',
-    style: const TextStyle(color: Color(0xFFF45F67)),
+    style: const TextStyle(color: Color.fromARGB(255, 255, 255, 255)),
   ),
 ),
         ],
