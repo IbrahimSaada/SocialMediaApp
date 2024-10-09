@@ -407,10 +407,25 @@ Widget buildStoriesSection() {
         Expanded(
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: _stories.length + 1, // +1 for the create story box
+            itemCount: _stories.isNotEmpty ? _stories.length + 1 : 5, // Show 5 shimmer boxes if loading
             itemBuilder: (context, index) {
+              if (_isLoading) {
+                return Shimmer.fromColors(
+                  baseColor: Colors.grey[300]!,
+                  highlightColor: Colors.grey[100]!,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 8.0),
+                    width: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20.0),
+                    ),
+                  ),
+                );
+              }
+
               if (index == 0) {
-                return StoryBox(onStoriesUpdated: _addStories); // The StoryBox widget we edited
+                return StoryBox(onStoriesUpdated: _addStories);
               }
 
               final story = _stories[index - 1];
@@ -419,79 +434,47 @@ Widget buildStoriesSection() {
               }
 
               return GestureDetector(
-                onTap: () => _viewStoryFullscreen(index - 1), // Pass the index
-                child: Stack(
-                  children: [
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 8.0),
-                      width: 120,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20.0), // Rounded corners
-                        border: Border.all(color: Color(0xFFF45F67), width: 3), // Warm gold border
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1), // Soft shadow for depth
-                            spreadRadius: 3,
-                            blurRadius: 8,
-                            offset: const Offset(0, 4), // Position of shadow
-                          ),
-                        ],
+                onTap: () => _viewStoryFullscreen(index - 1),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 8.0),
+                  width: 120,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20.0),
+                    border: Border.all(color: Color(0xFFF45F67), width: 3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        spreadRadius: 3,
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
                       ),
-                      child: CachedNetworkImage(
-                        imageUrl: story.media[0].mediaUrl, // Display the first story image
-                        imageBuilder: (context, imageProvider) => Container(
-                          width: double.infinity,
-                          height: double.infinity,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20.0), // Match rounded corners
-                            image: DecorationImage(
-                              image: imageProvider,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                        placeholder: (context, url) => Shimmer.fromColors(
-                          baseColor: Colors.grey[300]!,
-                          highlightColor: Colors.grey[100]!,
-                          child: Container(
-                            width: double.infinity,
-                            height: double.infinity,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(20.0), // Match the rounded corners
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        errorWidget: (context, url, error) => const Icon(Icons.error),
-                      ),
+                    ],
+                    image: DecorationImage(
+                      image: CachedNetworkImageProvider(story.media[0].mediaUrl),
+                      fit: BoxFit.cover,
                     ),
-                    Positioned(
-                      bottom: 10.0,
-                      left: 10.0,
-                      right: 10.0,
-                      child: Column(
-                        children: [
-                          CircleAvatar(
-                            backgroundImage: CachedNetworkImageProvider(story.profilePicUrl),
-                            onBackgroundImageError: (_, __) {
-                              // Optionally handle the error, e.g., set a default image
-                            },
+                  ),
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircleAvatar(
+                          backgroundImage: CachedNetworkImageProvider(story.profilePicUrl),
+                        ),
+                        const SizedBox(height: 4.0),
+                        Text(
+                          story.fullName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold,
                           ),
-
-                          const SizedBox(height: 4.0),
-                          Text(
-                            story.fullName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14.0,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               );
             },
@@ -500,8 +483,8 @@ Widget buildStoriesSection() {
       ],
     ),
   );
-
 }
+
 
   Widget buildPostOrRepost(dynamic item) {
     if (item is Post) {
@@ -615,6 +598,7 @@ Widget buildPostInputSection() {
       ),
     ),
   );
+  
 }
 
 }
