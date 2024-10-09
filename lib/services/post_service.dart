@@ -9,7 +9,7 @@ import 'SignatureService.dart';
 import '../models/bookmarkrequest_model.dart';
 
 class PostService {
-  static const String apiUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Posts';
+  static const String apiUrl = 'https://81a7-185-97-92-20.ngrok-free.app/api/Posts';
   static final LoginService _loginService = LoginService();  // Static service
   static final SignatureService _signatureService = SignatureService();  // Static service
 
