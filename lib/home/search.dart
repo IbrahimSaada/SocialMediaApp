@@ -272,71 +272,43 @@ class _SearchState extends State<Search> {
 appBar: PreferredSize(
   preferredSize: Size.fromHeight(80),
   child: AppBar(
-    backgroundColor: Colors.white,
+    backgroundColor: Color(0xFFF45F67), // Set primary color as background
     elevation: 4,
     shadowColor: Colors.grey.shade200,
-    leading: Padding(
-      padding: const EdgeInsets.only(left: 10, top: 20), // Lower the arrow further
-      child: IconButton(
-        icon: Icon(Icons.arrow_back, color: Color(0xFFF45F67), size: 28),
-        onPressed: () {
-          Navigator.pop(context);
-        },
-      ),
-    ),
     title: Padding(
-      padding: const EdgeInsets.only(top: 20), // Lower the title text further
-      child: Stack(
-        alignment: Alignment.center,
+      padding: const EdgeInsets.only(top: 20), // Lower all elements within the AppBar
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Drop shadow effect for the cooking theme
+          // Back arrow icon
+          IconButton(
+            icon: Icon(Icons.arrow_back, color: Colors.white, size: 28),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+          // Spacer to create equal distance between the icons and title
+          Spacer(),
+          // Centered "SEARCH" title
           Text(
             'SEARCH',
             style: TextStyle(
-              fontSize: 32,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Colors.white, // Base color for the "drop" layer
-              shadows: [
-                Shadow(
-                  offset: Offset(-3, -3),
-                  blurRadius: 0,
-                  color: Color(0xFFF45F67),
-                ),
-                Shadow(
-                  offset: Offset(0, 0),
-                  blurRadius: 2,
-                  color: Color(0xFFF45F67).withOpacity(0.8), // Main drop painting effect
-                ),
-              ],
+              color: Colors.white,
             ),
           ),
-          // Main visible text on top of the "drop"
-          Text(
-            'SEARCH',
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-              decoration: TextDecoration.none,
-            ),
+          // Spacer to balance space around the title
+          Spacer(),
+          // Cooking icon
+          IconButton(
+            icon: Icon(Icons.local_dining, color: Colors.white, size: 28),
+            onPressed: () {
+              // Define the action for the cooking icon here
+            },
           ),
         ],
-      ),
-    ),
-    centerTitle: true,
-    actions: [
-      Padding(
-        padding: const EdgeInsets.only(right: 15, top: 20), // Lower the icon further
-        child: Icon(Icons.local_dining, color: Color(0xFFF45F67), size: 28),
-      ),
-    ],
-    flexibleSpace: Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFF45F67), Colors.white],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
       ),
     ),
   ),
