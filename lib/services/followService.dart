@@ -4,7 +4,7 @@ import 'LoginService.dart';  // To access JWT and refresh token
 import 'SignatureService.dart';  // For signature generation
 import 'package:cook/models/followRequestModel.dart';
 class FollowService {
-  static const String baseUrl = 'https://81a7-185-97-92-20.ngrok-free.app/api/UserConnections';
+  static const String baseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/UserConnections';
 
   final LoginService _loginService = LoginService();
   final SignatureService _signatureService = SignatureService();

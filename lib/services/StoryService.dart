@@ -10,7 +10,7 @@ import 'package:cook/services/SignatureService.dart'; // Import SignatureService
 class StoryService {
   // Define the base URLs for GET and POST requests
   final String getUrl =
-      'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Stories/user/';
+      'hhttp://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Stories/user/';
   final String postUrl =
       'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Stories';
 
