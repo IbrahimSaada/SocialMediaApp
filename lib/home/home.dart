@@ -53,6 +53,8 @@ class _HomePageState extends State<HomePage> {
   final List<story_model.Story> _userGeneratedStories =
       []; // Use Storys for user-generated stories
   int? _userId; // Store the user ID
+  bool _isLoading = false;
+
 
 
   @override
@@ -62,18 +64,27 @@ class _HomePageState extends State<HomePage> {
     _fetchUserIdAndStories();
   }
 
-  Future<void> _fetchUserIdAndStories() async {
+ Future<void> _fetchUserIdAndStories() async {
+  setState(() {
+    _isLoading = true;
+  });
+  
+  try {
     final userId = await LoginService().getUserId();
-
     if (userId != null) {
       _userId = userId;
       await _fetchStories();
     } else {
-      // ignore: avoid_print
       print('User ID not found');
     }
+  } catch (e) {
+    print('Failed to fetch user ID or stories: $e');
+  } finally {
+    setState(() {
+      _isLoading = false;
+    });
   }
-
+}
 // request viewstroy
   Future<void> _recordStoryView(int storyId) async {
     if (_userId != null) {
@@ -127,22 +138,27 @@ class _HomePageState extends State<HomePage> {
   }
 
 Future<void> _initializeApp() async {
+  setState(() {
+    _isLoading = true;
+  });
+  
   try {
     bool isLoggedIn = await LoginService().isLoggedIn();
     if (isLoggedIn) {
-      await _fetchPostsAndReposts(); // Fetch both posts and reposts
+      await _fetchPostsAndReposts();
     } else {
       // ignore: use_build_context_synchronously
-      handleSessionExpired(context);  // Using global handler
+      handleSessionExpired(context);
     }
   } catch (e) {
-    // ignore: avoid_print
     print('Initialization failed: $e');
+  } finally {
+    setState(() {
+      _isLoading = false;
+    });
   }
 }
 
-
-  
 
  Future<void> _fetchPostsAndReposts() async {
   try {
@@ -176,10 +192,19 @@ Future<void> _initializeApp() async {
 }
 
 
-  Future<void> _refreshPosts() async {
-    await _fetchPostsAndReposts();
-    await _fetchStories();
-  }
+Future<void> _refreshPosts() async {
+  setState(() {
+    _isLoading = true;
+  });
+
+  await _fetchPostsAndReposts();
+  await _fetchStories();
+
+  setState(() {
+    _isLoading = false;
+  });
+}
+
 
   // When a story is tapped, record the view and then show the story
   void _viewStoryFullscreen(int initialIndex) {
@@ -488,12 +513,10 @@ Widget buildStoriesSection() {
     }
   }
 
- @override
+@override
 Widget build(BuildContext context) {
-  // Combine posts and reposts
   final combinedPostsAndReposts = List.from(_posts)..addAll(_reposts);
 
-  // Sort combined posts and reposts by time
   combinedPostsAndReposts.sort((a, b) {
     final aTime = a is Post ? a.localCreatedAt : a.sharedAt;
     final bTime = b is Post ? b.localCreatedAt : b.sharedAt;
@@ -501,39 +524,38 @@ Widget build(BuildContext context) {
   });
 
   return Scaffold(
-  appBar: buildTopAppBar(context),
-  body: RefreshIndicator(
-    onRefresh: () async {},
-    child: SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Stories section
-          buildStoriesSection(),
-          buildDivider(),
-
-          // Post input section
-          buildPostInputSection(),
-          buildDivider(),
-
-          // Post and Repost list
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(), // Disable scrolling within the ListView
-            itemCount: combinedPostsAndReposts.isEmpty ? 0 : combinedPostsAndReposts.length,
-            itemBuilder: (context, index) {
-              return buildPostOrRepost(combinedPostsAndReposts[index]);
-            },
-          ),
-        ],
+    appBar: buildTopAppBar(context),
+    body: RefreshIndicator(
+      onRefresh: _refreshPosts, // This will trigger the refresh only at the top
+      color: Color(0xFFF45F67), // Primary color of the refresh indicator
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(), // Ensures pull-to-refresh is available
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            buildStoriesSection(),
+            buildDivider(),
+            buildPostInputSection(),
+            buildDivider(),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: combinedPostsAndReposts.isEmpty ? 0 : combinedPostsAndReposts.length,
+              itemBuilder: (context, index) {
+                return buildPostOrRepost(combinedPostsAndReposts[index]);
+              },
+            ),
+          ],
+        ),
       ),
     ),
-  ),
- bottomNavigationBar: buildBottomNavigationBar(),
-    floatingActionButton: buildSearchIcon(), // Embed search icon in the bar
+    bottomNavigationBar: buildBottomNavigationBar(),
+    floatingActionButton: buildSearchIcon(),
     floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-);
+  );
 }
+
+
 
 Widget buildPostInputSection() {
   return Padding(
@@ -1195,4 +1217,3 @@ class RepostCard extends StatelessWidget {
     );
   }
 }
-
