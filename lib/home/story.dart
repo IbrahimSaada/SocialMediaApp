@@ -40,7 +40,7 @@ class _StoryBoxState extends State<StoryBox> {
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15.0),
+            borderRadius: BorderRadius.circular(25.0),
           ),
           child: Container(
             padding: const EdgeInsets.all(20.0),
@@ -56,7 +56,7 @@ class _StoryBoxState extends State<StoryBox> {
                     width: double.infinity,
                     height: 60,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(15.0),
+                      borderRadius: BorderRadius.circular(25.0),
                       border: Border.all(color: const Color(0xFFF45F67), width: 2),
                       gradient: const LinearGradient(
                         colors: [
@@ -99,7 +99,7 @@ class _StoryBoxState extends State<StoryBox> {
                     width: double.infinity,
                     height: 60,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(15.0),
+                      borderRadius: BorderRadius.circular(25.0),
                       border: Border.all(color: const Color(0xFFF45F67), width: 2),
                       gradient: const LinearGradient(
                         colors: [
@@ -270,7 +270,7 @@ Widget build(BuildContext context) {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20.0),
+        borderRadius: BorderRadius.circular(25.0),
         border: Border.all(color: const Color(0xFFF45F67), width: 2), // Border color update
         boxShadow: [
           BoxShadow(
@@ -284,7 +284,7 @@ Widget build(BuildContext context) {
         width: 110,
         height: 110,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20.0),
+          borderRadius: BorderRadius.circular(25.0),
           color: Colors.white,
         ),
         child: Stack(
