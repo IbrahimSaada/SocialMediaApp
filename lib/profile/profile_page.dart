@@ -10,7 +10,11 @@ import '***REMOVED***/models/post_model.dart';
 import '***REMOVED***/profile/profilepostdetails.dart';
 import '***REMOVED***/profile/editprofilepage.dart';
 import '***REMOVED***/settings/settings_page.dart';
-
+import '***REMOVED***/profile/post_grid.dart';         // Import the new PostGrid class
+import '***REMOVED***/profile/bookmarked_grid.dart';   // Import the new BookmarkedGrid class
+import '***REMOVED***/models/sharedpost_model.dart';
+import 'shared_posts_grid.dart';
+import 'shared_post_details_page.dart';
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -19,7 +23,11 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   bool isPostsSelected = true;
+  bool isSharedPostsSelected = false;
   bool isLoading = false;
+  bool isPaginatingSharedPosts = false; // New state variable
+  int currentSharedPostsPageNumber = 1; // New state variable
+  List<SharedPostDetails> sharedPosts = []; // New state variable
   bool isPaginating = false;
   bool isPaginatingBookmarks = false;
   int currentBookmarkedPageNumber = 1;
@@ -55,37 +63,75 @@ class _ProfilePageState extends State<ProfilePage> {
     _scrollController.dispose();
     super.dispose();
   }
+void _openSharedPostDetails(int index) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => SharedPostDetailsPage(
+        sharedPosts: sharedPosts, // The list of shared posts
+        initialIndex: index,      // The index of the selected shared post
+      ),
+    ),
+  );
+}
 
   Future<void> _loadUserProfile() async {
+  setState(() {
+    isLoading = true;
+  });
+
+  final isLoggedIn = await _loginService.isLoggedIn();
+  if (isLoggedIn) {
+    final userId = await _loginService.getUserId();
+    if (userId != null) {
+      userProfile = await _userProfileService.fetchUserProfile(userId);
+      if (userProfile != null) {
+        setState(() {
+          this.userId = userId;
+          username = userProfile!.fullName;
+          bio = userProfile!.bio;
+          rating = userProfile!.rating;
+          postNb = userProfile!.postNb;
+          followersNb = userProfile!.followersNb;
+          followingNb = userProfile!.followingNb;
+        });
+      }
+      await _fetchUserPosts();
+      await _fetchBookmarkedPosts();
+      await _fetchSharedPosts(); // Fetch shared posts
+    }
+  }
+
+  setState(() {
+    isLoading = false;
+  });
+}
+  
+Future<void> _fetchSharedPosts() async {
+  if (isPaginatingSharedPosts || userId == null) return;
+
+  try {
     setState(() {
-      isLoading = true;
+      isPaginatingSharedPosts = true;
     });
 
-    final isLoggedIn = await _loginService.isLoggedIn();
-    if (isLoggedIn) {
-      final userId = await _loginService.getUserId();
-      if (userId != null) {
-        userProfile = await _userProfileService.fetchUserProfile(userId);
-        if (userProfile != null) {
-          setState(() {
-            this.userId = userId;
-            username = userProfile!.fullName;
-            bio = userProfile!.bio;
-            rating = userProfile!.rating;
-            postNb = userProfile!.postNb;
-            followersNb = userProfile!.followersNb;
-            followingNb = userProfile!.followingNb;
-          });
-        }
-        await _fetchUserPosts();
-        await _fetchBookmarkedPosts();
-      }
-    }
+    int currentUserId = userId!;
+    int viewerUserId = userId!; // Adjust if necessary
 
+    List<SharedPostDetails> newSharedPosts = await _userpostService.fetchSharedPosts(
+        currentUserId, viewerUserId, currentSharedPostsPageNumber, pageSize);
     setState(() {
-      isLoading = false;
+      sharedPosts.addAll(newSharedPosts);
+      currentSharedPostsPageNumber++;
+      isPaginatingSharedPosts = false;
+    });
+  } catch (e) {
+    print("Error fetching shared posts: $e");
+    setState(() {
+      isPaginatingSharedPosts = false;
     });
   }
+}
 
   Future<void> _fetchUserPosts() async {
     try {
@@ -231,12 +277,51 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  void _openFullPost(int index) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfilePostDetails(
+          userPosts: userPosts,
+          bookmarkedPosts: bookmarkedPosts,
+          initialIndex: index,
+          userId: userId!,
+          isPostsSelected: isPostsSelected,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerEffect() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Container(
+        color: Colors.grey[300],
+      ),
+    );
+  }
+
+  Widget _buildShimmerGrid() {
+    return GridView.builder(
+      itemCount: 9,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemBuilder: (context, index) {
+        return _buildShimmerEffect();
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     double screenHeight = MediaQuery.of(context).size.height;
     double screenWidth = MediaQuery.of(context).size.width;
 
-      return Scaffold(
+    return Scaffold(
       backgroundColor: Colors.white,
       body: RefreshIndicator(
         onRefresh: _refreshUserProfile,
@@ -253,7 +338,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
             ),
-
             Positioned(
               top: screenHeight * 0.18,
               left: 0,
@@ -280,19 +364,18 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
             Positioned(
-                top: 50,
-                right: 10,
-                child: IconButton(
-                  icon: Icon(Icons.settings, color: Colors.white),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => SettingsPage()),
-                    );
-                  },
-                ),
+              top: 50,
+              right: 10,
+              child: IconButton(
+                icon: Icon(Icons.settings, color: Colors.white),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => SettingsPage()),
+                  );
+                },
               ),
-
+            ),
             Padding(
               padding: EdgeInsets.only(top: screenHeight * 0.09),
               child: Column(
@@ -336,7 +419,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       Container(
                         padding: EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color:  Color(0xFFF45F67).withOpacity(0.1),
+                          color: Color(0xFFF45F67).withOpacity(0.1),
                           shape: BoxShape.circle,
                         ),
                         child: Text(
@@ -377,63 +460,75 @@ class _ProfilePageState extends State<ProfilePage> {
                         onTap: () {
                           setState(() {
                             isPostsSelected = true;
+                            isSharedPostsSelected = false;
                           });
                         },
                         child: Icon(Icons.grid_on,
                             color: isPostsSelected ? Color(0xFFF45F67) : Colors.grey,
                             size: screenWidth * 0.07),
                       ),
-                      SizedBox(width: screenWidth * 0.2),
+                      SizedBox(width: screenWidth * 0.15),
                       GestureDetector(
                         onTap: () {
                           setState(() {
                             isPostsSelected = false;
+                            isSharedPostsSelected = false;
                           });
                         },
                         child: Icon(Icons.bookmark,
-                           color: isPostsSelected ? Color(0xFFF45F67) : Colors.grey,
+                            color: (!isPostsSelected && !isSharedPostsSelected) ? Color(0xFFF45F67) : Colors.grey,
                             size: screenWidth * 0.07),
+                      ),
+                      SizedBox(width: screenWidth * 0.15),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            isSharedPostsSelected = true;
+                            isPostsSelected = false;
+                          });
+                        },
+                        child: Icon(
+                          Icons.near_me,
+                          color: isSharedPostsSelected ? Color(0xFFF45F67) : Colors.grey,
+                          size: screenWidth * 0.07,
+                        ),
                       ),
                     ],
                   ),
                   SizedBox(height: 16),
-                  Expanded(
-                    child: isLoading
-                        ? _buildShimmerGrid()
-                        : isPostsSelected
-                            ? _buildPosts(screenWidth)
-                            : _buildSavedPosts(screenWidth),
-                  ),
+                    Expanded(
+                      child: isLoading
+                          ? _buildShimmerGrid()
+                          : isPostsSelected
+                              ? PostGrid(
+                                  userPosts: userPosts,
+                                  isPaginating: isPaginating,
+                                  scrollController: _scrollController,
+                                  screenWidth: screenWidth,
+                                  openFullPost: _openFullPost,
+                                )
+                              : isSharedPostsSelected
+                                  ? SharedPostsGrid(
+                                      sharedPosts: sharedPosts,
+                                      isPaginatingSharedPosts: isPaginatingSharedPosts,
+                                      scrollController: _scrollController,
+                                      screenWidth: screenWidth,
+                                      openSharedPost: _openSharedPostDetails,
+                                    )
+                                  : BookmarkedGrid(
+                                      bookmarkedPosts: bookmarkedPosts,
+                                      isPaginatingBookmarks: isPaginatingBookmarks,
+                                      scrollController: _scrollController,
+                                      screenWidth: screenWidth,
+                                      openFullPost: _openFullPost,
+                                    ),
+                    ),
                 ],
               ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildShimmerEffect() {
-    return Shimmer.fromColors(
-      baseColor: Colors.grey[300]!,
-      highlightColor: Colors.grey[100]!,
-      child: Container(
-        color: Colors.grey[300],
-      ),
-    );
-  }
-
-  Widget _buildShimmerGrid() {
-    return GridView.builder(
-      itemCount: 9,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
-      ),
-      itemBuilder: (context, index) {
-        return _buildShimmerEffect();
-      },
     );
   }
 
@@ -457,143 +552,6 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildPosts(double screenWidth) {
-    return GridView.builder(
-      controller: _scrollController,
-      padding: EdgeInsets.all(10.0),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: screenWidth * 0.02,
-        mainAxisSpacing: screenWidth * 0.02,
-      ),
-      itemCount: userPosts.length + (isPaginating ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == userPosts.length) {
-          return Center(child: CircularProgressIndicator(color: Color(0xFFF45F67),)); // Orange loading indicator
-        }
-        final post = userPosts[index];
-        return GestureDetector(
-          onTap: () {
-            _openFullPost(index);
-          },
-          child: _buildPostThumbnail(post, screenWidth),
-        );
-      },
-    );
-  }
-
-  Widget _buildSavedPosts(double screenWidth) {
-    if (bookmarkedPosts.isEmpty && !isPaginatingBookmarks) {
-      return Center(
-        child: Text(
-          'No bookmarked posts yet',
-          style: TextStyle(fontSize: screenWidth * 0.05, color: Colors.grey),
-        ),
-      );
-    }
-
-    return GridView.builder(
-      controller: _scrollController,
-      padding: EdgeInsets.all(10.0),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: screenWidth * 0.02,
-        mainAxisSpacing: screenWidth * 0.02,
-      ),
-      itemCount: bookmarkedPosts.length + (isPaginatingBookmarks ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == bookmarkedPosts.length) {
-          return Center(child: CircularProgressIndicator(color: Color(0xFFF45F67),)); // Orange loading indicator
-        }
-        final post = bookmarkedPosts[index];
-        return GestureDetector(
-          onTap: () {
-            _openFullPost(index);
-          },
-          child: _buildPostThumbnail(post, screenWidth),
-        );
-      },
-    );
-  }
-
-  Widget _buildPostThumbnail(Post post, double screenWidth) {
-    if (post.media.isNotEmpty) {
-      final firstMedia = post.media[0];
-
-      if (firstMedia.mediaType == 'video') {
-        return Stack(
-          children: [
-            CachedNetworkImage(
-              imageUrl: firstMedia.thumbnailurl ?? firstMedia.mediaUrl,  // Ensure this URL is valid
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-              placeholder: (context, url) => _buildShimmerEffect(), // Placeholder while loading
-              errorWidget: (context, url, error) => _buildErrorPlaceholder(),  // Error widget
-            ),
-            Positioned(
-              bottom: screenWidth * 0.02,
-              right: screenWidth * 0.02,
-              child: Icon(
-                Icons.play_circle_filled,
-                color: Colors.white,
-                size: screenWidth * 0.07,
-              ),
-            ),
-          ],
-        );
-      } else {
-        // If it's an image, display it
-        return CachedNetworkImage(
-          imageUrl: firstMedia.thumbnailurl ?? firstMedia.mediaUrl,
-          fit: BoxFit.cover,
-          errorWidget: (context, url, error) => _buildErrorPlaceholder(),
-          placeholder: (context, url) => _buildShimmerEffect(),
-        );
-      }
-    } else {
-      // Handle caption-only posts
-      return Container(
-        color: Color(0xFFF45F67),
-        child: Center(
-          child: Icon(
-            Icons.format_quote,
-            color: Colors.white,
-            size: screenWidth * 0.1,
-          ),
-        ),
-      );
-    }
-  }
-
-  Widget _buildErrorPlaceholder() {
-    return Container(
-      color: Colors.grey[300],
-      child: Center(
-        child: Icon(
-          Icons.error,
-          color: Colors.red,
-          size: 24,
-        ),
-      ),
-    );
-  }
-
-  void _openFullPost(int index) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProfilePostDetails(
-          userPosts: userPosts,  // Already passed
-          bookmarkedPosts: bookmarkedPosts, // Pass this as well
-          initialIndex: index,  // Already passed
-          userId: userId!,  // Already passed
-          isPostsSelected: isPostsSelected,  // Add this parameter
-        ),
-      ),
     );
   }
 }
