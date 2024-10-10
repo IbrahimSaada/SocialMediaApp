@@ -1,3 +1,5 @@
+// otheruserprofilepage.dart
+
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
@@ -8,6 +10,11 @@ import 'package:cook/models/post_model.dart';
 import 'package:cook/services/FollowService.dart';
 import 'package:cook/models/FollowStatusResponse.dart';
 import 'package:cook/profile/profilepostdetails.dart';
+import 'package:cook/models/sharedpost_model.dart';
+import 'package:cook/services/LoginService.dart';
+import 'package:cook/profile/post_grid.dart';
+import 'package:cook/profile/shared_posts_grid.dart';
+import 'package:cook/profile/shared_post_details_page.dart';
 
 class OtherUserProfilePage extends StatefulWidget {
   final int otherUserId;
@@ -20,10 +27,11 @@ class OtherUserProfilePage extends StatefulWidget {
 
 class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   bool isPostsSelected = true;
+  bool isSharedPostsSelected = false;
   bool isLoading = false;
   bool isPaginating = false;
-  bool isPaginatingBookmarks = false;
-  int currentBookmarkedPageNumber = 1;
+  bool isPaginatingSharedPosts = false;
+  int currentSharedPageNumber = 1;
   String username = '';
   String bio = '';
   double rating = 0.0;
@@ -32,16 +40,19 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   int followingNb = 0;
   UserProfile? userProfile;
   List<Post> userPosts = [];
-  List<Post> bookmarkedPosts = [];
+  List<SharedPostDetails> sharedPosts = [];
   int currentPageNumber = 1;
   int pageSize = 10;
   final ScrollController _scrollController = ScrollController();
   final UserProfileService _userProfileService = UserProfileService();
   final UserpostService _userpostService = UserpostService();
   final FollowService _followService = FollowService();
+  final LoginService _loginService = LoginService();
 
   bool isFollowing = false;
   bool amFollowing = false;
+
+  int? currentUserId; // To store the ID of the currently logged-in user
 
   @override
   void initState() {
@@ -61,6 +72,9 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
       isLoading = true;
     });
 
+    // Get the current user's ID
+    currentUserId = await _loginService.getUserId();
+
     userProfile = await _userProfileService.fetchUserProfile(widget.otherUserId);
     if (userProfile != null) {
       setState(() {
@@ -72,7 +86,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
         followingNb = userProfile!.followingNb;
       });
       await _fetchUserPosts();
-      await _fetchBookmarkedPosts();
+      await _fetchSharedPosts();
 
       final followStatus = await _checkFollowStatus();
       if (followStatus != null) {
@@ -89,12 +103,14 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   }
 
   Future<void> _fetchUserPosts() async {
+    if (isPaginating) return;
+
     try {
       setState(() {
         isPaginating = true;
       });
-      List<Post> newPosts =
-          await _userpostService.fetchUserPosts(widget.otherUserId, currentPageNumber, pageSize);
+      List<Post> newPosts = await _userpostService.fetchUserPosts(
+          widget.otherUserId, currentPageNumber, pageSize);
       setState(() {
         userPosts.addAll(newPosts);
         currentPageNumber++;
@@ -108,24 +124,31 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     }
   }
 
-  Future<void> _fetchBookmarkedPosts() async {
-    if (isPaginatingBookmarks) return;
+  Future<void> _fetchSharedPosts() async {
+    if (isPaginatingSharedPosts || currentUserId == null) return;
 
     try {
       setState(() {
-        isPaginatingBookmarks = true;
+        isPaginatingSharedPosts = true;
       });
-      List<Post> newBookmarks = await _userpostService.fetchBookmarkedPosts(
-          widget.otherUserId, currentBookmarkedPageNumber, pageSize);
+
+      // Use the existing UserpostService to fetch shared posts
+      List<SharedPostDetails> newSharedPosts = await _userpostService.fetchSharedPosts(
+        widget.otherUserId,  // The user whose profile we're viewing
+        currentUserId!,      // The logged-in user
+        currentSharedPageNumber,
+        pageSize,
+      );
+
       setState(() {
-        bookmarkedPosts.addAll(newBookmarks);
-        currentBookmarkedPageNumber++;
-        isPaginatingBookmarks = false;
+        sharedPosts.addAll(newSharedPosts);
+        currentSharedPageNumber++;
+        isPaginatingSharedPosts = false;
       });
     } catch (e) {
-      print("Error fetching bookmarks: $e");
+      print("Error fetching shared posts: $e");
       setState(() {
-        isPaginatingBookmarks = false;
+        isPaginatingSharedPosts = false;
       });
     }
   }
@@ -134,32 +157,55 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
       if (isPostsSelected && !isPaginating) {
         _fetchUserPosts();
-      } else if (!isPostsSelected && !isPaginatingBookmarks) {
-        _fetchBookmarkedPosts();
+      } else if (isSharedPostsSelected && !isPaginatingSharedPosts) {
+        _fetchSharedPosts();
       }
     }
   }
 
   Future<FollowStatusResponse?> _checkFollowStatus() async {
-    int currentUserId = 1; // Replace with actual current user ID
-    return await _userProfileService.checkFollowStatus(widget.otherUserId, currentUserId);
+    currentUserId ??= await _loginService.getUserId(); // Ensure currentUserId is set
+    if (currentUserId == null) {
+      return null;
+    }
+    return await _userProfileService.checkFollowStatus(widget.otherUserId, currentUserId!);
   }
 
   void _toggleFollow() async {
+    currentUserId ??= await _loginService.getUserId();
+    if (currentUserId == null) {
+      // Handle user not logged in
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("You need to be logged in to follow users."),
+          backgroundColor: Color(0xFFF45F67),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       isFollowing = !isFollowing;
     });
 
     if (isFollowing) {
-      await _followService.followUser(1, widget.otherUserId);
+      await _followService.followUser(currentUserId!, widget.otherUserId);
     } else {
-      await _followService.unfollowUser(1, widget.otherUserId);
+      await _followService.unfollowUser(currentUserId!, widget.otherUserId);
     }
   }
 
   // Adding refresh functionality
   Future<void> _refreshUserProfile() async {
-    await _loadUserProfile(); // Reload the profile on refresh
+    // Reset the user profile data
+    setState(() {
+      userPosts.clear();
+      sharedPosts.clear();
+      currentPageNumber = 1;
+      currentSharedPageNumber = 1;
+    });
+
+    await _loadUserProfile(); // Reload profile data
   }
 
   void _showReportOptions() {
@@ -227,6 +273,57 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     );
   }
 
+  void _openFullPost(int index) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfilePostDetails(
+          userPosts: userPosts,
+          bookmarkedPosts: [], // No bookmarks
+          initialIndex: index,
+          userId: widget.otherUserId,
+          isPostsSelected: true,
+        ),
+      ),
+    );
+  }
+
+  void _openSharedPostDetails(int index) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SharedPostDetailsPage(
+          sharedPosts: sharedPosts,
+          initialIndex: index,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerEffect() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Container(
+        color: Colors.grey[300],
+      ),
+    );
+  }
+
+  Widget _buildShimmerGrid() {
+    return GridView.builder(
+      itemCount: 9,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemBuilder: (context, index) {
+        return _buildShimmerEffect();
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     double screenHeight = MediaQuery.of(context).size.height;
@@ -236,20 +333,19 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
       backgroundColor: Colors.white,
       body: RefreshIndicator(
         onRefresh: _refreshUserProfile, // Pull-to-refresh functionality
-        color: Color(0xFFF45F67), //  loading indicator
+        color: Color(0xFFF45F67), // loading indicator
         child: Stack(
           children: [
             Container(
               height: screenHeight * 0.28,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFFF45F67), Color(0xFFF45F67).withOpacity(0.8)], // Using primary color
+                  colors: [Color(0xFFF45F67), Color(0xFFF45F67).withOpacity(0.8)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
               ),
             ),
-
             Positioned(
               top: screenHeight * 0.18,
               left: 0,
@@ -281,10 +377,10 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
               right: 10,
               child: PopupMenuButton<String>(
                 icon: Icon(Icons.more_vert, color: Colors.white),
-                color: Colors.white, // Orange and white theme
+                color: Colors.white,
                 onSelected: (value) {
                   if (value == "report") {
-                    _showReportOptions(); // Show the report user options
+                    _showReportOptions();
                   }
                 },
                 itemBuilder: (BuildContext context) {
@@ -378,6 +474,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                     color: Color(0xFFF45F67),
                     thickness: 2,
                   ),
+                  // Grid Toggle Buttons
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -385,6 +482,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                         onTap: () {
                           setState(() {
                             isPostsSelected = true;
+                            isSharedPostsSelected = false;
                           });
                         },
                         child: Icon(Icons.grid_on,
@@ -396,10 +494,11 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                         onTap: () {
                           setState(() {
                             isPostsSelected = false;
+                            isSharedPostsSelected = true;
                           });
                         },
-                        child: Icon(Icons.bookmark,
-                            color: !isPostsSelected ? Color(0xFFF45F67) : Colors.grey,
+                        child: Icon(Icons.near_me,
+                            color: isSharedPostsSelected ? Color(0xFFF45F67) : Colors.grey,
                             size: screenWidth * 0.07),
                       ),
                     ],
@@ -409,8 +508,20 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                     child: isLoading
                         ? _buildShimmerGrid()
                         : isPostsSelected
-                            ? _buildPosts(screenWidth)
-                            : _buildSavedPosts(screenWidth),
+                            ? PostGrid(
+                                userPosts: userPosts,
+                                isPaginating: isPaginating,
+                                scrollController: _scrollController,
+                                screenWidth: screenWidth,
+                                openFullPost: _openFullPost,
+                              )
+                            : SharedPostsGrid(
+                                sharedPosts: sharedPosts,
+                                isPaginatingSharedPosts: isPaginatingSharedPosts,
+                                scrollController: _scrollController,
+                                screenWidth: screenWidth,
+                                openSharedPost: _openSharedPostDetails,
+                              ),
                   ),
                 ],
               ),
@@ -421,76 +532,74 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     );
   }
 
-Widget _buildFollowAndMessageButtons(double screenWidth) {
-  String followButtonText = "FOLLOW";
-  Color followButtonColor = Color(0xFFF45F67);
+  Widget _buildFollowAndMessageButtons(double screenWidth) {
+    String followButtonText = "FOLLOW";
+    Color followButtonColor = Color(0xFFF45F67);
 
-  if (amFollowing && !isFollowing) {
-    followButtonText = "FOLLOW BACK";
-    followButtonColor = Color(0xFFF45F67);
-  } else if (isFollowing && !amFollowing) {
-    followButtonText = "FOLLOWING";
-    followButtonColor = Colors.grey.shade400;
-  } else if (!amFollowing && !isFollowing) {
-    followButtonText = "FOLLOW";
-    followButtonColor = Color(0xFFF45F67);
-  } else if (amFollowing && isFollowing) {
-    followButtonText = "FOLLOWING";
-    followButtonColor = Colors.grey.shade300;
+    if (amFollowing && !isFollowing) {
+      followButtonText = "FOLLOW BACK";
+      followButtonColor = Color(0xFFF45F67);
+    } else if (isFollowing && !amFollowing) {
+      followButtonText = "FOLLOWING";
+      followButtonColor = Colors.grey.shade400;
+    } else if (!amFollowing && !isFollowing) {
+      followButtonText = "FOLLOW";
+      followButtonColor = Color(0xFFF45F67);
+    } else if (amFollowing && isFollowing) {
+      followButtonText = "FOLLOWING";
+      followButtonColor = Colors.grey.shade300;
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        ElevatedButton(
+          onPressed: _toggleFollow,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: followButtonColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+            padding: EdgeInsets.symmetric(
+              horizontal: screenWidth * 0.07,
+              vertical: screenWidth * 0.025,
+            ),
+            elevation: 8,
+          ),
+          child: Text(
+            followButtonText,
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: screenWidth * 0.038,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        SizedBox(width: screenWidth * 0.05),
+        OutlinedButton(
+          onPressed: () {},
+          style: OutlinedButton.styleFrom(
+            side: BorderSide(color: Color(0xFFF45F67), width: 1.5),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+            padding: EdgeInsets.symmetric(
+              horizontal: screenWidth * 0.07,
+              vertical: screenWidth * 0.025,
+            ),
+          ),
+          child: Text(
+            "MESSAGE",
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: screenWidth * 0.038,
+              color: Color(0xFFF45F67),
+            ),
+          ),
+        ),
+      ],
+    );
   }
-
-  return Row(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-      ElevatedButton(
-        onPressed: _toggleFollow,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: followButtonColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30), // Softer border radius
-          ),
-          padding: EdgeInsets.symmetric(
-            horizontal: screenWidth * 0.07,
-            vertical: screenWidth * 0.025,
-          ),
-          elevation: 8, // Deeper shadow for elegance
-        ),
-        child: Text(
-          followButtonText,
-          style: TextStyle(
-            fontWeight: FontWeight.w500, // Lighter weight for softer look
-            fontSize: screenWidth * 0.038,
-            color: Colors.white,
-          ),
-        ),
-      ),
-      SizedBox(width: screenWidth * 0.05),
-      OutlinedButton(
-        onPressed: () {},
-        style: OutlinedButton.styleFrom(
-          side: BorderSide(color: Color(0xFFF45F67), width: 1.5),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30), // Matching radius
-          ),
-          padding: EdgeInsets.symmetric(
-            horizontal: screenWidth * 0.07,
-            vertical: screenWidth * 0.025,
-          ),
-        ),
-        child: Text(
-          "MESSAGE",
-          style: TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: screenWidth * 0.038,
-            color: Color(0xFFF45F67),
-          ),
-        ),
-      ),
-    ],
-  );
-}
-
-
 
   Row buildStars(double rating, double screenWidth) {
     rating = rating.clamp(0, 5);
@@ -546,167 +655,6 @@ Widget _buildFollowAndMessageButtons(double screenWidth) {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildShimmerEffect() {
-    return Shimmer.fromColors(
-      baseColor: Colors.grey[300]!,
-      highlightColor: Colors.grey[100]!,
-      child: Container(
-        color: Colors.grey[300],
-      ),
-    );
-  }
-
-  Widget _buildShimmerGrid() {
-    return GridView.builder(
-      itemCount: 9,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
-      ),
-      itemBuilder: (context, index) {
-        return _buildShimmerEffect();
-      },
-    );
-  }
-
-  Widget _buildPosts(double screenWidth) {
-    return GridView.builder(
-      controller: _scrollController,
-      padding: EdgeInsets.all(10.0),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: screenWidth * 0.02,
-        mainAxisSpacing: screenWidth * 0.02,
-      ),
-      itemCount: userPosts.length + (isPaginating ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == userPosts.length) {
-          return Center(child: CircularProgressIndicator(color: Color(0xFFF45F67))); // Orange loading indicator
-        }
-        final post = userPosts[index];
-        return GestureDetector(
-          onTap: () {
-            _openFullPost(index);
-          },
-          child: _buildPostThumbnail(post, screenWidth),
-        );
-      },
-    );
-  }
-
-  Widget _buildSavedPosts(double screenWidth) {
-    if (bookmarkedPosts.isEmpty && !isPaginatingBookmarks) {
-      return Center(
-        child: Text(
-          'No bookmarked posts yet',
-          style: TextStyle(fontSize: screenWidth * 0.05, color: Colors.grey),
-        ),
-      );
-    }
-
-    return GridView.builder(
-      controller: _scrollController,
-      padding: EdgeInsets.all(10.0),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: screenWidth * 0.02,
-        mainAxisSpacing: screenWidth * 0.02,
-      ),
-      itemCount: bookmarkedPosts.length + (isPaginatingBookmarks ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == bookmarkedPosts.length) {
-          return Center(child: CircularProgressIndicator(color: Color(0xFFF45F67))); // Orange loading indicator
-        }
-        final post = bookmarkedPosts[index];
-        return GestureDetector(
-          onTap: () {
-            _openFullPost(index);
-          },
-          child: _buildPostThumbnail(post, screenWidth),
-        );
-      },
-    );
-  }
-
-  Widget _buildPostThumbnail(Post post, double screenWidth) {
-    if (post.media.isNotEmpty) {
-      final firstMedia = post.media[0];
-
-      if (firstMedia.mediaType == 'video') {
-        return Stack(
-          children: [
-            CachedNetworkImage(
-              imageUrl: firstMedia.thumbnailurl ?? firstMedia.mediaUrl,  // Ensure this URL is valid
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-              placeholder: (context, url) => _buildShimmerEffect(), // Placeholder while loading
-              errorWidget: (context, url, error) => _buildErrorPlaceholder(),  // Error widget
-            ),
-            Positioned(
-              bottom: screenWidth * 0.02,
-              right: screenWidth * 0.02,
-              child: Icon(
-                Icons.play_circle_filled,
-                color: Colors.white,
-                size: screenWidth * 0.07,
-              ),
-            ),
-          ],
-        );
-      } else {
-        // If it's an image, display it
-        return CachedNetworkImage(
-          imageUrl: firstMedia.thumbnailurl ?? firstMedia.mediaUrl,
-          fit: BoxFit.cover,
-          errorWidget: (context, url, error) => _buildErrorPlaceholder(),
-          placeholder: (context, url) => _buildShimmerEffect(),
-        );
-      }
-    } else {
-      // Handle caption-only posts
-      return Container(
-        color: Color(0xFFF45F67),
-        child: Center(
-          child: Icon(
-            Icons.format_quote,
-            color: Colors.white,
-            size: screenWidth * 0.1,
-          ),
-        ),
-      );
-    }
-  }
-
-  Widget _buildErrorPlaceholder() {
-    return Container(
-      color: Colors.grey[300],
-      child: Center(
-        child: Icon(
-          Icons.error,
-          color: Colors.red,
-          size: 24,
-        ),
-      ),
-    );
-  }
-
-  void _openFullPost(int index) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProfilePostDetails(
-          userPosts: userPosts,  // Pass the userPosts list
-          bookmarkedPosts: bookmarkedPosts, // Pass the bookmarkedPosts list
-          initialIndex: index,  // Set the initial post index
-          userId: widget.otherUserId,  // Pass the other user's ID
-          isPostsSelected: isPostsSelected,  // Ensure whether posts or bookmarks are selected
-        ),
-      ),
     );
   }
 }
