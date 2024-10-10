@@ -4,7 +4,7 @@ import '../models/post_model.dart';
 import '../models/sharedpost_model.dart';
 
 class UserpostService {
-  static const String baseUrl = 'https://afbd-185-97-92-20.ngrok-free.app/api';
+  static const String baseUrl = '***REMOVED***/api';
 
   // Fetch User Posts
   Future<List<Post>> fetchUserPosts(int userId, int pageNumber, int pageSize) async {
