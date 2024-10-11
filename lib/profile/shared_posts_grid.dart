@@ -24,9 +24,16 @@ class SharedPostsGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     if (sharedPosts.isEmpty && !isPaginatingSharedPosts) {
       return Center(
-        child: Text(
-          'No shared posts yet',
-          style: TextStyle(fontSize: screenWidth * 0.05, color: Colors.grey),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock, color: Colors.grey, size: 50),
+            SizedBox(height: 10),
+            Text(
+              "This account is gay.",
+              style: TextStyle(color: Colors.grey, fontSize: 18),
+            ),
+          ],
         ),
       );
     }
@@ -54,6 +61,7 @@ class SharedPostsGrid extends StatelessWidget {
       },
     );
   }
+
 
   Widget _buildSharedPostThumbnail(SharedPostDetails sharedPost, double screenWidth) {
     if (sharedPost.media.isNotEmpty) {

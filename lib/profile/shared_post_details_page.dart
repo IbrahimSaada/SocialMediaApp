@@ -17,15 +17,19 @@ class SharedPostDetailsPage extends StatefulWidget {
   final List<SharedPostDetails> sharedPosts;
   final int initialIndex;
 
-  const SharedPostDetailsPage({
+  SharedPostDetailsPage({
     Key? key,
-    required this.sharedPosts,
+    required List<SharedPostDetails> sharedPosts,
     required this.initialIndex,
-  }) : super(key: key);
+  })  : sharedPosts = sharedPosts
+            .toList() // Make a copy to avoid modifying the original list
+            ..sort((a, b) => b.sharedAt.compareTo(a.sharedAt)), // Sort by share time
+        super(key: key);
 
   @override
   _SharedPostDetailsPageState createState() => _SharedPostDetailsPageState();
 }
+
 
 class _SharedPostDetailsPageState extends State<SharedPostDetailsPage> with TickerProviderStateMixin {
   late ScrollController _scrollController;

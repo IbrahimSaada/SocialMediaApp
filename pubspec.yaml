@@ -42,6 +42,7 @@ dependencies:
   animate_do: ^3.3.4
   shimmer: ^3.0.0
   permission_handler: ^11.3.1
+  font_awesome_flutter: ^10.4.0
   fluttertoast: ^8.0.8
   cupertino_icons: ^1.0.6
   intl: ^0.19.0
