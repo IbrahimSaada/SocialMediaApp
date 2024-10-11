@@ -26,6 +26,8 @@ class _ProfilePageState extends State<ProfilePage> {
   bool isSharedPostsSelected = false;
   bool isLoading = false;
   bool isPaginatingSharedPosts = false; // New state variable
+  bool isPrivateAccount = false; // New state variable to track privacy status
+  
   int currentSharedPostsPageNumber = 1; // New state variable
   List<SharedPostDetails> sharedPosts = []; // New state variable
   bool isPaginating = false;
@@ -124,14 +126,19 @@ Future<void> _fetchSharedPosts() async {
       sharedPosts.addAll(newSharedPosts);
       currentSharedPostsPageNumber++;
       isPaginatingSharedPosts = false;
+      isPrivateAccount = false; // Set to false since posts were fetched
     });
   } catch (e) {
     print("Error fetching shared posts: $e");
     setState(() {
       isPaginatingSharedPosts = false;
+      if (e.toString().contains('Access denied')) {
+        isPrivateAccount = true; // Set to true on privacy error
+      }
     });
   }
 }
+
 
 Future<void> _fetchUserPosts() async {
   try {
@@ -509,20 +516,23 @@ Future<void> _fetchUserPosts() async {
                           ? _buildShimmerGrid()
                           : isPostsSelected
                               ? PostGrid(
-                                  userPosts: userPosts,
-                                  isPaginating: isPaginating,
-                                  scrollController: _scrollController,
-                                  screenWidth: screenWidth,
-                                  openFullPost: _openFullPost,
-                                )
+                                userPosts: userPosts,
+                                isPaginating: isPaginating,
+                                scrollController: _scrollController,
+                                screenWidth: screenWidth,
+                                openFullPost: _openFullPost,
+                                isPrivateAccount: isPrivateAccount, // Pass privacy status here
+                              )
                               : isSharedPostsSelected
                                   ? SharedPostsGrid(
-                                      sharedPosts: sharedPosts,
-                                      isPaginatingSharedPosts: isPaginatingSharedPosts,
-                                      scrollController: _scrollController,
-                                      screenWidth: screenWidth,
-                                      openSharedPost: _openSharedPostDetails,
+                                    sharedPosts: sharedPosts,
+                                    isPaginatingSharedPosts: isPaginatingSharedPosts,
+                                    scrollController: _scrollController,
+                                    screenWidth: screenWidth,
+                                    openSharedPost: _openSharedPostDetails,
+                                    isPrivateAccount: isPrivateAccount, // Pass the privacy status here
                                     )
+
                                   : BookmarkedGrid(
                                       bookmarkedPosts: bookmarkedPosts,
                                       isPaginatingBookmarks: isPaginatingBookmarks,
