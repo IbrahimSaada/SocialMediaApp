@@ -30,7 +30,7 @@ class SharedPostsGrid extends StatelessWidget {
             Icon(Icons.lock, color: Colors.grey, size: 50),
             SizedBox(height: 10),
             Text(
-              "This account is gay.",
+              "This account is private.",
               style: TextStyle(color: Colors.grey, fontSize: 18),
             ),
           ],
