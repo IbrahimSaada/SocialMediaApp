@@ -179,11 +179,12 @@ class _SharedPostDetailsPageState extends State<SharedPostDetailsPage> with Tick
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Shared Posts', style: TextStyle(color: Color(0xFFF45F67))),
-        backgroundColor: Colors.white,
-        iconTheme: IconThemeData(color: Color(0xFFF45F67)),
-      ),
+      appBar:AppBar(
+          centerTitle: true,  // Center the title
+          title: Text('Shared Posts', style: TextStyle(color: Color(0xFFF45F67))),
+          backgroundColor: Colors.white,
+          iconTheme: IconThemeData(color: Color(0xFFF45F67)),
+        ),
       backgroundColor: Colors.grey[100],
       body: ListView.builder(
         controller: _scrollController,
@@ -308,11 +309,13 @@ class SharedPostCard extends StatelessWidget {
   Widget _buildOriginalPost(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     return Container(
-      padding: const EdgeInsets.all(12.0),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12.0),
-      ),
+        padding: const EdgeInsets.all(12.0),
+        margin: const EdgeInsets.only(top: 8.0), // Margin for spacing
+        decoration: BoxDecoration(
+          color: Colors.white,  // Changed to white background
+          borderRadius: BorderRadius.circular(12.0),
+          border: Border.all(color: Colors.grey[300]!, width: 1),  // Added grey border
+        ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -372,7 +375,7 @@ class SharedPostCard extends StatelessWidget {
 
     return SizedBox(
       height: mediaHeight,
-      width: double.infinity,
+       width: screenWidth,  // Explicitly set to full screen width
       child: PageView.builder(
         itemCount: sharedPost.media.length,
         itemBuilder: (context, index) {
@@ -403,45 +406,88 @@ class SharedPostCard extends StatelessWidget {
     );
   }
 
-  Widget _buildPostActions() {
-    return Row(
-      children: [
-        IconButton(
-          icon: Icon(
-            isLiked ? Icons.favorite : Icons.favorite_border,
-            color: isLiked ? Color(0xFFF45F67) : Colors.grey,
-          ),
-          onPressed: handleLike,
-        ),
-        const SizedBox(width: 4.0),
-        Text(
-          '$likeCount',
-          style: const TextStyle(color: Colors.grey),
-        ),
-        const SizedBox(width: 16.0),
-        IconButton(
-          icon: const Icon(Icons.comment, color: Colors.grey),
-          onPressed: viewComments,
-        ),
-        const SizedBox(width: 4.0),
-        Text(
-          '${sharedPost.commentcount}',
-          style: const TextStyle(color: Colors.grey),
-        ),
-        const Spacer(),
-        ScaleTransition(
-          scale: bookmarkAnimationController,
-          child: IconButton(
-            icon: Icon(
-              isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-              color: isBookmarked ? Color(0xFFF45F67) : Colors.grey,
+Widget _buildPostActions() {
+  return Row(
+    children: [
+      // Like Button with Border
+      IconButton(
+        icon: Stack(
+          alignment: Alignment.center,
+          children: [
+            Icon(
+              Icons.favorite_border,
+              color: Color(0xFFF45F67), // Primary color for the border
+              size: 28,
             ),
-            onPressed: handleBookmark,
-          ),
+            if (isLiked)
+              Icon(
+                Icons.favorite,
+                color: Color(0xFFF45F67), // Filled primary color when liked
+                size: 28,
+              ),
+          ],
         ),
-      ],
-    );
-  }
+        onPressed: handleLike,
+      ),
+      Text(
+        '$likeCount',
+        style: TextStyle(color: Color(0xFFF45F67)),
+      ),
+      const SizedBox(width: 16.0),
+
+      // Comment Button with Border
+      IconButton(
+        icon: Stack(
+          alignment: Alignment.center,
+          children: [
+            Icon(
+              Icons.comment,
+              color: Color(0xFFF45F67), // Primary color for the border
+              size: 28,
+            ),
+            Icon(
+              Icons.comment,
+              color: Colors.transparent, // Transparent to show only the border
+              size: 28,
+            ),
+          ],
+        ),
+        onPressed: viewComments,
+      ),
+      Text(
+        '${sharedPost.commentcount}',
+        style: TextStyle(color: Color(0xFFF45F67)),
+      ),
+      const SizedBox(width: 16.0),
+      
+      const Spacer(),
+
+      // Bookmark Button with Border
+      ScaleTransition(
+        scale: bookmarkAnimationController,
+        child: IconButton(
+          icon: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(
+                Icons.bookmark_border,
+                color: Color(0xFFF45F67), // Primary color for the border
+                size: 28,
+              ),
+              if (isBookmarked)
+                Icon(
+                  Icons.bookmark,
+                  color: Color(0xFFF45F67), // Filled primary color when bookmarked
+                  size: 28,
+                ),
+            ],
+          ),
+          onPressed: handleBookmark,
+        ),
+      ),
+    ],
+  );
+}
 }
 
 class VideoPost extends StatefulWidget {
