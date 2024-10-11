@@ -7,16 +7,25 @@ class UserpostService {
   static const String baseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api';
 
   // Fetch User Posts
-  Future<List<Post>> fetchUserPosts(int userId, int pageNumber, int pageSize) async {
-    final url = Uri.parse('$baseUrl/UserProfile?userId=$userId&pageNumber=$pageNumber&pageSize=$pageSize');
+  Future<List<Post>> fetchUserPosts(int currentUserId, int viewerUserId, int pageNumber, int pageSize) async {
+    final url = Uri.parse('$baseUrl/UserProfile/userposts?userId=$currentUserId&viewerUserId=$viewerUserId&pageNumber=$pageNumber&pageSize=$pageSize');
 
+    print("Calling user posts API: $url"); // Debug statement
     final response = await http.get(url, headers: {
       'Content-Type': 'application/json',
     });
 
+    // Debugging information
+    // print("User posts API response status: ${response.statusCode}");
+    // print("User posts API response body: ${response.body}");
+
     if (response.statusCode == 200) {
       final List<dynamic> jsonData = json.decode(response.body);
       return jsonData.map((json) => Post.fromJson(json)).toList();
+    } else if (response.statusCode == 403) {
+      throw Exception('Access denied. You are not allowed to view these posts.');
+    } else if (response.statusCode == 404) {
+      throw Exception('No posts found for this user.');
     } else {
       throw Exception('Failed to load user posts');
     }
@@ -48,7 +57,7 @@ class UserpostService {
     });
 
     //print("Shared posts API response status: ${response.statusCode}"); // Debug statement
-    //print("Shared posts API response body: ${response.body}"); // Debug statement
+    print("Shared posts API response body: ${response.body}"); // Debug statement
 
     if (response.statusCode == 200) {
       final List<dynamic> jsonData = json.decode(response.body);
