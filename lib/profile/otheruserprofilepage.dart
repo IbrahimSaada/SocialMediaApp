@@ -111,7 +111,6 @@ Future<void> _fetchUserPosts() async {
     });
     List<Post> newPosts = await _userpostService.fetchUserPosts(
         widget.otherUserId, currentUserId!, currentPageNumber, pageSize);
-      print("currentUserId! is $currentUserId)");
     setState(() {
       userPosts.addAll(newPosts);
       currentPageNumber++;
