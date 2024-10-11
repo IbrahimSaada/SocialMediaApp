@@ -20,6 +20,22 @@ class PostGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (userPosts.isEmpty && !isPaginating) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock, color: Colors.grey, size: 50),
+            SizedBox(height: 10),
+            Text(
+              "This account is gay.",
+              style: TextStyle(color: Colors.grey, fontSize: 18),
+            ),
+          ],
+        ),
+      );
+    }
+
     return GridView.builder(
       controller: scrollController,
       padding: EdgeInsets.all(10.0),
