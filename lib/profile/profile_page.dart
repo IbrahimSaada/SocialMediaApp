@@ -133,27 +133,29 @@ Future<void> _fetchSharedPosts() async {
   }
 }
 
-  Future<void> _fetchUserPosts() async {
-    try {
-      if (userId != null) {
-        setState(() {
-          isPaginating = true;
-        });
-        List<Post> newPosts =
-            await _userpostService.fetchUserPosts(userId!, currentPageNumber, pageSize);
-        setState(() {
-          userPosts.addAll(newPosts);
-          currentPageNumber++;
-          isPaginating = false;
-        });
-      }
-    } catch (e) {
-      print("Error fetching posts: $e");
+Future<void> _fetchUserPosts() async {
+  try {
+    if (userId != null) {
       setState(() {
+        isPaginating = true;
+      });
+      int viewerUserId = userId!; // Use the logged-in user's ID as the viewerUserId
+      print("UserId is: $userId");
+      List<Post> newPosts =
+          await _userpostService.fetchUserPosts(userId!, viewerUserId, currentPageNumber, pageSize);
+      setState(() {
+        userPosts.addAll(newPosts);
+        currentPageNumber++;
         isPaginating = false;
       });
     }
+  } catch (e) {
+    print("Error fetching posts: $e");
+    setState(() {
+      isPaginating = false;
+    });
   }
+}
 
   Future<void> _fetchBookmarkedPosts() async {
     if (isPaginatingBookmarks || userId == null) return;

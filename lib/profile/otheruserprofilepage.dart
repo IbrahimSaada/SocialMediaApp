@@ -102,27 +102,29 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     });
   }
 
-  Future<void> _fetchUserPosts() async {
-    if (isPaginating) return;
+Future<void> _fetchUserPosts() async {
+  if (isPaginating || currentUserId == null) return; // Ensure currentUserId is set
 
-    try {
-      setState(() {
-        isPaginating = true;
-      });
-      List<Post> newPosts = await _userpostService.fetchUserPosts(
-          widget.otherUserId, currentPageNumber, pageSize);
-      setState(() {
-        userPosts.addAll(newPosts);
-        currentPageNumber++;
-        isPaginating = false;
-      });
-    } catch (e) {
-      print("Error fetching posts: $e");
-      setState(() {
-        isPaginating = false;
-      });
-    }
+  try {
+    setState(() {
+      isPaginating = true;
+    });
+    List<Post> newPosts = await _userpostService.fetchUserPosts(
+        widget.otherUserId, currentUserId!, currentPageNumber, pageSize);
+      print("currentUserId! is $currentUserId)");
+    setState(() {
+      userPosts.addAll(newPosts);
+      currentPageNumber++;
+      isPaginating = false;
+    });
+  } catch (e) {
+    print("Error fetching posts: $e");
+    setState(() {
+      isPaginating = false;
+    });
   }
+}
+
 
   Future<void> _fetchSharedPosts() async {
     if (isPaginatingSharedPosts || currentUserId == null) return;
