@@ -7,7 +7,7 @@ import '***REMOVED***/models/FollowStatusResponse.dart';
 class UserProfileService {
   // Fetch user profile method
   Future<UserProfile?> fetchUserProfile(int id) async {
-    final url = '***REMOVED***/api/UserProfile/$id';
+    final url = '***REMOVED***/$id';
 
     try {
       final response = await http.get(Uri.parse(url));
@@ -73,4 +73,24 @@ Future<bool> editUserProfile({
 
     return null;
   }
+
+  Future<void> changeProfilePrivacy(int userId, bool isPublic) async {
+  final url = Uri.parse('***REMOVED***/api/UserProfile/change-privacy?userId=$userId&isPublic=$isPublic');
+  try {
+    final response = await http.put(url, headers: {
+      'Content-Type': 'application/json',
+    });
+    
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      print("Profile privacy updated successfully.");
+    } else if (response.statusCode == 404) {
+      print("Endpoint not found: $url");
+    } else {
+      print("Failed to update profile privacy. Status code: ${response.statusCode}");
+    }
+  } catch (e) {
+    print("Error updating profile privacy: $e");
+  }
+}
+
 }
