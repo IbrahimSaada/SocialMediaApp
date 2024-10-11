@@ -426,7 +426,7 @@ class _AddFriendsPageState extends State<AddFriendsPage>
           title: Padding(
             padding: const EdgeInsets.only(top: 20),
             child: Text(
-              'Friends Request',
+              'Friends Request ',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 32,
