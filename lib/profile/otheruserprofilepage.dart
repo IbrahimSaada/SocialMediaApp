@@ -457,8 +457,14 @@ Future<void> _fetchUserPosts() async {
                   SizedBox(height: 10),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
-                    child: _buildBioText(screenWidth),
+                    child: Container(
+                      height: screenHeight * 0.07, // Set max height for scrollable area
+                      child: SingleChildScrollView(
+                        child: _buildBioText(screenWidth),
+                      ),
+                    ),
                   ),
+
                   SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
