@@ -13,7 +13,8 @@ class AddFriendsPage extends StatefulWidget {
   _AddFriendsPageState createState() => _AddFriendsPageState();
 }
 
-class _AddFriendsPageState extends State<AddFriendsPage> with SingleTickerProviderStateMixin {
+class _AddFriendsPageState extends State<AddFriendsPage>
+    with SingleTickerProviderStateMixin {
   List<SearchUserModel> users = [];
   List<SearchUserModel> contentRequests = [];
   bool isLoadingFollowRequests = true;
@@ -43,7 +44,9 @@ class _AddFriendsPageState extends State<AddFriendsPage> with SingleTickerProvid
   }
 
   void _scrollListener() {
-    if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent && !isLoadingMore) {
+    if (_scrollController.position.pixels ==
+            _scrollController.position.maxScrollExtent &&
+        !isLoadingMore) {
       _loadMoreFollowers();
     }
   }
@@ -55,7 +58,8 @@ class _AddFriendsPageState extends State<AddFriendsPage> with SingleTickerProvid
     try {
       int? currentUserId = await _loginService.getUserId();
       if (currentUserId != null) {
-        List<SearchUserModel> fetchedUsers = await _searchService.getFollowerRequests(currentUserId);
+        List<SearchUserModel> fetchedUsers =
+            await _searchService.getFollowerRequests(currentUserId);
         setState(() {
           users = fetchedUsers;
           isLoadingFollowRequests = false;
@@ -77,7 +81,8 @@ class _AddFriendsPageState extends State<AddFriendsPage> with SingleTickerProvid
     try {
       int? currentUserId = await _loginService.getUserId();
       if (currentUserId != null) {
-        List<SearchUserModel> fetchedContentRequests = await _searchService.getPendingFollowRequests(currentUserId);
+        List<SearchUserModel> fetchedContentRequests =
+            await _searchService.getPendingFollowRequests(currentUserId);
         setState(() {
           contentRequests = fetchedContentRequests;
           isLoadingContentRequests = false;
@@ -96,7 +101,8 @@ class _AddFriendsPageState extends State<AddFriendsPage> with SingleTickerProvid
     try {
       int? currentUserId = await _loginService.getUserId();
       if (currentUserId != null) {
-        List<SearchUserModel> moreUsers = await _searchService.getFollowerRequests(currentUserId);
+        List<SearchUserModel> moreUsers =
+            await _searchService.getFollowerRequests(currentUserId);
         setState(() {
           users.addAll(moreUsers);
           isLoadingMore = false;
@@ -205,11 +211,16 @@ class _AddFriendsPageState extends State<AddFriendsPage> with SingleTickerProvid
                   children: [
                     Text(
                       fullName,
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black),
                       overflow: TextOverflow.ellipsis,
                     ),
                     SizedBox(height: 4),
-                    Text('@$username', style: TextStyle(fontSize: 12, color: Colors.grey[600]), overflow: TextOverflow.ellipsis),
+                    Text('@$username',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        overflow: TextOverflow.ellipsis),
                   ],
                 ),
               ),
@@ -251,7 +262,8 @@ class _AddFriendsPageState extends State<AddFriendsPage> with SingleTickerProvid
                 },
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(color: Colors.grey.shade300),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18)),
                 ),
                 child: Text(
                   isFollowRequest ? 'Cancel' : 'Decline',
@@ -291,7 +303,8 @@ class _AddFriendsPageState extends State<AddFriendsPage> with SingleTickerProvid
           users.removeWhere((u) => u.username == username);
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Follow request to $username has been canceled.')),
+          SnackBar(
+              content: Text('Follow request to $username has been canceled.')),
         );
       }
     } catch (e) {
@@ -303,12 +316,14 @@ class _AddFriendsPageState extends State<AddFriendsPage> with SingleTickerProvid
     try {
       int? currentUserId = await _loginService.getUserId();
       if (currentUserId != null) {
-        await _followService.updateFollowerStatus(currentUserId,userId, 'approved');
+        await _followService.updateFollowerStatus(
+            currentUserId, userId, 'approved');
         setState(() {
           contentRequests.removeWhere((u) => u.username == username);
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$username\'s content request has been approved.')),
+          SnackBar(
+              content: Text('$username\'s content request has been approved.')),
         );
       }
     } catch (e) {
@@ -320,12 +335,14 @@ class _AddFriendsPageState extends State<AddFriendsPage> with SingleTickerProvid
     try {
       int? currentUserId = await _loginService.getUserId();
       if (currentUserId != null) {
-        await _followService.updateFollowerStatus(currentUserId,userId, 'declined');
+        await _followService.updateFollowerStatus(
+            currentUserId, userId, 'declined');
         setState(() {
           contentRequests.removeWhere((u) => u.username == username);
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$username\'s content request has been declined.')),
+          SnackBar(
+              content: Text('$username\'s content request has been declined.')),
         );
       }
     } catch (e) {
@@ -337,14 +354,17 @@ class _AddFriendsPageState extends State<AddFriendsPage> with SingleTickerProvid
     if (isLoadingFollowRequests) {
       return _shimmerLoading();
     } else if (users.isEmpty) {
-      return Center(child: Text('No Follow Requests', style: TextStyle(fontSize: 18, color: Colors.grey)));
+      return Center(
+          child: Text('No Follow Requests',
+              style: TextStyle(fontSize: 18, color: Colors.grey)));
     } else {
       return ListView.builder(
         controller: _scrollController,
         itemCount: users.length + (isLoadingMore ? 1 : 0),
         itemBuilder: (context, index) {
           if (index == users.length) {
-            return Center(child: CircularProgressIndicator(color: Color(0xFFF45F67)));
+            return Center(
+                child: CircularProgressIndicator(color: Color(0xFFF45F67)));
           }
           final user = users[index];
           return _friendRequestCard(
@@ -363,7 +383,9 @@ class _AddFriendsPageState extends State<AddFriendsPage> with SingleTickerProvid
     if (isLoadingContentRequests) {
       return _shimmerLoading();
     } else if (contentRequests.isEmpty) {
-      return Center(child: Text('No Content Requests', style: TextStyle(fontSize: 18, color: Colors.grey)));
+      return Center(
+          child: Text('No Content Requests',
+              style: TextStyle(fontSize: 18, color: Colors.grey)));
     } else {
       return ListView.builder(
         itemCount: contentRequests.length,
@@ -381,45 +403,48 @@ class _AddFriendsPageState extends State<AddFriendsPage> with SingleTickerProvid
     }
   }
 
-@override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
- appBar: PreferredSize(
-  preferredSize: Size.fromHeight(80),
-  child: AppBar(
-    backgroundColor: Color(0xFFF45F67), // Set primary color as the background
-    elevation: 4,
-    shadowColor: Colors.grey.shade200,
-    leading: Padding(
-      padding: const EdgeInsets.only(top: 20, left: 10),
-      child: IconButton(
-        icon: Icon(Icons.arrow_back, color: Colors.white, size: 28), // Icon color in white
-        onPressed: () {
-          Navigator.pop(context);
-        },
-      ),
-    ),
-    title: Padding(
-      padding: const EdgeInsets.only(top: 20),
-      child: Text(
-        'Add Friends',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 32,
-          fontWeight: FontWeight.bold,
-          color: Colors.white, // Set the title text color to white
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(80),
+        child: AppBar(
+          backgroundColor:
+              Color(0xFFF45F67), // Set primary color as the background
+          elevation: 4,
+          shadowColor: Colors.grey.shade200,
+          leading: Padding(
+            padding: const EdgeInsets.only(top: 20, left: 10),
+            child: IconButton(
+              icon: Icon(Icons.arrow_back,
+                  color: Colors.white, size: 28), // Icon color in white
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+          ),
+          title: Padding(
+            padding: const EdgeInsets.only(top: 20),
+            child: Text(
+              'Friends Request',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: Colors.white, // Set the title text color to white
+              ),
+            ),
+          ),
+          centerTitle: true,
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(top: 20, right: 15),
+              child: Icon(Icons.local_dining,
+                  color: Colors.white, size: 28), // Icon color in white
+            ),
+          ],
         ),
       ),
-    ),
-    centerTitle: true,
-    actions: [
-      Padding(
-        padding: const EdgeInsets.only(top: 20, right: 15),
-        child: Icon(Icons.local_dining, color: Colors.white, size: 28), // Icon color in white
-      ),
-    ],
-  ),
-),
       body: Column(
         children: [
           // Tab Bar
