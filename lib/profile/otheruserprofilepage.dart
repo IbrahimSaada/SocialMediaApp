@@ -31,6 +31,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   bool isLoading = false;
   bool isPaginating = false;
   bool isPaginatingSharedPosts = false;
+  bool isPrivateAccount = false;
   int currentSharedPageNumber = 1;
   String username = '';
   String bio = '';
@@ -125,34 +126,39 @@ Future<void> _fetchUserPosts() async {
 }
 
 
-  Future<void> _fetchSharedPosts() async {
-    if (isPaginatingSharedPosts || currentUserId == null) return;
+Future<void> _fetchSharedPosts() async {
+  if (isPaginatingSharedPosts || currentUserId == null) return;
 
-    try {
-      setState(() {
-        isPaginatingSharedPosts = true;
-      });
+  try {
+    setState(() {
+      isPaginatingSharedPosts = true;
+    });
 
-      // Use the existing UserpostService to fetch shared posts
-      List<SharedPostDetails> newSharedPosts = await _userpostService.fetchSharedPosts(
-        widget.otherUserId,  // The user whose profile we're viewing
-        currentUserId!,      // The logged-in user
-        currentSharedPageNumber,
-        pageSize,
-      );
+    List<SharedPostDetails> newSharedPosts = await _userpostService.fetchSharedPosts(
+      widget.otherUserId,
+      currentUserId!,
+      currentSharedPageNumber,
+      pageSize,
+    );
 
-      setState(() {
-        sharedPosts.addAll(newSharedPosts);
-        currentSharedPageNumber++;
-        isPaginatingSharedPosts = false;
-      });
-    } catch (e) {
-      print("Error fetching shared posts: $e");
-      setState(() {
-        isPaginatingSharedPosts = false;
-      });
-    }
+    setState(() {
+      sharedPosts.addAll(newSharedPosts);
+      currentSharedPageNumber++;
+      isPaginatingSharedPosts = false;
+      isPrivateAccount = false; // Set to false since posts were fetched
+    });
+  } catch (e) {
+    print("Error fetching shared posts: $e");
+    setState(() {
+      isPaginatingSharedPosts = false;
+      if (e.toString().contains('Access denied')) {
+        isPrivateAccount = true; // Set to true on privacy error
+      }
+    });
   }
+}
+
+
 
   void _scrollListener() {
     if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
@@ -516,19 +522,23 @@ Future<void> _fetchUserPosts() async {
                         ? _buildShimmerGrid()
                         : isPostsSelected
                             ? PostGrid(
-                                userPosts: userPosts,
-                                isPaginating: isPaginating,
-                                scrollController: _scrollController,
-                                screenWidth: screenWidth,
-                                openFullPost: _openFullPost,
-                              )
+                              userPosts: userPosts,
+                              isPaginating: isPaginating,
+                              scrollController: _scrollController,
+                              screenWidth: screenWidth,
+                              openFullPost: _openFullPost,
+                              isPrivateAccount: isPrivateAccount, // Pass privacy status here
+                            )
+
                             : SharedPostsGrid(
-                                sharedPosts: sharedPosts,
-                                isPaginatingSharedPosts: isPaginatingSharedPosts,
-                                scrollController: _scrollController,
-                                screenWidth: screenWidth,
-                                openSharedPost: _openSharedPostDetails,
-                              ),
+                              sharedPosts: sharedPosts,
+                              isPaginatingSharedPosts: isPaginatingSharedPosts,
+                              scrollController: _scrollController,
+                              screenWidth: screenWidth,
+                              openSharedPost: _openSharedPostDetails,
+                              isPrivateAccount: isPrivateAccount, // Pass the privacy status here
+                            )
+
                   ),
                 ],
               ),

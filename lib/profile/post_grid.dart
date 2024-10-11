@@ -8,57 +8,76 @@ class PostGrid extends StatelessWidget {
   final ScrollController scrollController;
   final double screenWidth;
   final Function(int) openFullPost;
+  final bool isPrivateAccount;
 
-  const PostGrid({
-    Key? key,
-    required this.userPosts,
-    required this.isPaginating,
-    required this.scrollController,
-    required this.screenWidth,
-    required this.openFullPost,
-  }) : super(key: key);
+const PostGrid({
+  Key? key,
+  required this.userPosts,
+  required this.isPaginating,
+  required this.scrollController,
+  required this.screenWidth,
+  required this.openFullPost,
+  required this.isPrivateAccount, // New parameter
+}) : super(key: key);
 
-  @override
-  Widget build(BuildContext context) {
-    if (userPosts.isEmpty && !isPaginating) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.lock, color: Colors.grey, size: 50),
-            SizedBox(height: 10),
-            Text(
-              "This account is private.",
-              style: TextStyle(color: Colors.grey, fontSize: 18),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return GridView.builder(
-      controller: scrollController,
-      padding: EdgeInsets.all(10.0),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: screenWidth * 0.02,
-        mainAxisSpacing: screenWidth * 0.02,
+@override
+Widget build(BuildContext context) {
+  if (isPrivateAccount) {
+    // Show lock icon and private account message
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.lock, color: Colors.grey, size: 50),
+          SizedBox(height: 10),
+          Text(
+            "This account is private.",
+            style: TextStyle(color: Colors.grey, fontSize: 18),
+          ),
+        ],
       ),
-      itemCount: userPosts.length + (isPaginating ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == userPosts.length) {
-          return Center(child: CircularProgressIndicator(color: Color(0xFFF45F67)));
-        }
-        final post = userPosts[index];
-        return GestureDetector(
-          onTap: () {
-            openFullPost(index);
-          },
-          child: _buildPostThumbnail(post, screenWidth),
-        );
-      },
+    );
+  } else if (userPosts.isEmpty && !isPaginating) {
+    // Show empty message if no posts available
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.photo_library, color: Colors.grey, size: 50),
+          SizedBox(height: 10),
+          Text(
+            "No posts available.",
+            style: TextStyle(color: Colors.grey, fontSize: 18),
+          ),
+        ],
+      ),
     );
   }
+
+  // Display the grid of posts if not private and posts are available
+  return GridView.builder(
+    controller: scrollController,
+    padding: EdgeInsets.all(10.0),
+    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 3,
+      crossAxisSpacing: screenWidth * 0.02,
+      mainAxisSpacing: screenWidth * 0.02,
+    ),
+    itemCount: userPosts.length + (isPaginating ? 1 : 0),
+    itemBuilder: (context, index) {
+      if (index == userPosts.length) {
+        return Center(child: CircularProgressIndicator(color: Color(0xFFF45F67)));
+      }
+      final post = userPosts[index];
+      return GestureDetector(
+        onTap: () {
+          openFullPost(index);
+        },
+        child: _buildPostThumbnail(post, screenWidth),
+      );
+    },
+  );
+}
 
   Widget _buildPostThumbnail(Post post, double screenWidth) {
     if (post.media.isNotEmpty) {

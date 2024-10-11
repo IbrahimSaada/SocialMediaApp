@@ -1,5 +1,3 @@
-// shared_posts_grid.dart
-
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '***REMOVED***/models/sharedpost_model.dart';
@@ -10,6 +8,7 @@ class SharedPostsGrid extends StatelessWidget {
   final ScrollController scrollController;
   final double screenWidth;
   final Function(int) openSharedPost;
+  final bool isPrivateAccount; // New parameter to indicate private account
 
   const SharedPostsGrid({
     Key? key,
@@ -18,11 +17,13 @@ class SharedPostsGrid extends StatelessWidget {
     required this.scrollController,
     required this.screenWidth,
     required this.openSharedPost,
+    required this.isPrivateAccount, // Accept the parameter here
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    if (sharedPosts.isEmpty && !isPaginatingSharedPosts) {
+    if (isPrivateAccount) {
+      // Display lock icon and private account message
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -36,8 +37,24 @@ class SharedPostsGrid extends StatelessWidget {
           ],
         ),
       );
+    } else if (sharedPosts.isEmpty && !isPaginatingSharedPosts) {
+      // Display "No shared posts yet" message for empty list
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.photo_library, color: Colors.grey, size: 50),
+            SizedBox(height: 10),
+            Text(
+              "No shared posts yet.",
+              style: TextStyle(color: Colors.grey, fontSize: 18),
+            ),
+          ],
+        ),
+      );
     }
 
+    // If neither condition applies, display the grid of shared posts
     return GridView.builder(
       controller: scrollController,
       padding: EdgeInsets.all(10.0),
@@ -49,7 +66,9 @@ class SharedPostsGrid extends StatelessWidget {
       itemCount: sharedPosts.length + (isPaginatingSharedPosts ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == sharedPosts.length) {
-          return Center(child: CircularProgressIndicator(color: Color(0xFFF45F67)));
+          return Center(
+            child: CircularProgressIndicator(color: Color(0xFFF45F67)),
+          );
         }
         final sharedPost = sharedPosts[index];
         return GestureDetector(
@@ -61,7 +80,6 @@ class SharedPostsGrid extends StatelessWidget {
       },
     );
   }
-
 
   Widget _buildSharedPostThumbnail(SharedPostDetails sharedPost, double screenWidth) {
     if (sharedPost.media.isNotEmpty) {
