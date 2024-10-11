@@ -28,6 +28,20 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() {
         _userId = int.parse(userIdString);
       });
+      await _loadProfilePrivacy(); // Load the profile privacy status
+    }
+  }
+
+   Future<void> _loadProfilePrivacy() async {
+    if (_userId == null) return;
+
+    try {
+      bool isPublic = await _userProfileService.checkProfilePrivacy(_userId!);
+      setState(() {
+        _isProfilePublic = isPublic; // Update UI with the fetched privacy status
+      });
+    } catch (e) {
+      print('Error loading profile privacy: $e');
     }
   }
 
@@ -59,17 +73,17 @@ class _SettingsPageState extends State<SettingsPage> {
       body: ListView(
         padding: EdgeInsets.all(16.0),
         children: [
-          _buildSwitchTile(
-            title: 'Public Profile',
-            value: _isProfilePublic,
-            icon: Icons.lock_open,
-            onChanged: (value) {
-              setState(() {
-                _isProfilePublic = value;
-              });
-              _updateProfilePrivacy(value);
-            },
-          ),
+            _buildSwitchTile(
+              title: 'Public Profile',
+              value: _isProfilePublic, // Updated to reflect actual status fetched from API
+              icon: Icons.lock_open,
+              onChanged: (value) {
+                setState(() {
+                  _isProfilePublic = value;
+                });
+                _updateProfilePrivacy(value); // Update privacy on toggle
+              },
+            ),
           Divider(),
           _buildSwitchTile(
             title: 'Enable Notifications',
