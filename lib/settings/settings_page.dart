@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:cook/services/userprofile_service.dart';
 
 class SettingsPage extends StatefulWidget {
   @override
@@ -10,23 +12,41 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _isProfilePublic = true;
   String _language = 'English';
   bool _darkMode = false;
+  final UserProfileService _userProfileService = UserProfileService();
+  final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+  int? _userId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserId();
+  }
+
+  Future<void> _loadUserId() async {
+    String? userIdString = await _secureStorage.read(key: 'userId');
+    if (userIdString != null) {
+      setState(() {
+        _userId = int.parse(userIdString);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
-    final primaryColor = Color(0xFFF45F67); // Updated color
+    final primaryColor = Color(0xFFF45F67);
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white, // White app bar for clean look
-        elevation: 0, // Remove shadow
-        centerTitle: true, // Center the title
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
         title: Text(
           'Settings',
           style: TextStyle(
-            color: primaryColor, // Updated color
+            color: primaryColor,
             fontWeight: FontWeight.bold,
-            fontSize: 24, // Cleaner font size
+            fontSize: 24,
           ),
         ),
         leading: IconButton(
@@ -47,10 +67,10 @@ class _SettingsPageState extends State<SettingsPage> {
               setState(() {
                 _isProfilePublic = value;
               });
+              _updateProfilePrivacy(value);
             },
           ),
           Divider(),
-
           _buildSwitchTile(
             title: 'Enable Notifications',
             value: _notificationsEnabled,
@@ -62,7 +82,6 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           Divider(),
-
           ListTile(
             leading: Icon(Icons.language, color: primaryColor),
             title: Text(
@@ -86,7 +105,6 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           Divider(),
-
           _buildSwitchTile(
             title: 'Dark Mode',
             value: _darkMode,
@@ -98,19 +116,15 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           Divider(),
-
           ListTile(
             leading: Icon(Icons.lock, color: primaryColor),
             title: Text(
               'Change Password',
               style: TextStyle(fontSize: screenWidth * 0.045, color: Colors.black87),
             ),
-            onTap: () {
-              // Navigate to Change Password page
-            },
+            onTap: () {},
           ),
           Divider(),
-
           ListTile(
             leading: Icon(Icons.info, color: primaryColor),
             title: Text(
@@ -141,12 +155,12 @@ class _SettingsPageState extends State<SettingsPage> {
     required Function(bool) onChanged,
   }) {
     double screenWidth = MediaQuery.of(context).size.width;
-    final primaryColor = Color(0xFFF45F67); // Updated color
+    final primaryColor = Color(0xFFF45F67);
 
     return SwitchListTile(
-      activeColor: primaryColor, // Color for switch when active
-      inactiveThumbColor: Colors.grey, // Color for thumb when inactive
-      inactiveTrackColor: Colors.grey.shade300, // Track color when inactive
+      activeColor: primaryColor,
+      inactiveThumbColor: Colors.grey,
+      inactiveTrackColor: Colors.grey.shade300,
       title: Text(
         title,
         style: TextStyle(fontSize: screenWidth * 0.045, color: Colors.black87),
@@ -155,5 +169,16 @@ class _SettingsPageState extends State<SettingsPage> {
       onChanged: onChanged,
       secondary: Icon(icon, color: primaryColor),
     );
+  }
+
+  Future<void> _updateProfilePrivacy(bool isPublic) async {
+    if (_userId == null) {
+      return;
+    }
+    try {
+      await _userProfileService.changeProfilePrivacy(_userId!, isPublic);
+    } catch (e) {
+      print("Error updating profile privacy: $e");
+    }
   }
 }
