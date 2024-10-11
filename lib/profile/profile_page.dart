@@ -440,7 +440,13 @@ Future<void> _fetchUserPosts() async {
                   SizedBox(height: 10),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
-                    child: _buildBioText(screenWidth),
+                    child:     Container(
+                    height: screenHeight * 0.15, // Adjust height as needed
+                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
+                    child: SingleChildScrollView(
+                      child: _buildBioText(screenWidth), // Scrollable bio
+                    ),
+                  ),
                   ),
                   SizedBox(height: 16),
                   Row(
