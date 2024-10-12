@@ -555,20 +555,28 @@ Future<void> _fetchUserPosts() async {
 Widget _buildStatItem(String count, String label, double screenWidth) {
   return GestureDetector(
     onTap: () {
-      if (label == 'Followers') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => FollowersPage(userId: userId!),
-          ),
-        );
-      } else if (label == 'Following') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => FollowingPage(userId: userId!),
-          ),
-        );
+      if (userId != null) { // Check if userId is not null
+        if (label == 'Followers') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FollowersPage(
+                userId: userId!,
+                viewerUserId: userId!, // Assuming it's the user's own profile
+              ),
+            ),
+          );
+        } else if (label == 'Following') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FollowingPage(
+                userId: userId!,
+                viewerUserId: userId!, // Same for following
+              ),
+            ),
+          );
+        }
       }
     },
     child: Column(
@@ -593,5 +601,6 @@ Widget _buildStatItem(String count, String label, double screenWidth) {
     ),
   );
 }
+
 
 }

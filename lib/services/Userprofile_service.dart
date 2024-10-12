@@ -3,9 +3,11 @@ import 'package:http/http.dart' as http;
 import '***REMOVED***/models/userprofileresponse_model.dart'; // UserProfile model
 import '***REMOVED***/models/editprofile_model.dart'; // EditUserProfile model
 import '***REMOVED***/models/FollowStatusResponse.dart';
+import '***REMOVED***/models/follower_model.dart';
+import '***REMOVED***/models/following_model.dart';
 
 class UserProfileService {
-  static const String baseUrl = '***REMOVED***/api/UserProfile';
+  static const String baseUrl = 'https://7067-185-97-92-20.ngrok-free.app/api/UserProfile';
 
   // Fetch user profile method
   Future<UserProfile?> fetchUserProfile(int id) async {
@@ -113,5 +115,51 @@ class UserProfileService {
     } else {
       throw Exception('Failed to check profile privacy. Status code: ${response.statusCode}');
     }
+  }
+
+// After - Correct return type List<Follower>
+Future<List<Follower>> fetchFollowers(int userId, int viewerUserId, {String search = "", int pageNumber = 1, int pageSize = 10}) async {
+  final url = '$baseUrl/$userId/followers/$viewerUserId?search=$search&pageNumber=$pageNumber&pageSize=$pageSize';
+
+  try {
+    final response = await http.get(Uri.parse(url));
+    print('Response Body: ${response.body}'); // For debugging
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+      if (jsonData.containsKey('followers')) {
+        final followersData = jsonData['followers'];
+        return (followersData as List).map((data) => Follower.fromJson(data)).toList(); // Return List<Follower>
+      }
+    }
+  } catch (e) {
+    print('Error fetching followers: $e');
+  }
+  return [];
+}
+
+  // Fetch following method now returning List<Following>
+  Future<List<Following>> fetchFollowing(int userId, int viewerUserId, {String search = "", int pageNumber = 1, int pageSize = 10}) async {
+    final url = '$baseUrl/$userId/following/$viewerUserId?search=$search&pageNumber=$pageNumber&pageSize=$pageSize';
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      print('Response Body: ${response.body}'); // Log response for debugging
+
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body);
+        if (jsonData.containsKey('following')) {
+          final followingData = jsonData['following'];
+          return (followingData as List).map((data) => Following.fromJson(data)).toList();
+        } else {
+          print('Key "following" not found in the response');
+        }
+      } else {
+        print('Failed to load following. Status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching following: $e');
+    }
+    return [];
   }
 }
