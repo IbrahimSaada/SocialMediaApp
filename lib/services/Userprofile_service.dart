@@ -8,7 +8,7 @@ import '***REMOVED***/models/following_model.dart';
 import '***REMOVED***/models/privacy_settings_model.dart';
 
 class UserProfileService {
-  static const String baseUrl = 'https://7067-185-97-92-20.ngrok-free.app/api/UserProfile';
+  static const String baseUrl = '***REMOVED***/api/UserProfile';
 
   // Fetch user profile method
   Future<UserProfile?> fetchUserProfile(int id) async {
@@ -92,11 +92,9 @@ Future<void> changeProfilePrivacy(int userId, PrivacySettings settings) async {
   };
 
   // Construct the full URL with query parameters
-  final uri = Uri.https(
-    '7067-185-97-92-20.ngrok-free.app', 
-    '/api/UserProfile/change-privacy', 
-    queryParams,
-  );
+final uri = Uri.parse(
+  '***REMOVED***/api/UserProfile/change-privacy'
+).replace(queryParameters: queryParams);
 
   try {
     final response = await http.put(
