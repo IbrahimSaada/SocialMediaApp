@@ -15,6 +15,8 @@ import 'package:cook/services/LoginService.dart';
 import 'package:cook/profile/post_grid.dart';
 import 'package:cook/profile/shared_posts_grid.dart';
 import 'package:cook/profile/shared_post_details_page.dart';
+import 'package:cook/profile/followerspage.dart';
+import 'package:cook/profile/followingpage.dart';
 
 class OtherUserProfilePage extends StatefulWidget {
   final int otherUserId;
@@ -652,8 +654,26 @@ Future<void> _fetchSharedPosts() async {
     );
   }
 
-  Widget _buildStatItem(String count, String label, double screenWidth) {
-    return Column(
+Widget _buildStatItem(String count, String label, double screenWidth) {
+  return GestureDetector(
+    onTap: () {
+      if (label == 'Followers') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FollowersPage(userId: widget.otherUserId),
+          ),
+        );
+      } else if (label == 'Following') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FollowingPage(userId: widget.otherUserId),
+          ),
+        );
+      }
+    },
+    child: Column(
       children: [
         Text(
           count,
@@ -663,7 +683,7 @@ Future<void> _fetchSharedPosts() async {
             color: Colors.black87,
           ),
         ),
-        SizedBox(height: screenWidth * 0.01),
+        SizedBox(height: 5),
         Text(
           label,
           style: TextStyle(
@@ -672,6 +692,9 @@ Future<void> _fetchSharedPosts() async {
           ),
         ),
       ],
-    );
-  }
+    ),
+  );
+}
+
+
 }
