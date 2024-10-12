@@ -10,6 +10,8 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool _notificationsEnabled = true;
   bool _isProfilePublic = true;
+  bool _isFollowersPublic = true;
+  bool _isFollowingPublic = true;
   String _language = 'English';
   bool _darkMode = false;
   final UserProfileService _userProfileService = UserProfileService();
@@ -28,17 +30,22 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() {
         _userId = int.parse(userIdString);
       });
-      await _loadProfilePrivacy(); // Load the profile privacy status
+      await _loadProfilePrivacy();
     }
   }
 
-   Future<void> _loadProfilePrivacy() async {
+  Future<void> _loadProfilePrivacy() async {
     if (_userId == null) return;
 
     try {
       bool isPublic = await _userProfileService.checkProfilePrivacy(_userId!);
+      bool followersPublic = true; // Fetch and update these as needed
+      bool followingPublic = true; // Fetch and update these as needed
+
       setState(() {
-        _isProfilePublic = isPublic; // Update UI with the fetched privacy status
+        _isProfilePublic = isPublic;
+        _isFollowersPublic = followersPublic;
+        _isFollowingPublic = followingPublic;
       });
     } catch (e) {
       print('Error loading profile privacy: $e');
@@ -73,17 +80,41 @@ class _SettingsPageState extends State<SettingsPage> {
       body: ListView(
         padding: EdgeInsets.all(16.0),
         children: [
-            _buildSwitchTile(
-              title: 'Public Profile',
-              value: _isProfilePublic, // Updated to reflect actual status fetched from API
-              icon: Icons.lock_open,
-              onChanged: (value) {
-                setState(() {
-                  _isProfilePublic = value;
-                });
-                _updateProfilePrivacy(value); // Update privacy on toggle
-              },
-            ),
+          _buildSwitchTile(
+            title: 'Public Profile',
+            value: _isProfilePublic,
+            icon: Icons.lock_open,
+            onChanged: (value) {
+              setState(() {
+                _isProfilePublic = value;
+              });
+              _updateProfilePrivacy(value);
+            },
+          ),
+          Divider(),
+          _buildSwitchTile(
+            title: 'Public Followers',
+            value: _isFollowersPublic,
+            icon: Icons.group,
+            onChanged: (value) {
+              setState(() {
+                _isFollowersPublic = value;
+              });
+              // Optionally: updateFollowersPrivacy(value);
+            },
+          ),
+          Divider(),
+          _buildSwitchTile(
+            title: 'Public Following',
+            value: _isFollowingPublic,
+            icon: Icons.group_add,
+            onChanged: (value) {
+              setState(() {
+                _isFollowingPublic = value;
+              });
+              // Optionally: updateFollowingPrivacy(value);
+            },
+          ),
           Divider(),
           _buildSwitchTile(
             title: 'Enable Notifications',
@@ -136,7 +167,9 @@ class _SettingsPageState extends State<SettingsPage> {
               'Change Password',
               style: TextStyle(fontSize: screenWidth * 0.045, color: Colors.black87),
             ),
-            onTap: () {},
+            onTap: () {
+              // Change password logic or navigation goes here
+            },
           ),
           Divider(),
           ListTile(
@@ -186,9 +219,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _updateProfilePrivacy(bool isPublic) async {
-    if (_userId == null) {
-      return;
-    }
+    if (_userId == null) return;
+
     try {
       await _userProfileService.changeProfilePrivacy(_userId!, isPublic);
     } catch (e) {
