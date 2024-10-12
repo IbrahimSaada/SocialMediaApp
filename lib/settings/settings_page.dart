@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:cook/services/userprofile_service.dart';
+import 'package:cook/models/privacy_settings_model.dart';
 
 class SettingsPage extends StatefulWidget {
   @override
@@ -38,19 +39,38 @@ class _SettingsPageState extends State<SettingsPage> {
     if (_userId == null) return;
 
     try {
-      bool isPublic = await _userProfileService.checkProfilePrivacy(_userId!);
-      bool followersPublic = true; // Fetch and update these as needed
-      bool followingPublic = true; // Fetch and update these as needed
+      Map<String, bool> privacySettings = await _userProfileService.checkProfilePrivacy(_userId!);
 
       setState(() {
-        _isProfilePublic = isPublic;
-        _isFollowersPublic = followersPublic;
-        _isFollowingPublic = followingPublic;
+        _isProfilePublic = privacySettings['isPublic'] ?? false;
+        _isFollowersPublic = privacySettings['isFollowersPublic'] ?? false;
+        _isFollowingPublic = privacySettings['isFollowingPublic'] ?? false;
       });
     } catch (e) {
       print('Error loading profile privacy: $e');
     }
   }
+
+void _updatePrivacySettings() async {
+  if (_userId == null) return;
+
+  // Always send the current states of all three fields
+  PrivacySettings settings = PrivacySettings(
+    isPublic: _isProfilePublic,
+    isFollowersPublic: _isFollowersPublic,
+    isFollowingPublic: _isFollowingPublic,
+  );
+
+  print('Updating Privacy Settings: ${settings.toJson()}'); // Log the complete payload
+
+  try {
+    await _userProfileService.changeProfilePrivacy(_userId!, settings);
+    print("Privacy settings updated successfully.");
+  } catch (e) {
+    print("Error updating privacy settings: $e");
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -81,16 +101,17 @@ class _SettingsPageState extends State<SettingsPage> {
         padding: EdgeInsets.all(16.0),
         children: [
           _buildSwitchTile(
-            title: 'Public Profile',
-            value: _isProfilePublic,
-            icon: Icons.lock_open,
-            onChanged: (value) {
-              setState(() {
-                _isProfilePublic = value;
-              });
-              _updateProfilePrivacy(value);
-            },
-          ),
+  title: 'Public Profile',
+  value: _isProfilePublic,
+  icon: Icons.lock_open,
+  onChanged: (value) {
+    setState(() {
+      _isProfilePublic = value;
+    });
+    _updatePrivacySettings(); // Update after changing the toggle state
+  },
+),
+
           Divider(),
           _buildSwitchTile(
             title: 'Public Followers',
@@ -100,7 +121,7 @@ class _SettingsPageState extends State<SettingsPage> {
               setState(() {
                 _isFollowersPublic = value;
               });
-              // Optionally: updateFollowersPrivacy(value);
+              _updatePrivacySettings(); // Update backend on change
             },
           ),
           Divider(),
@@ -112,7 +133,7 @@ class _SettingsPageState extends State<SettingsPage> {
               setState(() {
                 _isFollowingPublic = value;
               });
-              // Optionally: updateFollowingPrivacy(value);
+              _updatePrivacySettings(); // Update backend on change
             },
           ),
           Divider(),
@@ -216,15 +237,5 @@ class _SettingsPageState extends State<SettingsPage> {
       onChanged: onChanged,
       secondary: Icon(icon, color: primaryColor),
     );
-  }
-
-  Future<void> _updateProfilePrivacy(bool isPublic) async {
-    if (_userId == null) return;
-
-    try {
-      await _userProfileService.changeProfilePrivacy(_userId!, isPublic);
-    } catch (e) {
-      print("Error updating profile privacy: $e");
-    }
   }
 }

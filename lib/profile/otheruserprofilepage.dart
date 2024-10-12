@@ -34,6 +34,9 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   bool isPaginating = false;
   bool isPaginatingSharedPosts = false;
   bool isPrivateAccount = false;
+  bool isFollowersPublic = true;
+  bool isFollowingPublic = true;
+  bool isProfilePublic = true;
   int currentSharedPageNumber = 1;
   String username = '';
   String bio = '';
@@ -70,40 +73,53 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     super.dispose();
   }
 
-  Future<void> _loadUserProfile() async {
+Future<void> _loadUserProfile() async {
+  setState(() {
+    isLoading = true;
+  });
+
+  currentUserId = await _loginService.getUserId();
+  userProfile = await _userProfileService.fetchUserProfile(widget.otherUserId);
+
+  if (userProfile != null) {
     setState(() {
-      isLoading = true;
+      username = userProfile!.fullName;
+      bio = userProfile!.bio;
+      rating = userProfile!.rating;
+      postNb = userProfile!.postNb;
+      followersNb = userProfile!.followersNb;
+      followingNb = userProfile!.followingNb;
     });
 
-    // Get the current user's ID
-    currentUserId = await _loginService.getUserId();
-
-    userProfile = await _userProfileService.fetchUserProfile(widget.otherUserId);
-    if (userProfile != null) {
+    // Fetch and update privacy settings
+    try {
+      Map<String, bool> privacySettings = await _userProfileService.checkProfilePrivacy(widget.otherUserId);
       setState(() {
-        username = userProfile!.fullName;
-        bio = userProfile!.bio;
-        rating = userProfile!.rating;
-        postNb = userProfile!.postNb;
-        followersNb = userProfile!.followersNb;
-        followingNb = userProfile!.followingNb;
+        isProfilePublic = privacySettings['isPublic'] ?? false;
+        isFollowersPublic = privacySettings['isFollowersPublic'] ?? false;
+        isFollowingPublic = privacySettings['isFollowingPublic'] ?? false;
       });
-      await _fetchUserPosts();
-      await _fetchSharedPosts();
-
-      final followStatus = await _checkFollowStatus();
-      if (followStatus != null) {
-        setState(() {
-          isFollowing = followStatus.isFollowing;
-          amFollowing = followStatus.amFollowing;
-        });
-      }
+    } catch (e) {
+      print('Error loading privacy settings: $e');
     }
 
-    setState(() {
-      isLoading = false;
-    });
+    await _fetchUserPosts();
+    await _fetchSharedPosts();
+
+    final followStatus = await _checkFollowStatus();
+    if (followStatus != null) {
+      setState(() {
+        isFollowing = followStatus.isFollowing;
+        amFollowing = followStatus.amFollowing;
+      });
+    }
   }
+
+  setState(() {
+    isLoading = false;
+  });
+}
+
 
 Future<void> _fetchUserPosts() async {
   if (isPaginating || currentUserId == null) return; // Ensure currentUserId is set
@@ -657,32 +673,41 @@ Future<void> _fetchSharedPosts() async {
 Widget _buildStatItem(String count, String label, double screenWidth) {
   return GestureDetector(
     onTap: () {
-      if (label == 'Followers') {
+      if (label == 'Followers' && isFollowersPublic) {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => FollowersPage(
-              userId: widget.otherUserId,          
+              userId: widget.otherUserId,
               viewerUserId: currentUserId ?? 0,
             ),
           ),
         );
-      } else if (label == 'Following') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => FollowingPage(
-                userId: widget.otherUserId,
-                viewerUserId: currentUserId ?? 0,  // Ensure `viewerUserId` is provided
-              ),
+      } else if (label == 'Following' && isFollowingPublic) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FollowingPage(
+              userId: widget.otherUserId,
+              viewerUserId: currentUserId ?? 0,
             ),
-          );
-        }
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("This list is private."),
+            backgroundColor: Color(0xFFF45F67),
+          ),
+        );
+      }
     },
     child: Column(
       children: [
         Text(
-          count,
+          (label == 'Followers' && !isFollowersPublic) || (label == 'Following' && !isFollowingPublic)
+              ? '-'  // Display "-" if the list is private
+              : count, // Show the actual count if public
           style: TextStyle(
             fontSize: screenWidth * 0.04,
             fontWeight: FontWeight.bold,
@@ -701,6 +726,5 @@ Widget _buildStatItem(String count, String label, double screenWidth) {
     ),
   );
 }
-
 
 }
