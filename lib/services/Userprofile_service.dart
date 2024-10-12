@@ -5,6 +5,7 @@ import '***REMOVED***/models/editprofile_model.dart'; // EditUserProfile model
 import '***REMOVED***/models/FollowStatusResponse.dart';
 import '***REMOVED***/models/follower_model.dart';
 import '***REMOVED***/models/following_model.dart';
+import '***REMOVED***/models/privacy_settings_model.dart';
 
 class UserProfileService {
   static const String baseUrl = 'https://7067-185-97-92-20.ngrok-free.app/api/UserProfile';
@@ -80,40 +81,64 @@ class UserProfileService {
     return null;
   }
 
-  // Method to change profile privacy
-  Future<void> changeProfilePrivacy(int userId, bool isPublic) async {
-    final url = Uri.parse('$baseUrl/change-privacy?userId=$userId&isPublic=$isPublic');
+  // Method to change profile privacy settings using a model
+Future<void> changeProfilePrivacy(int userId, PrivacySettings settings) async {
+  // Build query parameters dynamically based on non-null values
+  final queryParams = <String, String>{
+    'userId': userId.toString(),
+    if (settings.isPublic != null) 'isPublic': settings.isPublic.toString(),
+    if (settings.isFollowersPublic != null) 'isFollowersPublic': settings.isFollowersPublic.toString(),
+    if (settings.isFollowingPublic != null) 'isFollowingPublic': settings.isFollowingPublic.toString(),
+  };
+
+  // Construct the full URL with query parameters
+  final uri = Uri.https(
+    '7067-185-97-92-20.ngrok-free.app', 
+    '/api/UserProfile/change-privacy', 
+    queryParams,
+  );
+
+  try {
+    final response = await http.put(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      print("Privacy settings updated successfully.");
+    } else if (response.statusCode == 404) {
+      print("Endpoint not found: $uri");
+    } else {
+      print("Failed to update privacy settings. Status code: ${response.statusCode}");
+    }
+  } catch (e) {
+    print("Error updating privacy settings: $e");
+  }
+}
+
+
+  // Method to check if the profile is public or private
+  Future<Map<String, bool>> checkProfilePrivacy(int userId) async {
+    final url = Uri.parse('$baseUrl/check-privacy/$userId');
 
     try {
-      final response = await http.put(url, headers: {
+      final response = await http.get(url, headers: {
         'Content-Type': 'application/json',
       });
 
-      if (response.statusCode == 200 || response.statusCode == 204) {
-        print("Profile privacy updated successfully.");
-      } else if (response.statusCode == 404) {
-        print("Endpoint not found: $url");
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        return {
+          'isPublic': jsonData['isPublic'] ?? false,
+          'isFollowersPublic': jsonData['isFollowersPublic'] ?? false,
+          'isFollowingPublic': jsonData['isFollowingPublic'] ?? false,
+        };
       } else {
-        print("Failed to update profile privacy. Status code: ${response.statusCode}");
+        throw Exception('Failed to check profile privacy. Status code: ${response.statusCode}');
       }
     } catch (e) {
-      print("Error updating profile privacy: $e");
-    }
-  }
-
-  // Method to check if the profile is public or private
-  Future<bool> checkProfilePrivacy(int userId) async {
-    final url = Uri.parse('$baseUrl/check-privacy/$userId');
-
-    final response = await http.get(url, headers: {
-      'Content-Type': 'application/json',
-    });
-
-    if (response.statusCode == 200) {
-      final jsonData = json.decode(response.body);
-      return jsonData['isPublic'];  // Return the boolean value
-    } else {
-      throw Exception('Failed to check profile privacy. Status code: ${response.statusCode}');
+      print('Error checking profile privacy: $e');
+      throw Exception('Failed to check profile privacy');
     }
   }
 
