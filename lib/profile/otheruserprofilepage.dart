@@ -661,17 +661,23 @@ Widget _buildStatItem(String count, String label, double screenWidth) {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => FollowersPage(userId: widget.otherUserId),
+            builder: (context) => FollowersPage(
+              userId: widget.otherUserId,          
+              viewerUserId: currentUserId ?? 0,
+            ),
           ),
         );
       } else if (label == 'Following') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => FollowingPage(userId: widget.otherUserId),
-          ),
-        );
-      }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FollowingPage(
+                userId: widget.otherUserId,
+                viewerUserId: currentUserId ?? 0,  // Ensure `viewerUserId` is provided
+              ),
+            ),
+          );
+        }
     },
     child: Column(
       children: [
