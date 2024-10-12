@@ -15,6 +15,8 @@ import '***REMOVED***/profile/bookmarked_grid.dart';   // Import the new Bookmar
 import '***REMOVED***/models/sharedpost_model.dart';
 import 'shared_posts_grid.dart';
 import 'shared_post_details_page.dart';
+import '***REMOVED***/profile/followerspage.dart';
+import '***REMOVED***/profile/followingpage.dart';
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -550,8 +552,26 @@ Future<void> _fetchUserPosts() async {
     );
   }
 
-  Widget _buildStatItem(String count, String label, double screenWidth) {
-    return Column(
+Widget _buildStatItem(String count, String label, double screenWidth) {
+  return GestureDetector(
+    onTap: () {
+      if (label == 'Followers') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FollowersPage(userId: userId!),
+          ),
+        );
+      } else if (label == 'Following') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FollowingPage(userId: userId!),
+          ),
+        );
+      }
+    },
+    child: Column(
       children: [
         Text(
           count,
@@ -570,6 +590,8 @@ Future<void> _fetchUserPosts() async {
           ),
         ),
       ],
-    );
-  }
+    ),
+  );
+}
+
 }
