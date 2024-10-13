@@ -295,18 +295,18 @@ PreferredSizeWidget buildTopAppBar(BuildContext context) {
 
 
 Widget buildBottomNavigationBar() {
-  return BottomAppBar(
-    color: const Color(0xFFF45F67), // Main color for BottomAppBar
-    shape: const CircularNotchedRectangle(),
-    notchMargin: 4.0, // Margin for the center notch around the search icon
-    child: SizedBox(
-      height: 50, // Reduced height for a more compact BottomAppBar
+  return SizedBox(
+    height: 65, // Set a slightly larger height for a modern look
+    child: BottomAppBar(
+      color: const Color(0xFFF45F67), // Pinkish bottom bar color
+      shape: const CircularNotchedRectangle(),
+      notchMargin: 0.0, // Increase margin for a pronounced notch
+      elevation: 8.0, // Add a shadow for depth
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Evenly spaces out the icons
         children: [
-          // Left side icons
           IconButton(
-            icon: const Icon(Icons.person_add_alt, size: 24, color: Colors.white), // Modern 'Add Friend' icon
+            icon: const Icon(Icons.person_add_alt, color: Colors.white, size: 28),
             onPressed: () {
               Navigator.push(
                 context,
@@ -315,7 +315,7 @@ Widget buildBottomNavigationBar() {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.notifications_none, size: 24, color: Colors.white), // Modern 'Notification' icon
+            icon: const Icon(Icons.notifications_none, color: Colors.white, size: 28),
             onPressed: () {
               Navigator.push(
                 context,
@@ -323,11 +323,9 @@ Widget buildBottomNavigationBar() {
               );
             },
           ),
-          const SizedBox(width: 40), // Spacer to center items around the notch
-
-          // Right side icons
+          SizedBox(width: 50), // Adds space for the search icon in the center
           IconButton(
-            icon: const Icon(Icons.help_outline, size: 24, color: Colors.white), // Modern 'Help' icon
+            icon: const Icon(Icons.help_outline, color: Colors.white, size: 28),
             onPressed: () {
               Navigator.push(
                 context,
@@ -336,7 +334,7 @@ Widget buildBottomNavigationBar() {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.chat_bubble_outline, size: 24, color: Colors.white), // Modern 'Chat' icon
+            icon: const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 28),
             onPressed: () {
               Navigator.push(
                 context,
@@ -350,19 +348,26 @@ Widget buildBottomNavigationBar() {
   );
 }
 
-
 Widget buildSearchIcon() {
   return Positioned(
-    bottom: -22, // Adjusted to ensure the circle sits within the bar
+    bottom: 10, // Adjust to align within the notch more naturally
+    left: MediaQuery.of(context).size.width / 2 - 28, // Center the search icon precisely
     child: Container(
-      width: 48,
-      height: 48,
-      decoration: const BoxDecoration(
+      width: 50,
+      height: 50,
+      decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            spreadRadius: 2,
+            blurRadius: 6,
+          ),
+        ],
       ),
       child: IconButton(
-        icon: const Icon(Icons.search, color: Color(0xFFF45F67), size: 24), // Modern search icon inside white circle
+        icon: const Icon(Icons.search, color: Color(0xFFF45F67), size: 30),
         onPressed: () {
           Navigator.push(
             context,
@@ -373,7 +378,6 @@ Widget buildSearchIcon() {
     ),
   );
 }
-
 
 
 FloatingActionButton buildCenterSearchButton() {
@@ -391,11 +395,12 @@ FloatingActionButton buildCenterSearchButton() {
 
 
 Widget buildDivider() {
-  return const Divider(
+  return Divider(
     thickness: 1.5, // Thickness of the divider
-    color: Color(0xFFF45F67), // Light bronze color
+    color: Colors.grey[300], // Light grey color
   );
 }
+
 
 Widget buildStoriesSection() {
   return Container(
@@ -572,7 +577,11 @@ Widget buildPostInputSection() {
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: const Color(0xFFF45F67), width: 2),
+        border: Border.all(
+  color: Colors.grey[300]!, // Fixed syntax and added 'color'
+  width: 2,
+),
+
       ),
       child: Row(
         children: [
