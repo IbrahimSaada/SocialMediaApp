@@ -17,6 +17,7 @@ import 'shared_posts_grid.dart';
 import 'shared_post_details_page.dart';
 import '***REMOVED***/profile/followerspage.dart';
 import '***REMOVED***/profile/followingpage.dart';
+import 'qr_code.dart'; // Import the QRCodeModal
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -420,7 +421,21 @@ Future<void> _fetchUserPosts() async {
                         ),
                       ),
                       SizedBox(width: 10),
-                      Icon(Icons.qr_code, size: screenWidth * 0.07, color: Colors.grey),
+                     GestureDetector(
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return QRCodeModal(qrCodeUrl: userProfile!.qrCode);
+                          },
+                        );
+                      },
+                      child: Icon(
+                        Icons.qr_code,
+                        size: screenWidth * 0.07,
+                        color: Colors.grey,
+                      ),
+                    ),
                     ],
                   ),
                   SizedBox(height: 10),
