@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '***REMOVED***/services/userprofile_service.dart';
 import '***REMOVED***/models/privacy_settings_model.dart';
+import '***REMOVED***/settings/changepasswordpage.dart';
 
 class SettingsPage extends StatefulWidget {
   @override
@@ -188,9 +189,12 @@ void _updatePrivacySettings() async {
               'Change Password',
               style: TextStyle(fontSize: screenWidth * 0.045, color: Colors.black87),
             ),
-            onTap: () {
-              // Change password logic or navigation goes here
-            },
+              onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => ChangePasswordPage()),
+    );
+  },
           ),
           Divider(),
           ListTile(
