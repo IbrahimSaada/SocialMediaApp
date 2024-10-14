@@ -185,4 +185,28 @@ Future<List<Follower>> fetchFollowers(int userId, int viewerUserId, {String sear
     }
     return [];
   }
+
+  // Method to change user password
+Future<Map<String, dynamic>> changePassword(int userId, String oldPassword, String newPassword) async {
+  final url = Uri.parse('$baseUrl/$userId/change-password');
+  final headers = {'Content-Type': 'application/json'};
+  final body = jsonEncode({
+    'oldPassword': oldPassword,
+    'newPassword': newPassword,
+  });
+
+  try {
+    final response = await http.post(url, headers: headers, body: body);
+    
+    if (response.statusCode == 200) {
+      return {'success': true, 'message': 'Password changed successfully'};
+    } else {
+      final errorData = jsonDecode(response.body);
+      return {'success': false, 'message': errorData['error'] ?? 'Password change failed'};
+    }
+  } catch (e) {
+    return {'success': false, 'message': 'An error occurred: $e'};
+  }
+}
+
 }
