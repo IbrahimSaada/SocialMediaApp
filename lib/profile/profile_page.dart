@@ -75,6 +75,7 @@ void _openSharedPostDetails(int index) {
       builder: (context) => SharedPostDetailsPage(
         sharedPosts: sharedPosts, // The list of shared posts
         initialIndex: index,      // The index of the selected shared post
+        isCurrentUserProfile: true, // This is the user's own profile
       ),
     ),
   );
@@ -289,20 +290,22 @@ Future<void> _fetchUserPosts() async {
     );
   }
 
-  void _openFullPost(int index) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProfilePostDetails(
-          userPosts: userPosts,
-          bookmarkedPosts: bookmarkedPosts,
-          initialIndex: index,
-          userId: userId!,
-          isPostsSelected: isPostsSelected,
-        ),
+void _openFullPost(int index) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => ProfilePostDetails(
+        userPosts: userPosts,
+        bookmarkedPosts: bookmarkedPosts,
+        initialIndex: index,
+        userId: userId!,
+        isPostsSelected: isPostsSelected,
+        isCurrentUserProfile: true, // This is the user's own profile
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _buildShimmerEffect() {
     return Shimmer.fromColors(

@@ -6,6 +6,7 @@ import '***REMOVED***/models/FollowStatusResponse.dart';
 import '***REMOVED***/models/follower_model.dart';
 import '***REMOVED***/models/following_model.dart';
 import '***REMOVED***/models/privacy_settings_model.dart';
+import '***REMOVED***/services/userpost_service.dart';
 
 class UserProfileService {
   static const String baseUrl = '***REMOVED***/api/UserProfile';
@@ -206,6 +207,106 @@ Future<Map<String, dynamic>> changePassword(int userId, String oldPassword, Stri
     }
   } catch (e) {
     return {'success': false, 'message': 'An error occurred: $e'};
+  }
+}
+
+  // Method to delete a post by postId for the current user
+  Future<bool> deletePost(int postId, int userId) async {
+    final String url = '$baseUrl/delete-post/$postId?userId=$userId';
+
+    try {
+      final response = await http.delete(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        print("Post deleted successfully.");
+        return true;
+      } else {
+        print("Failed to delete post. Status code: ${response.statusCode}");
+        return false;
+      }
+    } catch (e) {
+      print("Error deleting post: $e");
+      return false;
+    }
+  }
+
+  Future<bool> editPostCaption(int postId, String newCaption, int userId) async {
+    final String url = '$baseUrl/edit-post/$postId?userId=$userId';
+    
+    try {
+      final response = await http.put(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(newCaption), // Sending the caption directly as a string
+      );
+
+      print('Request URL: $url');
+      print('Request Body: ${jsonEncode(newCaption)}');
+      print('Response Status Code: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print("Failed to update caption. Status code: ${response.statusCode}");
+        print("Error response body: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print('Error in editPostCaption method: $e');
+      return false;
+    }
+  }
+
+
+  // Method to delete a shared post by sharedPostId for the current user
+  Future<bool> deleteSharedPost(int sharedPostId, int userId) async {
+    final String url = '$baseUrl/delete-shared-post/$sharedPostId?userId=$userId';
+
+    try {
+      final response = await http.delete(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        print("Shared post deleted successfully.");
+        return true;
+      } else {
+        print("Failed to delete shared post. Status code: ${response.statusCode}");
+        return false;
+      }
+    } catch (e) {
+      print("Error deleting shared post: $e");
+      return false;
+    }
+  }
+
+  // Method to edit a shared post's comment by sharedPostId for the current user
+Future<bool> editSharedPostComment(int sharedPostId, String newComment, int userId) async {
+  final String url = '$baseUrl/edit-shared-post/$sharedPostId?userId=$userId';
+
+  try {
+    final response = await http.put(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(newComment), // Sending the comment directly as a string
+    );
+
+    print('Request URL: $url');
+    print('Request Body: ${jsonEncode(newComment)}');
+    print('Response Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      print("Shared post comment updated successfully.");
+      return true;
+    } else {
+      print("Failed to update shared post comment. Status code: ${response.statusCode}");
+      return false;
+    }
+  } catch (e) {
+    print("Error updating shared post comment: $e");
+    return false;
   }
 }
 
