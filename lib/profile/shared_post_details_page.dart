@@ -1,5 +1,4 @@
-// shared_post_details_page.dart
-
+import 'package:cook/services/Userprofile_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cook/models/sharedpost_model.dart';
@@ -12,28 +11,33 @@ import 'package:cook/models/LikeRequest_model.dart';
 import 'package:cook/models/bookmarkrequest_model.dart';
 import 'package:cook/services/LoginService.dart';
 import 'package:cook/home/comment.dart';
+import 'package:cook/home/report_dialog.dart';
+
+
 
 class SharedPostDetailsPage extends StatefulWidget {
   final List<SharedPostDetails> sharedPosts;
   final int initialIndex;
+  final bool isCurrentUserProfile; // Add this flag
 
   SharedPostDetailsPage({
     Key? key,
     required List<SharedPostDetails> sharedPosts,
     required this.initialIndex,
+    required this.isCurrentUserProfile, // Pass this flag to constructor
   })  : sharedPosts = sharedPosts
-            .toList() // Make a copy to avoid modifying the original list
-            ..sort((a, b) => b.sharedAt.compareTo(a.sharedAt)), // Sort by share time
+            .toList() 
+            ..sort((a, b) => b.sharedAt.compareTo(a.sharedAt)),
         super(key: key);
 
   @override
   _SharedPostDetailsPageState createState() => _SharedPostDetailsPageState();
 }
 
-
 class _SharedPostDetailsPageState extends State<SharedPostDetailsPage> with TickerProviderStateMixin {
   late ScrollController _scrollController;
   final LoginService _loginService = LoginService();
+  final UserProfileService _userProfileService = UserProfileService();
 
   // Lists to keep track of like status, like counts, and bookmark status for each post
   late List<bool> _isLikedList;
@@ -69,6 +73,55 @@ class _SharedPostDetailsPageState extends State<SharedPostDetailsPage> with Tick
       controller.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _editSharedPostComment(SharedPostDetails sharedPost, String newComment) async {
+    final userId = await _loginService.getUserId();
+    if (userId == null) return;
+
+    bool success = await _userProfileService.editSharedPostComment(
+      sharedPost.shareId,
+      newComment,  // Pass the updated comment
+      userId,
+    );
+
+    if (success) {
+      setState(() {
+        sharedPost.comment = newComment; // Update the UI with the new comment
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Shared post comment updated successfully!'),
+        backgroundColor: Colors.green,
+      ));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Failed to update shared post comment.'),
+        backgroundColor: Colors.red,
+      ));
+    }
+  }
+
+  Future<void> _deleteSharedPost(SharedPostDetails sharedPost) async {
+    final userId = await _loginService.getUserId();
+    if (userId == null) return;
+
+    bool success = await _userProfileService.deleteSharedPost(
+      sharedPost.shareId,
+      userId,
+    );
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Shared post deleted successfully!'),
+        backgroundColor: Colors.green,
+      ));
+      // Optionally, remove the shared post from the list and refresh the UI
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Failed to delete shared post.'),
+        backgroundColor: Colors.red,
+      ));
+    }
   }
 
   // Handle like/unlike action
@@ -160,14 +213,12 @@ class _SharedPostDetailsPageState extends State<SharedPostDetailsPage> with Tick
 
   // Placeholder for session expiration handling
   void handleSessionExpired(BuildContext context) {
-    // Implement your session expiration handling, e.g., navigate to login page
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Session expired. Please log in again.'),
         backgroundColor: Colors.red,
       ),
     );
-    // Navigate to login page or perform logout
   }
 
   // Navigate to Comment Page
@@ -184,35 +235,38 @@ class _SharedPostDetailsPageState extends State<SharedPostDetailsPage> with Tick
   Widget build(BuildContext context) {
     return Scaffold(
       appBar:AppBar(
-          centerTitle: true,  // Center the title
+          centerTitle: true,
           title: Text('Shared Posts', style: TextStyle(color: Color(0xFFF45F67))),
           backgroundColor: Colors.white,
           iconTheme: IconThemeData(color: Color(0xFFF45F67)),
         ),
       backgroundColor: Colors.grey[100],
       body: ListView.builder(
-        controller: _scrollController,
-        itemCount: widget.sharedPosts.length,
-        padding: EdgeInsets.zero,
-        itemBuilder: (context, index) {
-          final sharedPost = widget.sharedPosts[index];
-          return SharedPostCard(
-            sharedPost: sharedPost,
-            isLiked: _isLikedList[index],
-            likeCount: _likeCountList[index],
-            isBookmarked: _isBookmarkedList[index],
-            bookmarkAnimationController: _bookmarkAnimationControllers[index],
-            handleLike: () => _handleLike(index),
-            handleBookmark: () => _handleBookmark(index),
-            viewComments: () => _viewComments(sharedPost.postId),
-          );
-        },
-      ),
+      controller: _scrollController,
+      itemCount: widget.sharedPosts.length,
+      padding: EdgeInsets.zero,
+      itemBuilder: (context, index) {
+        final sharedPost = widget.sharedPosts[index];
+        return SharedPostCard(
+          sharedPost: sharedPost,
+          isLiked: _isLikedList[index],
+          likeCount: _likeCountList[index],
+          isBookmarked: _isBookmarkedList[index],
+          bookmarkAnimationController: _bookmarkAnimationControllers[index],
+          handleLike: () => _handleLike(index),
+          handleBookmark: () => _handleBookmark(index),
+          viewComments: () => _viewComments(sharedPost.postId),
+          isCurrentUserProfile: widget.isCurrentUserProfile,
+          handleEdit: (newComment) => _editSharedPostComment(sharedPost, newComment),  // Pass edit method
+          handleDelete: () => _deleteSharedPost(sharedPost),  // Pass delete method
+        );
+      },
+    ),
     );
   }
 }
 
-class SharedPostCard extends StatelessWidget {
+class SharedPostCard extends StatefulWidget {
   final SharedPostDetails sharedPost;
   final bool isLiked;
   final int likeCount;
@@ -221,6 +275,9 @@ class SharedPostCard extends StatelessWidget {
   final VoidCallback handleLike;
   final VoidCallback handleBookmark;
   final VoidCallback viewComments;
+  final bool isCurrentUserProfile;
+  final Function(String) handleEdit;
+  final VoidCallback handleDelete;
 
   const SharedPostCard({
     Key? key,
@@ -232,7 +289,179 @@ class SharedPostCard extends StatelessWidget {
     required this.handleLike,
     required this.handleBookmark,
     required this.viewComments,
+    required this.isCurrentUserProfile,
+    required this.handleEdit,
+    required this.handleDelete,
   }) : super(key: key);
+
+  @override
+  _SharedPostCardState createState() => _SharedPostCardState();
+}
+
+class _SharedPostCardState extends State<SharedPostCard> {
+  bool _isEditingComment = false; // Flag for editing comment
+  late TextEditingController _commentController;
+
+  @override
+  void initState() {
+    super.initState();
+    _commentController = TextEditingController(text: widget.sharedPost.comment ?? '');
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  void _toggleEditComment() {
+    setState(() {
+      _isEditingComment = !_isEditingComment; // Toggle edit mode
+    });
+  }
+
+  void _saveEditedComment() {
+    widget.handleEdit(_commentController.text); // Update comment in the backend
+    setState(() {
+      _isEditingComment = false;
+    });
+  }
+
+  void _showPostOptions(BuildContext context) {
+  showDialog(
+  context: context,
+  builder: (BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20.0), // Rounded corners
+      ),
+      backgroundColor: Colors.white, // Background color for the dialog
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0), // Padding for the content
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              "Choose an Action",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18.0,
+                color: Color(0xFFF45F67), // Primary color for the title
+              ),
+            ),
+            const SizedBox(height: 16.0),
+            Divider(color: Colors.grey[300], thickness: 1.0), // Divider for separation
+            const SizedBox(height: 12.0),
+
+            // If it's the current user's profile, show Edit and Delete options
+            if (widget.isCurrentUserProfile) ...[
+              ListTile(
+                leading: Icon(Icons.edit, color: Color(0xFFF45F67)),
+                title: Text(
+                  'Edit Comment',
+                  style: TextStyle(color: Color(0xFFF45F67)), // Text color for Edit
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _toggleEditComment();  // Toggle the edit mode for comment
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.delete, color: Colors.red[400]),
+                title: Text(
+                  'Delete Post',
+                  style: TextStyle(color: Colors.red[400]), // Text color for Delete
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showDeleteConfirmation(context); // Show confirmation dialog before deleting
+                },
+              ),
+            ]
+            // If it's another user's profile, show the Report option
+            else ...[
+              ListTile(
+                leading: Icon(Icons.report, color: Colors.red[400]),
+                title: Text(
+                  'Report Post',
+                  style: TextStyle(color: Colors.red[400]), // Text color for Report
+                ),
+                onTap: () {
+                    Navigator.pop(context); // Close the action dialog
+                    // Check if originalPostUserId is available
+                    if (widget.sharedPost.originalPostUserId != null) {
+                      final int userId = widget.sharedPost.originalPostUserId!;
+                      // Display the report dialog
+                      showReportDialog(
+                        context: context,
+                        reportedUser: userId,
+                        contentId: widget.sharedPost.postId,
+                      );
+                    } else {
+                      // Show a snackbar if the user ID is not available
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('User ID not available for this post.')),
+                      );
+                    }
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  },
+);
+
+}
+
+void _showDeleteConfirmation(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.0),
+        ),
+        backgroundColor: Colors.white,
+        title: Text(
+          "Confirm Deletion",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18.0,
+            color: Color(0xFFF45F67),
+          ),
+        ),
+        content: Text(
+          "Are you sure you want to delete this post?",
+          style: TextStyle(color: Colors.black),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close the dialog
+            },
+            child: Text(
+              "Cancel",
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close the dialog
+              widget.handleDelete();  // Call the delete callback
+            },
+            child: Text(
+              "Delete",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -256,13 +485,13 @@ class SharedPostCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Reposter Information Row with Remove Icon
+          // Reposter Information Row with Options Icon
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               CircleAvatar(
-                backgroundImage: sharedPost.sharerProfileUrl != null
-                    ? CachedNetworkImageProvider(sharedPost.sharerProfileUrl!)
+                backgroundImage: widget.sharedPost.sharerProfileUrl != null
+                    ? CachedNetworkImageProvider(widget.sharedPost.sharerProfileUrl!)
                     : AssetImage('assets/images/default.png') as ImageProvider,
                 radius: 18,
               ),
@@ -272,33 +501,47 @@ class SharedPostCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      sharedPost.sharerUsername,
+                      widget.sharedPost.sharerUsername,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.black,
                       ),
                     ),
                     Text(
-                      timeago.format(sharedPost.sharedAt),
+                      timeago.format(widget.sharedPost.sharedAt),
                       style: const TextStyle(color: Colors.grey, fontSize: 12.0),
                     ),
                   ],
                 ),
               ),
+              // Three dots icon for showing post options
               IconButton(
-                icon: Icon(Icons.remove_circle_outline, color: Color(0xFFF45F67)),
+                icon: Icon(Icons.more_vert, color: Color(0xFFF45F67)),
                 onPressed: () {
-                  // Placeholder for delete functionality
+                  _showPostOptions(context);  // Open post options based on user
                 },
-                tooltip: 'Remove Shared Post',
               ),
             ],
           ),
           // Optional Repost Comment
-          if (sharedPost.comment != null && sharedPost.comment!.isNotEmpty) ...[
+          if (_isEditingComment)
+            TextField(
+              controller: _commentController,
+              decoration: InputDecoration(
+                hintText: 'Edit your comment...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+                suffixIcon: IconButton(
+                  icon: Icon(Icons.check, color: Color(0xFFF45F67)),
+                  onPressed: _saveEditedComment, // Save the comment
+                ),
+              ),
+            )
+          else if (widget.sharedPost.comment != null && widget.sharedPost.comment!.isNotEmpty) ...[
             const SizedBox(height: 8.0),
             Text(
-              sharedPost.comment!,
+              widget.sharedPost.comment!,
               style: const TextStyle(fontSize: 16.0, color: Colors.black87),
             ),
           ],
@@ -313,53 +556,50 @@ class SharedPostCard extends StatelessWidget {
   Widget _buildOriginalPost(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     return Container(
-        padding: const EdgeInsets.all(12.0),
-        margin: const EdgeInsets.only(top: 8.0), // Margin for spacing
-        decoration: BoxDecoration(
-          color: Colors.white,  // Changed to white background
-          borderRadius: BorderRadius.circular(12.0),
-          border: Border.all(color: Colors.grey[300]!, width: 1),  // Added grey border
-        ),
+      padding: const EdgeInsets.all(12.0),
+      margin: const EdgeInsets.only(top: 8.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.0),
+        border: Border.all(color: Colors.grey[300]!, width: 1),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Original Author Information Row
-        Row(
-          children: [
-            CircleAvatar(
-              backgroundImage: sharedPost.originalPostUserUrl != null
-                  ? CachedNetworkImageProvider(sharedPost.originalPostUserUrl!)
-                  : AssetImage('assets/images/default.png') as ImageProvider,
-              radius: 18,
-            ),
-            const SizedBox(width: 8.0),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start, // Aligns the text to the left
-              children: [
-                Text(
-                  sharedPost.originalPostuserfullname,
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
-                ),
-                Text(
-                  timeago.format(sharedPost.postCreatedAt),
-                  style: const TextStyle(color: Colors.grey, fontSize: 12.0),
-                ),
-              ],
-            ),
-          ],
-        ),
+          Row(
+            children: [
+              CircleAvatar(
+                backgroundImage: widget.sharedPost.originalPostUserUrl != null
+                    ? CachedNetworkImageProvider(widget.sharedPost.originalPostUserUrl!)
+                    : AssetImage('assets/images/default.png') as ImageProvider,
+                radius: 18,
+              ),
+              const SizedBox(width: 8.0),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.sharedPost.originalPostuserfullname,
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                  ),
+                  Text(
+                    timeago.format(widget.sharedPost.postCreatedAt),
+                    style: const TextStyle(color: Colors.grey, fontSize: 12.0),
+                  ),
+                ],
+              ),
+            ],
+          ),
           const SizedBox(height: 8.0),
-          // Original Post Caption
-          if (sharedPost.postContent.isNotEmpty)
+          if (widget.sharedPost.postContent.isNotEmpty)
             Text(
-              sharedPost.postContent,
+              widget.sharedPost.postContent,
               style: const TextStyle(fontSize: 16.0),
             ),
           const SizedBox(height: 8.0),
-          // Original Post Media Content
           _buildMediaContent(screenWidth),
           const SizedBox(height: 8.0),
-          // Original Post Actions
           _buildPostActions(),
         ],
       ),
@@ -367,7 +607,7 @@ class SharedPostCard extends StatelessWidget {
   }
 
   Widget _buildMediaContent(double screenWidth) {
-    if (sharedPost.media.isEmpty) {
+    if (widget.sharedPost.media.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -379,11 +619,11 @@ class SharedPostCard extends StatelessWidget {
 
     return SizedBox(
       height: mediaHeight,
-       width: screenWidth,  // Explicitly set to full screen width
+      width: screenWidth,
       child: PageView.builder(
-        itemCount: sharedPost.media.length,
+        itemCount: widget.sharedPost.media.length,
         itemBuilder: (context, index) {
-          final media = sharedPost.media[index];
+          final media = widget.sharedPost.media[index];
           if (media.mediaType == 'photo') {
             return ClipRRect(
               borderRadius: BorderRadius.circular(12.0),
@@ -410,88 +650,88 @@ class SharedPostCard extends StatelessWidget {
     );
   }
 
-Widget _buildPostActions() {
-  return Row(
-    children: [
-      // Like Button with Border
-      IconButton(
-        icon: Stack(
-          alignment: Alignment.center,
-          children: [
-            Icon(
-              Icons.favorite_border,
-              color: Color(0xFFF45F67), // Primary color for the border
-              size: 28,
-            ),
-            if (isLiked)
-              Icon(
-                Icons.favorite,
-                color: Color(0xFFF45F67), // Filled primary color when liked
-                size: 28,
-              ),
-          ],
-        ),
-        onPressed: handleLike,
-      ),
-      Text(
-        '$likeCount',
-        style: TextStyle(color: Color(0xFFF45F67)),
-      ),
-      const SizedBox(width: 16.0),
-
-      // Comment Button with Border
-      IconButton(
-        icon: Stack(
-          alignment: Alignment.center,
-          children: [
-            Icon(
-              Icons.comment,
-              color: Color(0xFFF45F67), // Primary color for the border
-              size: 28,
-            ),
-            Icon(
-              Icons.comment,
-              color: Colors.transparent, // Transparent to show only the border
-              size: 28,
-            ),
-          ],
-        ),
-        onPressed: viewComments,
-      ),
-      Text(
-        '${sharedPost.commentcount}',
-        style: TextStyle(color: Color(0xFFF45F67)),
-      ),
-      const SizedBox(width: 16.0),
-      
-      const Spacer(),
-
-      // Bookmark Button with Border
-      ScaleTransition(
-        scale: bookmarkAnimationController,
-        child: IconButton(
+  Widget _buildPostActions() {
+    return Row(
+      children: [
+        // Like Button with Border
+        IconButton(
           icon: Stack(
             alignment: Alignment.center,
             children: [
               Icon(
-                Icons.bookmark_border,
-                color: Color(0xFFF45F67), // Primary color for the border
+                Icons.favorite_border,
+                color: Color(0xFFF45F67),
                 size: 28,
               ),
-              if (isBookmarked)
+              if (widget.isLiked)
                 Icon(
-                  Icons.bookmark,
-                  color: Color(0xFFF45F67), // Filled primary color when bookmarked
+                  Icons.favorite,
+                  color: Color(0xFFF45F67),
                   size: 28,
                 ),
             ],
           ),
-          onPressed: handleBookmark,
+          onPressed: widget.handleLike,
         ),
-      ),
-    ],
-  );
-}
+        Text(
+          '${widget.likeCount}',
+          style: TextStyle(color: Color(0xFFF45F67)),
+        ),
+        const SizedBox(width: 16.0),
+
+        // Comment Button with Border
+        IconButton(
+          icon: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(
+                Icons.comment,
+                color: Color(0xFFF45F67),
+                size: 28,
+              ),
+              Icon(
+                Icons.comment,
+                color: Colors.transparent,
+                size: 28,
+              ),
+            ],
+          ),
+          onPressed: widget.viewComments,
+        ),
+        Text(
+          '${widget.sharedPost.commentcount}',
+          style: TextStyle(color: Color(0xFFF45F67)),
+        ),
+        const SizedBox(width: 16.0),
+
+        const Spacer(),
+
+        // Bookmark Button with Border
+        ScaleTransition(
+          scale: widget.bookmarkAnimationController,
+          child: IconButton(
+            icon: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(
+                  Icons.bookmark_border,
+                  color: Color(0xFFF45F67),
+                  size: 28,
+                ),
+                if (widget.isBookmarked)
+                  Icon(
+                    Icons.bookmark,
+                    color: Color(0xFFF45F67),
+                    size: 28,
+                  ),
+              ],
+            ),
+            onPressed: widget.handleBookmark,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class VideoPost extends StatefulWidget {

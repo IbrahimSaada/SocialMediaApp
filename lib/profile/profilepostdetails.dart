@@ -1,3 +1,4 @@
+import 'package:cook/services/Userprofile_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -10,6 +11,9 @@ import 'package:video_player/video_player.dart';
 import 'package:cook/home/comment.dart';
 import 'package:cook/services/LoginService.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:cook/services/userpost_service.dart';
+import 'package:cook/home/report_dialog.dart';
+
 
 class ProfilePostDetails extends StatefulWidget {
   final List<Post> userPosts;
@@ -17,6 +21,7 @@ class ProfilePostDetails extends StatefulWidget {
   final int initialIndex;
   final int userId;
   final bool isPostsSelected;
+  final bool isCurrentUserProfile;
 
   const ProfilePostDetails({
     Key? key,
@@ -25,6 +30,7 @@ class ProfilePostDetails extends StatefulWidget {
     required this.initialIndex,
     required this.userId,
     required this.isPostsSelected,
+    required this.isCurrentUserProfile,
   }) : super(key: key);
 
   @override
@@ -61,7 +67,11 @@ class _ProfilePostDetailsState extends State<ProfilePostDetails> {
         padding: EdgeInsets.zero,
         itemBuilder: (context, index) {
           final post = displayedPosts[index];
-          return PostCard(post: post);
+          return PostCard(
+            post: post,
+            isPostsSelected: widget.isPostsSelected,
+            isCurrentUserProfile: widget.isCurrentUserProfile,
+          );
         },
       ),
     );
@@ -69,7 +79,7 @@ class _ProfilePostDetailsState extends State<ProfilePostDetails> {
 
   AppBar _buildCustomAppBar() {
     return AppBar(
-      backgroundColor: Colors.white, // Set AppBar background to white
+      backgroundColor: Colors.white,
       leading: IconButton(
         icon: Icon(Icons.arrow_back, color: Color(0xFFF45F67)),
         onPressed: () {
@@ -79,20 +89,27 @@ class _ProfilePostDetailsState extends State<ProfilePostDetails> {
       title: const Text(
         "POSTS",
         style: TextStyle(
-          color: Color(0xFFF45F67), // Set text color to primary color
+          color: Color(0xFFF45F67),
           fontWeight: FontWeight.bold,
         ),
       ),
       centerTitle: true,
-      iconTheme: IconThemeData(color: Color(0xFFF45F67)), // Icon color for actions
+      iconTheme: IconThemeData(color: Color(0xFFF45F67)),
     );
   }
 }
 
 class PostCard extends StatefulWidget {
   final Post post;
+  final bool isPostsSelected;
+  final bool isCurrentUserProfile;
 
-  const PostCard({Key? key, required this.post}) : super(key: key);
+  const PostCard({
+    Key? key,
+    required this.post,
+    required this.isPostsSelected,
+    required this.isCurrentUserProfile,
+  }) : super(key: key);
 
   @override
   _PostCardState createState() => _PostCardState();
@@ -101,8 +118,11 @@ class PostCard extends StatefulWidget {
 class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin {
   bool _isLiked = false;
   bool _isBookmarked = false;
+  bool _isEditing = false; // New variable to track if we're editing
+  String _newCaption = ""; // New variable to hold the new caption
   late int _likeCount;
   late AnimationController _bookmarkAnimationController;
+  final UserProfileService _userProfileService = UserProfileService();
 
   @override
   void initState() {
@@ -164,6 +184,168 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
       ),
     );
   }
+void _showDeleteConfirmation(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text('Confirm Deletion'),
+        content: Text('Are you sure you want to delete this post?'),
+        actions: <Widget>[
+          TextButton(
+            child: Text('Cancel'),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+          TextButton(
+            child: Text('Delete'),
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _deletePost(); // <-- Call the delete method
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
+Future<void> _deletePost() async {
+  final userId = await LoginService().getUserId();
+  if (userId == null) return;
+
+  bool success = await _userProfileService.deletePost(widget.post.postId, userId);  // <-- Updated
+
+
+  if (success) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Post deleted successfully!'),
+      backgroundColor: Colors.green,
+    ));
+    Navigator.pop(context); // Go back to the previous page after deletion
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Failed to delete the post'),
+      backgroundColor: Colors.red,
+    ));
+  }
+}
+
+
+Future<void> _editPostCaption() async {
+  final userId = await LoginService().getUserId();
+  if (userId == null) return;
+
+bool success = await _userProfileService.editPostCaption(  // <-- Updated to use _userProfileService
+  widget.post.postId,
+  _newCaption, 
+  userId,
+);
+
+
+  if (success) {
+    setState(() {
+      widget.post.caption = _newCaption; // Update the UI with the new caption
+      _isEditing = false; // Exit edit mode
+    });
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Post updated successfully!'),
+      backgroundColor: Colors.green,
+    ));
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Failed to update the post'),
+      backgroundColor: Colors.red,
+    ));
+  }
+}
+
+
+
+void _showPostOptions(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.0), // Rounded corners
+        ),
+        backgroundColor: Colors.white, // Background color for the dialog
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0), // Padding for the content
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Choose an Action",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18.0,
+                  color: Color(0xFFF45F67), // Primary color for the title
+                ),
+              ),
+              const SizedBox(height: 16.0),
+              Divider(color: Colors.grey[300], thickness: 1.0), // Divider for separation
+              const SizedBox(height: 12.0),
+
+              // If it's the current user's profile, show Edit and Delete options
+              if (widget.isCurrentUserProfile) ...[
+                ListTile(
+                  leading: Icon(Icons.edit, color: Color(0xFFF45F67)),
+                  title: Text(
+                    'Edit Post',
+                    style: TextStyle(color: Color(0xFFF45F67)), // Text color for Edit
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    setState(() {
+                      _isEditing = true; // Enable edit mode
+                      _newCaption = widget.post.caption; // Initialize the caption with the existing one
+                    });
+                  },
+
+                ),
+                ListTile(
+                  leading: Icon(Icons.delete, color: Colors.red[400]),
+                  title: Text(
+                    'Delete Post',
+                    style: TextStyle(color: Colors.red[400]), // Text color for Delete
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showDeleteConfirmation(context); // Show confirmation dialog before deleting
+                  },
+
+                ),
+              ]
+              // If it's another user's profile, show the Report option
+              else ...[
+                ListTile(
+                  leading: Icon(Icons.report, color: Colors.red[400]),
+                  title: Text(
+                    'Report Post',
+                    style: TextStyle(color: Colors.red[400]), // Text color for Report
+                  ),
+                onTap: () {
+                    Navigator.pop(context); // Close the action dialog
+                      // Display the report dialog
+                      showReportDialog(
+                        context: context,
+                        reportedUser: widget.post.userId,
+                        contentId: widget.post.postId,
+                      );
+                },
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -192,12 +374,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
           _buildHeader(),
           const SizedBox(height: 8.0),
           if (widget.post.caption.isNotEmpty)
-            Text(
-              widget.post.caption,
-              style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-            ),
+            _buildCaptionEditor(),
           if (widget.post.media.isNotEmpty) ...[
             const SizedBox(height: 8.0),
             _buildMedia(screenWidth),
@@ -209,30 +386,84 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     );
   }
 
-  Widget _buildHeader() {
-    return Row(
+Widget _buildCaptionEditor() {
+  if (_isEditing) {
+    return Column(
       children: [
-        CircleAvatar(
-          backgroundImage: NetworkImage(widget.post.profilePic),
-          radius: 18,
+        TextField(
+          onChanged: (value) {
+            _newCaption = value; // Update the new caption as the user types
+          },
+          controller: TextEditingController(text: _newCaption),
+          maxLines: 3,
+          decoration: InputDecoration(
+            hintText: "Edit caption...",
+            border: OutlineInputBorder(),
+          ),
         ),
-        const SizedBox(width: 8.0),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Text(
-              widget.post.fullName,
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+            ElevatedButton(
+              onPressed: _editPostCaption, // Save the caption
+              child: Text("Save"),
             ),
-            Text(
-              timeago.format(widget.post.localCreatedAt),
-              style: const TextStyle(color: Colors.grey, fontSize: 12.0),
+            SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _isEditing = false; // Cancel editing
+                });
+              },
+              child: Text("Cancel"),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
             ),
           ],
         ),
       ],
     );
+  } else {
+    return Text(
+      widget.post.caption,
+      style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600),
+      maxLines: 3,
+      overflow: TextOverflow.ellipsis,
+    );
   }
+}
+
+
+  Widget _buildHeader() {
+  return Row(
+    children: [
+      CircleAvatar(
+        backgroundImage: NetworkImage(widget.post.profilePic),
+        radius: 18,
+      ),
+      const SizedBox(width: 8.0),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.post.fullName,
+            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+          ),
+          Text(
+            timeago.format(widget.post.localCreatedAt),
+            style: const TextStyle(color: Colors.grey, fontSize: 12.0),
+          ),
+        ],
+      ),
+      Spacer(),
+      // Always show the three dots, but show different options based on the profile
+      if (widget.isPostsSelected) // Always check if it's a post and not a bookmark
+        IconButton(
+          icon: Icon(Icons.more_vert),
+          onPressed: () => _showPostOptions(context), // Show the options menu
+        )
+            ],
+  );
+}
 
   Widget _buildMedia(double screenWidth) {
     return LayoutBuilder(

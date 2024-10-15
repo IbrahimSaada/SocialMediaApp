@@ -308,6 +308,7 @@ Future<void> _fetchSharedPosts() async {
           initialIndex: index,
           userId: widget.otherUserId,
           isPostsSelected: true,
+          isCurrentUserProfile: false, // This is not the current user's profile
         ),
       ),
     );
@@ -320,6 +321,7 @@ Future<void> _fetchSharedPosts() async {
         builder: (context) => SharedPostDetailsPage(
           sharedPosts: sharedPosts,
           initialIndex: index,
+          isCurrentUserProfile: false, // // This is not the current user's profile
         ),
       ),
     );
