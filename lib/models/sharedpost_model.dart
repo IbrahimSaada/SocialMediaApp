@@ -8,13 +8,14 @@ class SharedPostDetails {
   final DateTime postCreatedAt;
   final List<PostMedia> media;
   final DateTime sharedAt;
-  final String? comment;
+   String? comment;
   final String? originalPostUserUrl;
   final String originalPostuserfullname;
   final int likecount;
   final int commentcount;
   final bool isLiked;
   final bool isBookmarked;
+  final int? originalPostUserId;
 
   SharedPostDetails({
     required this.shareId,
@@ -33,12 +34,22 @@ class SharedPostDetails {
     required this.commentcount,
     required this.isLiked,
     required this.isBookmarked,
+    this.originalPostUserId,
   });
 
   // Factory method to create an instance from a JSON object
   factory SharedPostDetails.fromJson(Map<String, dynamic> json) {
     var mediaList = json['media'] as List;
     List<PostMedia> media = mediaList.map((mediaJson) => PostMedia.fromJson(mediaJson)).toList();
+
+       print('Full JSON response: $json');  // Print the entire JSON to inspect
+
+  int? originalPostUserId = json['originalPostUserId'] ?? json['original_post_user_id'];
+
+  print('Parsed originalPostUserId: $originalPostUserId');  // Debugging print
+
+       // Print the value for debugging
+  print('originalPostUserId: $originalPostUserId');
 
     return SharedPostDetails(
       shareId: json['shareId'],
@@ -57,6 +68,7 @@ class SharedPostDetails {
       commentcount: json['comment_count'],
       isLiked: json['is_liked'],
       isBookmarked: json['is_Bookmarked'],
+      originalPostUserId: json['originalPostUserId'],
     );
   }
 }

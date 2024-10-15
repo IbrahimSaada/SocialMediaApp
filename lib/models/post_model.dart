@@ -1,6 +1,6 @@
 class Post {
   final int postId;
-  final String caption;
+  String caption;
   final int commentCount;
   final DateTime _createdAtUtc; // Store the original UTC time
   final bool isPublic;
