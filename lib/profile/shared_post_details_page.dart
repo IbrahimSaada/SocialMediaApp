@@ -101,28 +101,35 @@ class _SharedPostDetailsPageState extends State<SharedPostDetailsPage> with Tick
     }
   }
 
-  Future<void> _deleteSharedPost(SharedPostDetails sharedPost) async {
-    final userId = await _loginService.getUserId();
-    if (userId == null) return;
+ Future<void> _deleteSharedPost(int index) async {
+  final userId = await _loginService.getUserId();
+  if (userId == null) return;
 
+  try {
     bool success = await _userProfileService.deleteSharedPost(
-      sharedPost.shareId,
+      widget.sharedPosts[index].shareId,
       userId,
     );
 
     if (success) {
+      setState(() {
+        widget.sharedPosts.removeAt(index); // Remove post from list immediately
+      });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Shared post deleted successfully!'),
         backgroundColor: Colors.green,
       ));
-      // Optionally, remove the shared post from the list and refresh the UI
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Failed to delete shared post.'),
-        backgroundColor: Colors.red,
-      ));
+      throw Exception('Deletion was unsuccessful');
     }
+  } catch (error) {
+    print('Error during deletion: $error'); // Log the error to console
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Failed to delete shared post. Please try again.'),
+      backgroundColor: Colors.red,
+    ));
   }
+}
 
   // Handle like/unlike action
   Future<void> _handleLike(int index) async {
@@ -258,7 +265,7 @@ class _SharedPostDetailsPageState extends State<SharedPostDetailsPage> with Tick
           viewComments: () => _viewComments(sharedPost.postId),
           isCurrentUserProfile: widget.isCurrentUserProfile,
           handleEdit: (newComment) => _editSharedPostComment(sharedPost, newComment),  // Pass edit method
-          handleDelete: () => _deleteSharedPost(sharedPost),  // Pass delete method
+          handleDelete: () => _deleteSharedPost(index),  // Pass the index here
         );
       },
     ),
@@ -314,18 +321,60 @@ class _SharedPostCardState extends State<SharedPostCard> {
     super.dispose();
   }
 
-  void _toggleEditComment() {
-    setState(() {
-      _isEditingComment = !_isEditingComment; // Toggle edit mode
-    });
-  }
+void _toggleEditComment() {
+  setState(() {
+    _isEditingComment = !_isEditingComment; // Toggle edit mode
+    if (!_isEditingComment) {
+      // Reset the comment if editing is canceled
+      _commentController.text = widget.sharedPost.comment ?? '';
+    }
+  });
+}
 
-  void _saveEditedComment() {
-    widget.handleEdit(_commentController.text); // Update comment in the backend
-    setState(() {
-      _isEditingComment = false;
-    });
-  }
+void _saveEditedComment() {
+  widget.handleEdit(_commentController.text); // Update comment in the backend
+  setState(() {
+    _isEditingComment = false; // Exit edit mode
+  });
+}
+
+
+Widget _buildCommentEditor() {
+  return Column(
+    children: [
+      TextField(
+        controller: _commentController,
+        decoration: InputDecoration(
+          hintText: 'Edit your comment...',
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12.0),
+          ),
+        ),
+        maxLines: 2,
+      ),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          TextButton(
+            onPressed: _toggleEditComment, // Cancel button action
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          TextButton(
+            onPressed: _saveEditedComment, // Save button action
+            child: Text(
+              'Save',
+              style: TextStyle(color: Color(0xFFF45F67)),
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
 
   void _showPostOptions(BuildContext context) {
   showDialog(
@@ -443,7 +492,7 @@ void _showDeleteConfirmation(BuildContext context) {
             },
             child: Text(
               "Cancel",
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: Colors.red),
             ),
           ),
           TextButton(
@@ -463,148 +512,174 @@ void _showDeleteConfirmation(BuildContext context) {
 }
 
 
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    return Container(
-      width: screenWidth,
-      margin: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 4.0),
-      padding: const EdgeInsets.all(12.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Reposter Information Row with Options Icon
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              CircleAvatar(
-                backgroundImage: widget.sharedPost.sharerProfileUrl != null
-                    ? CachedNetworkImageProvider(widget.sharedPost.sharerProfileUrl!)
-                    : AssetImage('assets/images/default.png') as ImageProvider,
-                radius: 18,
-              ),
-              const SizedBox(width: 8.0),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.sharedPost.sharerUsername,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                    Text(
-                      timeago.format(widget.sharedPost.sharedAt),
-                      style: const TextStyle(color: Colors.grey, fontSize: 12.0),
-                    ),
-                  ],
-                ),
-              ),
-              // Three dots icon for showing post options
-              IconButton(
-                icon: Icon(Icons.more_vert, color: Color(0xFFF45F67)),
-                onPressed: () {
-                  _showPostOptions(context);  // Open post options based on user
-                },
-              ),
-            ],
-          ),
-          // Optional Repost Comment
-          if (_isEditingComment)
-            TextField(
-              controller: _commentController,
-              decoration: InputDecoration(
-                hintText: 'Edit your comment...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.0),
-                ),
-                suffixIcon: IconButton(
-                  icon: Icon(Icons.check, color: Color(0xFFF45F67)),
-                  onPressed: _saveEditedComment, // Save the comment
-                ),
-              ),
-            )
-          else if (widget.sharedPost.comment != null && widget.sharedPost.comment!.isNotEmpty) ...[
-            const SizedBox(height: 8.0),
-            Text(
-              widget.sharedPost.comment!,
-              style: const TextStyle(fontSize: 16.0, color: Colors.black87),
+@override
+Widget build(BuildContext context) {
+  final screenWidth = MediaQuery.of(context).size.width;
+  return Container(
+    width: screenWidth,
+    margin: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 4.0),
+    padding: const EdgeInsets.all(12.0),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12.0),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.05),
+          spreadRadius: 1,
+          blurRadius: 4,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Reposter Information Row with Options Icon
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            CircleAvatar(
+              backgroundImage: widget.sharedPost.sharerProfileUrl != null
+                  ? CachedNetworkImageProvider(widget.sharedPost.sharerProfileUrl!)
+                  : AssetImage('assets/images/default.png') as ImageProvider,
+              radius: 18,
             ),
-          ],
-          const SizedBox(height: 8.0),
-          // Original Post Inside the Repost
-          _buildOriginalPost(context),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOriginalPost(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    return Container(
-      padding: const EdgeInsets.all(12.0),
-      margin: const EdgeInsets.only(top: 8.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: Colors.grey[300]!, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Original Author Information Row
-          Row(
-            children: [
-              CircleAvatar(
-                backgroundImage: widget.sharedPost.originalPostUserUrl != null
-                    ? CachedNetworkImageProvider(widget.sharedPost.originalPostUserUrl!)
-                    : AssetImage('assets/images/default.png') as ImageProvider,
-                radius: 18,
-              ),
-              const SizedBox(width: 8.0),
-              Column(
+            const SizedBox(width: 8.0),
+            Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.sharedPost.originalPostuserfullname,
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                    widget.sharedPost.sharerUsername,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
                   ),
                   Text(
-                    timeago.format(widget.sharedPost.postCreatedAt),
+                    timeago.format(widget.sharedPost.sharedAt),
                     style: const TextStyle(color: Colors.grey, fontSize: 12.0),
                   ),
                 ],
               ),
-            ],
-          ),
-          const SizedBox(height: 8.0),
-          if (widget.sharedPost.postContent.isNotEmpty)
-            Text(
-              widget.sharedPost.postContent,
-              style: const TextStyle(fontSize: 16.0),
             ),
+            IconButton(
+              icon: Icon(Icons.more_vert, color: Color(0xFFF45F67)),
+              onPressed: () {
+                _showPostOptions(context); // Open post options based on user
+              },
+            ),
+          ],
+        ),
+
+        // Comment Editing Section with Save and Cancel buttons
+        if (_isEditingComment)
+          Column(
+            children: [
+              TextField(
+                controller: _commentController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Edit your comment...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  ElevatedButton(
+                    onPressed: _saveEditedComment, // Save the comment
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                    ),
+                    child: Text("Save"),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _isEditingComment = false; // Cancel editing
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                    ),
+                    child: Text("Cancel"),
+                  ),
+                ],
+              ),
+            ],
+          )
+        else if (widget.sharedPost.comment != null && widget.sharedPost.comment!.isNotEmpty) ...[
           const SizedBox(height: 8.0),
-          _buildMediaContent(screenWidth),
-          const SizedBox(height: 8.0),
-          _buildPostActions(),
+          Text(
+            widget.sharedPost.comment!,
+            style: const TextStyle(fontSize: 16.0, color: Colors.black87),
+          ),
         ],
-      ),
-    );
-  }
+        
+        // Original Post Content
+        const SizedBox(height: 8.0),
+        _buildOriginalPost(context),
+      ],
+    ),
+  );
+}
+
+Widget _buildOriginalPost(BuildContext context) {
+  final screenWidth = MediaQuery.of(context).size.width;
+  return Container(
+    padding: const EdgeInsets.all(12.0),
+    margin: const EdgeInsets.only(top: 8.0),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12.0),
+      border: Border.all(color: Colors.grey[300]!, width: 1),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Original Author Information Row
+        Row(
+          children: [
+            CircleAvatar(
+              backgroundImage: widget.sharedPost.originalPostUserUrl != null
+                  ? CachedNetworkImageProvider(widget.sharedPost.originalPostUserUrl!)
+                  : AssetImage('assets/images/default.png') as ImageProvider,
+              radius: 18,
+            ),
+            const SizedBox(width: 8.0),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.sharedPost.originalPostuserfullname,
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                ),
+                Text(
+                  timeago.format(widget.sharedPost.postCreatedAt),
+                  style: const TextStyle(color: Colors.grey, fontSize: 12.0),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 8.0),
+        if (widget.sharedPost.postContent.isNotEmpty)
+          Text(
+            widget.sharedPost.postContent,
+            style: const TextStyle(fontSize: 16.0),
+          ),
+        const SizedBox(height: 8.0),
+        _buildMediaContent(screenWidth),
+        const SizedBox(height: 8.0),
+        _buildPostActions(),
+      ],
+    ),
+  );
+}
 
   Widget _buildMediaContent(double screenWidth) {
     if (widget.sharedPost.media.isEmpty) {
