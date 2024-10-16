@@ -56,26 +56,32 @@ class _ProfilePostDetailsState extends State<ProfilePostDetails> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: _buildCustomAppBar(),
-      backgroundColor: Colors.grey[100],
-      body: ListView.builder(
-        controller: _scrollController,
-        itemCount: displayedPosts.length,
-        padding: EdgeInsets.zero,
-        itemBuilder: (context, index) {
-          final post = displayedPosts[index];
-          return PostCard(
-            post: post,
-            isPostsSelected: widget.isPostsSelected,
-            isCurrentUserProfile: widget.isCurrentUserProfile,
-          );
-        },
-      ),
-    );
-  }
+ @override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: _buildCustomAppBar(),
+    backgroundColor: Colors.grey[100],
+    body: ListView.builder(
+      controller: _scrollController,
+      itemCount: displayedPosts.length,
+      padding: EdgeInsets.zero,
+      itemBuilder: (context, index) {
+        final post = displayedPosts[index];
+        return PostCard(
+          post: post,
+          isPostsSelected: widget.isPostsSelected,
+          isCurrentUserProfile: widget.isCurrentUserProfile,
+          onDelete: () {
+            setState(() {
+              displayedPosts.remove(post); // Remove the post from the list
+            });
+          }, // <-- Ensure this onDelete parameter is included
+        );
+      },
+    ),
+  );
+}
+
 
   AppBar _buildCustomAppBar() {
     return AppBar(
@@ -103,12 +109,14 @@ class PostCard extends StatefulWidget {
   final Post post;
   final bool isPostsSelected;
   final bool isCurrentUserProfile;
+  final VoidCallback onDelete; // Callback to handle deletion
 
   const PostCard({
     Key? key,
     required this.post,
     required this.isPostsSelected,
     required this.isCurrentUserProfile,
+    required this.onDelete, // Add this line
   }) : super(key: key);
 
   @override
@@ -216,15 +224,14 @@ Future<void> _deletePost() async {
   final userId = await LoginService().getUserId();
   if (userId == null) return;
 
-  bool success = await _userProfileService.deletePost(widget.post.postId, userId);  // <-- Updated
-
+  bool success = await _userProfileService.deletePost(widget.post.postId, userId);
 
   if (success) {
+    widget.onDelete(); // Call the callback to handle the immediate UI update
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text('Post deleted successfully!'),
       backgroundColor: Colors.green,
     ));
-    Navigator.pop(context); // Go back to the previous page after deletion
   } else {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text('Failed to delete the post'),
@@ -232,6 +239,7 @@ Future<void> _deletePost() async {
     ));
   }
 }
+
 
 
 Future<void> _editPostCaption() async {
@@ -416,7 +424,7 @@ Widget _buildCaptionEditor() {
                 });
               },
               child: Text("Cancel"),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.white),
             ),
           ],
         ),
