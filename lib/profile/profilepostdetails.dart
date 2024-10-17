@@ -116,7 +116,7 @@ class PostCard extends StatefulWidget {
     required this.post,
     required this.isPostsSelected,
     required this.isCurrentUserProfile,
-    required this.onDelete, // Add this line
+zzz    required this.onDelete, // Add this line
   }) : super(key: key);
 
   @override

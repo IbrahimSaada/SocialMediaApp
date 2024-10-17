@@ -17,6 +17,8 @@ import '***REMOVED***/profile/shared_posts_grid.dart';
 import '***REMOVED***/profile/shared_post_details_page.dart';
 import '***REMOVED***/profile/followerspage.dart';
 import '***REMOVED***/profile/followingpage.dart';
+import '***REMOVED***/maintenance/expiredtoken.dart';
+import '***REMOVED***/profile/qr_code.dart';
 
 class OtherUserProfilePage extends StatefulWidget {
   final int otherUserId;
@@ -73,45 +75,85 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     super.dispose();
   }
 
+  // Add a new method to show the QR Code Modal
+void _showQRCode() {
+  if (userProfile?.qrCode != null) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return QRCodeModal(qrCodeUrl: userProfile!.qrCode);
+      },
+    );
+  } else {
+    // Optional: Show a message if QR code is not available
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("QR code not available."),
+        backgroundColor: Color(0xFFF45F67),
+      ),
+    );
+  }
+}
+
 Future<void> _loadUserProfile() async {
   setState(() {
     isLoading = true;
   });
 
   currentUserId = await _loginService.getUserId();
-  userProfile = await _userProfileService.fetchUserProfile(widget.otherUserId);
 
-  if (userProfile != null) {
-    setState(() {
-      username = userProfile!.fullName;
-      bio = userProfile!.bio;
-      rating = userProfile!.rating;
-      postNb = userProfile!.postNb;
-      followersNb = userProfile!.followersNb;
-      followingNb = userProfile!.followingNb;
-    });
+  try {
+    userProfile = await _userProfileService.fetchUserProfile(widget.otherUserId);
 
-    // Fetch and update privacy settings
-    try {
+    if (userProfile != null) {
+      setState(() {
+        username = userProfile!.fullName;
+        bio = userProfile!.bio;
+        rating = userProfile!.rating;
+        postNb = userProfile!.postNb;
+        followersNb = userProfile!.followersNb;
+        followingNb = userProfile!.followingNb;
+      });
+
+      // Fetch and update privacy settings
       Map<String, bool> privacySettings = await _userProfileService.checkProfilePrivacy(widget.otherUserId);
       setState(() {
         isProfilePublic = privacySettings['isPublic'] ?? false;
         isFollowersPublic = privacySettings['isFollowersPublic'] ?? false;
         isFollowingPublic = privacySettings['isFollowingPublic'] ?? false;
       });
-    } catch (e) {
-      print('Error loading privacy settings: $e');
+
+      await _fetchUserPosts();
+      await _fetchSharedPosts();
+
+      final followStatus = await _checkFollowStatus();
+      if (followStatus != null) {
+        setState(() {
+          isFollowing = followStatus.isFollowing;
+          amFollowing = followStatus.amFollowing;
+        });
+      }
+    } else {
+      // Assume if userProfile is null, check if it's due to a session expiration
+      // Adjust this section based on how you log/monitor error details
+      print('Failed to load user profile. Possibly due to session expiration.');
+      handleSessionExpired(context);
     }
+  } catch (e) {
+    // Here, if you have specific error types or messages you could check those:
+    print("Error fetching user profile: $e");
 
-    await _fetchUserPosts();
-    await _fetchSharedPosts();
-
-    final followStatus = await _checkFollowStatus();
-    if (followStatus != null) {
-      setState(() {
-        isFollowing = followStatus.isFollowing;
-        amFollowing = followStatus.amFollowing;
-      });
+    // Example: If e contains "401" or if you have specific status monitoring within _apiService
+    if (e.toString().contains('401')) { 
+      handleSessionExpired(context); // Trigger session expired only on 401 error
+    } else {
+      // Handle other types of errors with a general message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("An unexpected error occurred."),
+          backgroundColor: Color(0xFFF45F67),
+        ),
+      );
     }
   }
 
@@ -452,9 +494,20 @@ Future<void> _fetchSharedPosts() async {
                         ),
                       ),
                       SizedBox(width: 10),
-                      Icon(Icons.qr_code, size: screenWidth * 0.07, color: Colors.grey),
+
+                      // QR Code Icon with onTap functionality
+                      GestureDetector(
+                        onTap: _showQRCode,
+                        child: Icon(
+                          Icons.qr_code,
+                          size: screenWidth * 0.07,
+                          color: Colors.grey,
+                        ),
+                      ),
                     ],
                   ),
+
+                  // Keep the remaining widgets intact:
                   SizedBox(height: 10),
                   _buildFollowAndMessageButtons(screenWidth),
                   SizedBox(height: 10),
@@ -490,7 +543,6 @@ Future<void> _fetchSharedPosts() async {
                       ),
                     ),
                   ),
-
                   SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -549,16 +601,14 @@ Future<void> _fetchSharedPosts() async {
                               openFullPost: _openFullPost,
                               isPrivateAccount: isPrivateAccount, // Pass privacy status here
                             )
-
                             : SharedPostsGrid(
                               sharedPosts: sharedPosts,
                               isPaginatingSharedPosts: isPaginatingSharedPosts,
                               scrollController: _scrollController,
                               screenWidth: screenWidth,
                               openSharedPost: _openSharedPostDetails,
-                              isPrivateAccount: isPrivateAccount, // Pass the privacy status here
+                              isPrivateAccount: isPrivateAccount, // Pass privacy status here
                             )
-
                   ),
                 ],
               ),
