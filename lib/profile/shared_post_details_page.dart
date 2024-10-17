@@ -12,6 +12,8 @@ import 'package:cook/models/bookmarkrequest_model.dart';
 import 'package:cook/services/LoginService.dart';
 import 'package:cook/home/comment.dart';
 import 'package:cook/home/report_dialog.dart';
+import 'package:cook/services/SessionExpiredException.dart';
+import 'package:cook/maintenance/expiredtoken.dart';
 
 
 
@@ -75,10 +77,11 @@ class _SharedPostDetailsPageState extends State<SharedPostDetailsPage> with Tick
     super.dispose();
   }
 
-  Future<void> _editSharedPostComment(SharedPostDetails sharedPost, String newComment) async {
-    final userId = await _loginService.getUserId();
-    if (userId == null) return;
+Future<void> _editSharedPostComment(SharedPostDetails sharedPost, String newComment) async {
+  final userId = await _loginService.getUserId();
+  if (userId == null) return;
 
+  try {
     bool success = await _userProfileService.editSharedPostComment(
       sharedPost.shareId,
       newComment,  // Pass the updated comment
@@ -99,10 +102,22 @@ class _SharedPostDetailsPageState extends State<SharedPostDetailsPage> with Tick
         backgroundColor: Colors.red,
       ));
     }
+  } on SessionExpiredException {
+    print('SessionExpired detected in _editSharedPostComment');
+    // Trigger session expired UI
+    handleSessionExpired(context);
+  } catch (e) {
+    print('Error updating shared post comment: $e');
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('An error occurred while updating the shared post comment.'),
+      backgroundColor: Colors.red,
+    ));
   }
+}
 
- Future<void> _deleteSharedPost(int index) async {
-  final userId = await _loginService.getUserId();
+
+Future<void> _deleteSharedPost(int index) async {
+  final userId = await LoginService().getUserId();
   if (userId == null) return;
 
   try {
@@ -120,113 +135,97 @@ class _SharedPostDetailsPageState extends State<SharedPostDetailsPage> with Tick
         backgroundColor: Colors.green,
       ));
     } else {
-      throw Exception('Deletion was unsuccessful');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Failed to delete the shared post'),
+        backgroundColor: Colors.red,
+      ));
     }
-  } catch (error) {
-    print('Error during deletion: $error'); // Log the error to console
+  }  on SessionExpiredException {
+    print('SessionExpired detected in _deleteSharedPost');
+    // Handle the session expiration here
+    handleSessionExpired(context); // Trigger session expired dialog or navigation
+  } catch (e) {
+    print('Error occurred while deleting sharedpost: $e');
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('Failed to delete shared post. Please try again.'),
+      content: Text('An error occurred while deleting the sharedpost'),
       backgroundColor: Colors.red,
     ));
   }
 }
 
   // Handle like/unlike action
-  Future<void> _handleLike(int index) async {
-    final userId = await _loginService.getUserId();
+Future<void> _handleLike(int index) async {
+  final userId = await _loginService.getUserId();
 
-    if (userId == null) {
-      return;
-    }
-
-    final sharedPost = widget.sharedPosts[index];
-
-    try {
-      if (_isLikedList[index]) {
-        // Unlike the post
-        await PostService.unlikePost(
-          LikeRequest(userId: userId, postId: sharedPost.postId),
-        );
-        setState(() {
-          _isLikedList[index] = false;
-          _likeCountList[index] -= 1;
-        });
-      } else {
-        // Like the post
-        await PostService.likePost(
-          LikeRequest(userId: userId, postId: sharedPost.postId),
-        );
-        setState(() {
-          _isLikedList[index] = true;
-          _likeCountList[index] += 1;
-        });
-      }
-    } catch (e) {
-      if (e.toString().contains('Session expired')) {
-        // Handle session expiration
-        if (context.mounted) {
-          handleSessionExpired(context);
-        }
-      } else {
-        // Handle other errors
-        print('Failed to like/unlike post: $e');
-      }
-    }
+  if (userId == null) {
+    return;
   }
 
-  // Handle bookmark/unbookmark action
-  Future<void> _handleBookmark(int index) async {
-    final userId = await _loginService.getUserId();
+  final sharedPost = widget.sharedPosts[index];
 
-    if (userId == null) {
-      return;
+  try {
+    if (_isLikedList[index]) {
+      // Unlike the post
+      await PostService.unlikePost(
+        LikeRequest(userId: userId, postId: sharedPost.postId),
+      );
+      setState(() {
+        _isLikedList[index] = false;
+        _likeCountList[index] -= 1;
+      });
+    } else {
+      // Like the post
+      await PostService.likePost(
+        LikeRequest(userId: userId, postId: sharedPost.postId),
+      );
+      setState(() {
+        _isLikedList[index] = true;
+        _likeCountList[index] += 1;
+      });
     }
+  } catch (e) {
+    // Handle errors
+    print('Failed to like/unlike post: $e');
+  }
+}
 
-    final sharedPost = widget.sharedPosts[index];
-    await _bookmarkAnimationControllers[index].forward();
 
-    try {
-      if (_isBookmarkedList[index]) {
-        // Unbookmark the post
-        await PostService.unbookmarkPost(
-          BookmarkRequest(userId: userId, postId: sharedPost.postId),
-        );
-        setState(() {
-          _isBookmarkedList[index] = false;
-        });
-      } else {
-        // Bookmark the post
-        await PostService.bookmarkPost(
-          BookmarkRequest(userId: userId, postId: sharedPost.postId),
-        );
-        setState(() {
-          _isBookmarkedList[index] = true;
-        });
-      }
-    } catch (e) {
-      if (e.toString().contains('Session expired')) {
-        // Handle session expiration
-        if (context.mounted) {
-          handleSessionExpired(context);
-        }
-      } else {
-        // Handle other errors
-        print('Failed to bookmark/unbookmark post: $e');
-      }
-    }
+// Handle bookmark/unbookmark action
+Future<void> _handleBookmark(int index) async {
+  final userId = await _loginService.getUserId();
 
-    await _bookmarkAnimationControllers[index].reverse();
+  if (userId == null) {
+    return;
   }
 
-  // Placeholder for session expiration handling
-  void handleSessionExpired(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Session expired. Please log in again.'),
-        backgroundColor: Colors.red,
-      ),
-    );
+  final sharedPost = widget.sharedPosts[index];
+  await _bookmarkAnimationControllers[index].forward();
+
+  try {
+    if (_isBookmarkedList[index]) {
+      // Unbookmark the post
+      await PostService.unbookmarkPost(
+        BookmarkRequest(userId: userId, postId: sharedPost.postId),
+      );
+      setState(() {
+        _isBookmarkedList[index] = false;
+      });
+    } else {
+      // Bookmark the post
+      await PostService.bookmarkPost(
+        BookmarkRequest(userId: userId, postId: sharedPost.postId),
+      );
+      setState(() {
+        _isBookmarkedList[index] = true;
+      });
+    }
+  } catch (e) {
+    // Handle errors
+    print('Failed to bookmark/unbookmark post: $e');
   }
+
+  await _bookmarkAnimationControllers[index].reverse();
+}
 
   // Navigate to Comment Page
   void _viewComments(int postId) {

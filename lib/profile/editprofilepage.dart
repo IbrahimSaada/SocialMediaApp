@@ -6,6 +6,8 @@ import 'package:cook/services/s3_upload_service.dart'; // Use your S3UploadServi
 import 'package:cook/services/loginservice.dart'; // Use your LoginService
 import 'package:cook/services/userprofile_service.dart'; // Use the UserProfileService
 import 'package:cook/models/editprofile_model.dart'; // Use your EditUserProfile model
+import 'package:cook/maintenance/expiredtoken.dart';
+import 'package:cook/services/SessionExpiredException.dart';
 
 class EditProfilePage extends StatefulWidget {
   final String currentUsername;
@@ -47,30 +49,31 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
-  Future<void> _saveChanges() async {
-    setState(() {
-      isUploading = true;
-    });
+Future<void> _saveChanges() async {
+  setState(() {
+    isUploading = true;
+  });
 
-    String? uploadedImageUrl;
-    if (_imageFile != null) {
-      uploadedImageUrl = await _uploadProfileImage(_imageFile!);
-    }
+  String? uploadedImageUrl;
+  if (_imageFile != null) {
+    uploadedImageUrl = await _uploadProfileImage(_imageFile!);
+  }
 
-    String? newUsername = (usernameController.text != widget.currentUsername) ? usernameController.text : null;
-    String? newBio = (bioController.text != widget.currentBio) ? bioController.text : null;
-    String? newProfilePic = (uploadedImageUrl != null) ? uploadedImageUrl : null;
+  String? newUsername = (usernameController.text != widget.currentUsername) ? usernameController.text : null;
+  String? newBio = (bioController.text != widget.currentBio) ? bioController.text : null;
+  String? newProfilePic = (uploadedImageUrl != null) ? uploadedImageUrl : null;
 
-    if (newProfilePic != null || newUsername != null || newBio != null) {
-      UserProfileService userProfileService = UserProfileService();
-      int userId = await LoginService().getUserId() ?? 0;
+  if (newProfilePic != null || newUsername != null || newBio != null) {
+    UserProfileService userProfileService = UserProfileService();
+    int userId = await LoginService().getUserId() ?? 0;
 
-      EditUserProfile updatedProfile = EditUserProfile(
-        profilePic: newProfilePic,
-        fullName: newUsername,
-        bio: newBio,
-      );
+    EditUserProfile updatedProfile = EditUserProfile(
+      profilePic: newProfilePic,
+      fullName: newUsername,
+      bio: newBio,
+    );
 
+    try {
       bool success = await userProfileService.editUserProfile(
         id: userId.toString(),
         editUserProfile: updatedProfile,
@@ -87,16 +90,24 @@ class _EditProfilePageState extends State<EditProfilePage> {
           SnackBar(content: Text('Failed to update profile')),
         );
       }
-    } else {
+    } on SessionExpiredException {
+      // Handle the session expired UI
+      handleSessionExpired(context);  // Call the globally defined session expired handler
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No changes detected')),
+        SnackBar(content: Text('Error occurred: $e')),
       );
     }
-
-    setState(() {
-      isUploading = false;
-    });
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('No changes detected')),
+    );
   }
+
+  setState(() {
+    isUploading = false;
+  });
+}
 
   Future<String?> _uploadProfileImage(File imageFile) async {
     try {

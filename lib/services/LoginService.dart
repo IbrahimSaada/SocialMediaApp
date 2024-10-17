@@ -2,10 +2,11 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'SignatureService.dart';  // Import the SignatureService class
+import 'SessionExpiredException.dart';
 
 class LoginService {
   final String baseUrl =
-      'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api'; // Base URL for API
+      'https://e5ac-185-97-92-21.ngrok-free.app/api'; // Base URL for API
   final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
   final SignatureService _signatureService = SignatureService();  // Using SignatureService for HMAC
 
@@ -45,16 +46,17 @@ class LoginService {
   }
 
   // Refresh Access Token
-  Future<void> refreshAccessToken() async {
-    var refreshToken = await getRefreshToken();
+Future<void> refreshAccessToken() async {
+  var refreshToken = await getRefreshToken();
 
-    if (refreshToken == null) {
-      throw Exception('Refresh token not found');
-    }
+  if (refreshToken == null) {
+    throw Exception('Refresh token not found');
+  }
 
-    // Generate signature using the refresh token
-    String signature = await _signatureService.generateHMAC(refreshToken);
+  // Generate signature using the refresh token
+  String signature = await _signatureService.generateHMAC(refreshToken);
 
+  try {
     // Perform token refresh API request
     final response = await http.post(
       Uri.parse('$baseUrl/Login/RefreshToken'),
@@ -85,12 +87,19 @@ class LoginService {
       }
     } else if (response.statusCode == 401) {
       // Refresh token is invalid or expired
+      print('Refresh token is invalid or expired.');
       await logout(); // Log the user out
-      throw Exception('Session expired: Please log in again.');
+      throw SessionExpiredException(); // Throw custom exception
     } else {
+      print('Failed to refresh token. Status code: ${response.statusCode}');
       throw Exception('Failed to refresh token: ${response.body}');
     }
+  } catch (e) {
+    print('Error in refreshAccessToken: $e');
+    rethrow; // Propagate the exception to the caller
   }
+}
+
 
   // Logout function
   Future<void> logout() async {

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:cook/services/userprofile_service.dart';
 import 'package:cook/models/follower_model.dart';
+import 'package:cook/maintenance/expiredtoken.dart';
+import 'package:cook/services/SessionExpiredException.dart';
 
 class FollowersPage extends StatefulWidget {
   final int userId;
@@ -46,7 +48,8 @@ class _FollowersPageState extends State<FollowersPage> {
     }
   }
 
-  Future<void> _fetchFollowers({int page = 1}) async {
+Future<void> _fetchFollowers({int page = 1}) async {
+  try {
     if (page == 1) setState(() => isLoading = true);
     else setState(() => isLoadingMore = true);
 
@@ -69,7 +72,21 @@ class _FollowersPageState extends State<FollowersPage> {
       isLoading = false;
       isLoadingMore = false;
     });
+  } on SessionExpiredException {
+    print("SessionExpired detected while fetching followers");
+    handleSessionExpired(context); // Trigger the session expired dialog
+  } catch (e) {
+    print('Error fetching followers: $e');
+    setState(() {
+      isLoading = false;
+      isLoadingMore = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to load followers. Please try again.')),
+    );
   }
+}
+
 
 Widget _buildShimmerEffect(double screenWidth) {
   return ListView.builder(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cook/services/userprofile_service.dart';
 import 'package:cook/services/loginservice.dart';
+import 'package:cook/maintenance/expiredtoken.dart';
+import 'package:cook/services/SessionExpiredException.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   @override
@@ -33,7 +35,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   }
 
   void _changePassword() async {
-    if (_formKey.currentState!.validate() && _userId != null) {
+  if (_formKey.currentState!.validate() && _userId != null) {
+    try {
       if (!_isOldPasswordVerified) {
         // Step 1: Verify the old password
         final response = await _userProfileService.changePassword(
@@ -46,9 +49,13 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           setState(() {
             _isOldPasswordVerified = true;
           });
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Old password verified. Enter new password.")));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Old password verified. Enter new password."))
+          );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Old password is wrong")));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Old password is wrong"))
+          );
         }
       } else {
         // Step 2: Change to the new password
@@ -59,14 +66,27 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         );
 
         if (response['success'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Password changed successfully")));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Password changed successfully"))
+          );
           Navigator.pop(context); // Go back after successful change
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(response['message'])));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(response['message']))
+          );
         }
       }
+    } on SessionExpiredException {
+      print("SessionExpired detected while changing password");
+      handleSessionExpired(context); // Trigger session expired UI
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e"))
+      );
     }
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

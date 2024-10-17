@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:cook/services/userprofile_service.dart';
 import 'package:cook/models/following_model.dart';
+import 'package:cook/maintenance/expiredtoken.dart';
+import 'package:cook/services/SessionExpiredException.dart';
 
 class FollowingPage extends StatefulWidget {
   final int userId;
@@ -46,10 +48,11 @@ class _FollowingPageState extends State<FollowingPage> {
     }
   }
 
-  Future<void> _fetchFollowing({int page = 1}) async {
-    if (page == 1) setState(() => isLoading = true);
-    else setState(() => isLoadingMore = true);
+Future<void> _fetchFollowing({int page = 1}) async {
+  if (page == 1) setState(() => isLoading = true);
+  else setState(() => isLoadingMore = true);
 
+  try {
     List<Following> newFollowing = await UserProfileService().fetchFollowing(
       widget.userId,
       widget.viewerUserId,
@@ -66,10 +69,21 @@ class _FollowingPageState extends State<FollowingPage> {
       }
       currentPage = page;
       hasMoreData = newFollowing.length == pageSize;
+    });
+  } on SessionExpiredException {
+    // Handle session expired
+    print("Session expired in _fetchFollowing");
+    handleSessionExpired(context);  // Show session expired dialog/UI
+  } catch (e) {
+    print('Error fetching following: $e');
+  } finally {
+    setState(() {
       isLoading = false;
       isLoadingMore = false;
     });
   }
+}
+
 
   Widget _buildShimmerEffect(double screenWidth) {
     return ListView.builder(
