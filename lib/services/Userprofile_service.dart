@@ -145,7 +145,7 @@ Future<void> changeProfilePrivacy(int userId, PrivacySettings settings) async {
 
   // Construct the full URL with query parameters
   final Uri uri = Uri.parse(
-    'https://e5ac-185-97-92-21.ngrok-free.app/api/UserProfile/change-privacy'
+    '***REMOVED***/api/UserProfile/change-privacy'
   ).replace(queryParameters: queryParams);
 
   // Data to sign (userId + privacy settings)
