@@ -54,8 +54,8 @@ class _ProfilePageState extends State<ProfilePage> {
   final ScrollController _scrollController = ScrollController();
   final LoginService _loginService = LoginService();
   final UserProfileService _userProfileService = UserProfileService();
-  final UserpostService _userpostService = UserpostService();
-
+  final UserpostService _userpostService = UserpostService(); 
+  bool hasMoreSharedPosts = true;
   bool showFullBio = false;
 
   @override
@@ -124,7 +124,7 @@ Future<void> _loadUserProfile() async {
 }
   
 Future<void> _fetchSharedPosts() async {
-  if (isPaginatingSharedPosts || userId == null) return;
+  if (isPaginatingSharedPosts || userId == null || !hasMoreSharedPosts) return;
 
   try {
     setState(() {
@@ -136,11 +136,17 @@ Future<void> _fetchSharedPosts() async {
 
     List<SharedPostDetails> newSharedPosts = await _userpostService.fetchSharedPosts(
         currentUserId, viewerUserId, currentSharedPostsPageNumber, pageSize);
+
     setState(() {
       sharedPosts.addAll(newSharedPosts);
       currentSharedPostsPageNumber++;
       isPaginatingSharedPosts = false;
       isPrivateAccount = false; // Set to false since posts were fetched
+
+      // Check if fewer posts were returned than the page size
+      if (newSharedPosts.length < pageSize) {
+        hasMoreSharedPosts = false;
+      }
     });
   } catch (e) {
     print("Error fetching shared posts: $e");
@@ -152,7 +158,6 @@ Future<void> _fetchSharedPosts() async {
     });
   }
 }
-
 
 Future<void> _fetchUserPosts() async {
   try {
@@ -215,15 +220,18 @@ Future<void> _fetchUserPosts() async {
     }
   }
 
-  void _scrollListener() {
-    if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
-      if (isPostsSelected && !isPaginating) {
-        _fetchUserPosts();
-      } else if (!isPostsSelected && !isPaginatingBookmarks) {
-        _fetchBookmarkedPosts();
-      }
+void _scrollListener() {
+  if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
+    if (isPostsSelected && !isPaginating) {
+      _fetchUserPosts();
+    } else if (!isPostsSelected && !isSharedPostsSelected && !isPaginatingBookmarks) {
+      _fetchBookmarkedPosts();
+    } else if (isSharedPostsSelected && !isPaginatingSharedPosts && hasMoreSharedPosts) {
+      _fetchSharedPosts();
     }
   }
+}
+
 
   Future<void> _refreshUserProfile() async {
     // Reset the user profile data
@@ -556,36 +564,37 @@ void _openFullPost(int index) {
                     ],
                   ),
                   SizedBox(height: 16),
-                    Expanded(
-                      child: isLoading
-                          ? _buildShimmerGrid()
-                          : isPostsSelected
-                              ? PostGrid(
-                                userPosts: userPosts,
-                                isPaginating: isPaginating,
-                                scrollController: _scrollController,
-                                screenWidth: screenWidth,
-                                openFullPost: _openFullPost,
-                                isPrivateAccount: isPrivateAccount, // Pass privacy status here
-                              )
-                              : isSharedPostsSelected
-                                  ? SharedPostsGrid(
-                                    sharedPosts: sharedPosts,
-                                    isPaginatingSharedPosts: isPaginatingSharedPosts,
-                                    scrollController: _scrollController,
-                                    screenWidth: screenWidth,
-                                    openSharedPost: _openSharedPostDetails,
-                                    isPrivateAccount: isPrivateAccount, // Pass the privacy status here
-                                    )
+                   Expanded(
+  child: isLoading
+      ? _buildShimmerGrid()
+      : isPostsSelected
+          ? PostGrid(
+              userPosts: userPosts,
+              isPaginating: isPaginating,
+              scrollController: _scrollController,
+              screenWidth: screenWidth,
+              openFullPost: _openFullPost,
+              isPrivateAccount: isPrivateAccount,
+            )
+          : isSharedPostsSelected
+              ? SharedPostsGrid(
+                  sharedPosts: sharedPosts,
+                  isPaginatingSharedPosts: isPaginatingSharedPosts,
+                  hasMoreSharedPosts: hasMoreSharedPosts, // Pass the variable here
+                  scrollController: _scrollController,
+                  screenWidth: screenWidth,
+                  openSharedPost: _openSharedPostDetails,
+                  isPrivateAccount: isPrivateAccount,
+                )
+              : BookmarkedGrid(
+                  bookmarkedPosts: bookmarkedPosts,
+                  isPaginatingBookmarks: isPaginatingBookmarks,
+                  scrollController: _scrollController,
+                  screenWidth: screenWidth,
+                  openFullPost: _openFullPost,
+                ),
+),
 
-                                  : BookmarkedGrid(
-                                      bookmarkedPosts: bookmarkedPosts,
-                                      isPaginatingBookmarks: isPaginatingBookmarks,
-                                      scrollController: _scrollController,
-                                      screenWidth: screenWidth,
-                                      openFullPost: _openFullPost,
-                                    ),
-                    ),
                 ],
               ),
             ),
