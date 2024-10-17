@@ -9,7 +9,7 @@ import 'apiService.dart';
 import 'SessionExpiredException.dart';
 
 class UserProfileService {
-  static const String baseUrl = 'https://e5ac-185-97-92-21.ngrok-free.app/api/UserProfile';
+  static const String baseUrl = '***REMOVED***/api/UserProfile';
   final ApiService _apiService = ApiService();
   // Fetch user profile method
     Future<UserProfile?> fetchUserProfile(int userId) async {
