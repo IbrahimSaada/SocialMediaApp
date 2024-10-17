@@ -6,7 +6,7 @@ import 'SessionExpiredException.dart';
 import 'apiService.dart';
 
 class UserpostService {
-  static const String baseUrl = 'https://e5ac-185-97-92-21.ngrok-free.app/api';
+  static const String baseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api';
   final ApiService _apiService = ApiService();
   // Fetch User Posts
   Future<List<Post>> fetchUserPosts(int currentUserId, int viewerUserId, int pageNumber, int pageSize) async {
