@@ -13,6 +13,8 @@ import '***REMOVED***/services/LoginService.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import '***REMOVED***/services/userpost_service.dart';
 import '***REMOVED***/home/report_dialog.dart';
+import '***REMOVED***/maintenance/expiredtoken.dart';
+import '***REMOVED***/services/SessionExpiredException.dart';
 
 
 class ProfilePostDetails extends StatefulWidget {
@@ -224,21 +226,34 @@ Future<void> _deletePost() async {
   final userId = await LoginService().getUserId();
   if (userId == null) return;
 
-  bool success = await _userProfileService.deletePost(widget.post.postId, userId);
+  try {
+    bool success = await _userProfileService.deletePost(widget.post.postId, userId);
 
-  if (success) {
-    widget.onDelete(); // Call the callback to handle the immediate UI update
+    if (success) {
+      widget.onDelete(); // Call the callback to handle the immediate UI update
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Post deleted successfully!'),
+        backgroundColor: Colors.green,
+      ));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Failed to delete the post'),
+        backgroundColor: Colors.red,
+      ));
+    }
+  } on SessionExpiredException {
+    print('SessionExpired detected in _deletePost');
+    // Handle the session expiration here
+    handleSessionExpired(context); // Trigger session expired dialog or navigation
+  } catch (e) {
+    print('Error occurred while deleting post: $e');
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('Post deleted successfully!'),
-      backgroundColor: Colors.green,
-    ));
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('Failed to delete the post'),
+      content: Text('An error occurred while deleting the post'),
       backgroundColor: Colors.red,
     ));
   }
 }
+
 
 
 
@@ -246,29 +261,41 @@ Future<void> _editPostCaption() async {
   final userId = await LoginService().getUserId();
   if (userId == null) return;
 
-bool success = await _userProfileService.editPostCaption(  // <-- Updated to use _userProfileService
-  widget.post.postId,
-  _newCaption, 
-  userId,
-);
+  try {
+    bool success = await _userProfileService.editPostCaption(
+      widget.post.postId,
+      _newCaption,
+      userId,
+    );
 
-
-  if (success) {
-    setState(() {
-      widget.post.caption = _newCaption; // Update the UI with the new caption
-      _isEditing = false; // Exit edit mode
-    });
+    if (success) {
+      setState(() {
+        widget.post.caption = _newCaption; // Update the UI with the new caption
+        _isEditing = false; // Exit edit mode
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Post updated successfully!'),
+        backgroundColor: Colors.green,
+      ));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Failed to update the post'),
+        backgroundColor: Colors.red,
+      ));
+    }
+  } on SessionExpiredException {
+    // Handle session expired by triggering the session expired UI
+    print('SessionExpired detected in _editPostCaption');
+    handleSessionExpired(context); // Trigger session expired dialog
+  } catch (e) {
+    print('Error updating post caption: $e');
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('Post updated successfully!'),
-      backgroundColor: Colors.green,
-    ));
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('Failed to update the post'),
+      content: Text('An error occurred while updating the post'),
       backgroundColor: Colors.red,
     ));
   }
 }
+
 
 
 

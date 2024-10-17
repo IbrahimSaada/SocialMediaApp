@@ -3,6 +3,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '***REMOVED***/services/userprofile_service.dart';
 import '***REMOVED***/models/privacy_settings_model.dart';
 import '***REMOVED***/settings/changepasswordpage.dart';
+import '***REMOVED***/maintenance/expiredtoken.dart';
+import '***REMOVED***/services/SessionExpiredException.dart';
 
 class SettingsPage extends StatefulWidget {
   @override
@@ -36,21 +38,27 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  Future<void> _loadProfilePrivacy() async {
-    if (_userId == null) return;
+Future<void> _loadProfilePrivacy() async {
+  if (_userId == null) return;
 
-    try {
-      Map<String, bool> privacySettings = await _userProfileService.checkProfilePrivacy(_userId!);
+  try {
+    Map<String, bool> privacySettings = await _userProfileService.checkProfilePrivacy(_userId!);
 
-      setState(() {
-        _isProfilePublic = privacySettings['isPublic'] ?? false;
-        _isFollowersPublic = privacySettings['isFollowersPublic'] ?? false;
-        _isFollowingPublic = privacySettings['isFollowingPublic'] ?? false;
-      });
-    } catch (e) {
-      print('Error loading profile privacy: $e');
-    }
+    setState(() {
+      _isProfilePublic = privacySettings['isPublic'] ?? false;
+      _isFollowersPublic = privacySettings['isFollowersPublic'] ?? false;
+      _isFollowingPublic = privacySettings['isFollowingPublic'] ?? false;
+    });
+  } on SessionExpiredException {
+    print("SessionExpired detected while loading privacy");
+    handleSessionExpired(context); // Trigger session expired dialog
+  } catch (e) {
+    print('Error loading profile privacy: $e');
+    // Optionally, display an error message to the user
   }
+}
+
+
 
 void _updatePrivacySettings() async {
   if (_userId == null) return;
@@ -67,8 +75,29 @@ void _updatePrivacySettings() async {
   try {
     await _userProfileService.changeProfilePrivacy(_userId!, settings);
     print("Privacy settings updated successfully.");
+
+    // Optionally, show success feedback to the user
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Privacy settings updated successfully!"),
+        backgroundColor: Colors.green,
+      ),
+    );
+
+  } on SessionExpiredException {
+    // Handle session expired
+    print("SessionExpired detected while updating privacy settings.");
+    handleSessionExpired(context); // Show session expired dialog
+
   } catch (e) {
+    // Log and show error message to the user
     print("Error updating privacy settings: $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Failed to update privacy settings. Please try again."),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 }
 

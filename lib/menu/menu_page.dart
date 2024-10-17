@@ -5,6 +5,8 @@ import '***REMOVED***/profile/profile_page.dart';
 import '***REMOVED***/services/LoginService.dart';
 import '***REMOVED***/login/login_page.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '***REMOVED***/maintenance/expiredtoken.dart';
+import '***REMOVED***/services/SessionExpiredException.dart';
 
 class MenuPage extends StatefulWidget {
   @override
@@ -32,18 +34,25 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
     );
   }
 
-  Future<void> _loadUserProfile() async {
-    userId = await _loginService.getUserId();
+Future<void> _loadUserProfile() async {
+  userId = await _loginService.getUserId();
 
-    if (userId != null) {
+  if (userId != null) {
+    try {
       userProfile = await _userProfileService.fetchUserProfile(userId!);
       if (userProfile != null) {
         setState(() {});
       }
-    } else {
-      print('User ID is null, make sure user is logged in.');
+    } on SessionExpiredException {
+      print("SessionExpired detected in menu.dart");
+      handleSessionExpired(context); // Trigger session expired dialog
+    } catch (e) {
+      print('Error loading profile: $e'); // Log other errors
     }
+  } else {
+    print('User ID is null, make sure user is logged in.');
   }
+}
 
 Future<void> _logout() async {
   await _loginService.logout();

@@ -17,6 +17,8 @@ import '***REMOVED***/profile/shared_posts_grid.dart';
 import '***REMOVED***/profile/shared_post_details_page.dart';
 import '***REMOVED***/profile/followerspage.dart';
 import '***REMOVED***/profile/followingpage.dart';
+import '***REMOVED***/maintenance/expiredtoken.dart';
+import '***REMOVED***/services/SessionExpiredException.dart';
 
 class OtherUserProfilePage extends StatefulWidget {
   final int otherUserId;
@@ -78,47 +80,60 @@ Future<void> _loadUserProfile() async {
     isLoading = true;
   });
 
-  currentUserId = await _loginService.getUserId();
-  userProfile = await _userProfileService.fetchUserProfile(widget.otherUserId);
+  try {
+    currentUserId = await _loginService.getUserId();
+    userProfile = await _userProfileService.fetchUserProfile(widget.otherUserId);
 
-  if (userProfile != null) {
+    if (userProfile != null) {
+      setState(() {
+        username = userProfile!.fullName;
+        bio = userProfile!.bio;
+        rating = userProfile!.rating;
+        postNb = userProfile!.postNb;
+        followersNb = userProfile!.followersNb;
+        followingNb = userProfile!.followingNb;
+      });
+
+      // Fetch and update privacy settings
+      try {
+        Map<String, bool> privacySettings = await _userProfileService.checkProfilePrivacy(widget.otherUserId);
+        setState(() {
+          isProfilePublic = privacySettings['isPublic'] ?? false;
+          isFollowersPublic = privacySettings['isFollowersPublic'] ?? false;
+          isFollowingPublic = privacySettings['isFollowingPublic'] ?? false;
+        });
+      } on SessionExpiredException {
+        print('SessionExpired detected while loading privacy settings');
+        handleSessionExpired(context);
+        return; // Exit the method early
+      } catch (e) {
+        print('Error loading privacy settings: $e');
+      }
+
+      await _fetchUserPosts();
+      await _fetchSharedPosts();
+
+      final followStatus = await _checkFollowStatus();
+      if (followStatus != null) {
+        setState(() {
+          isFollowing = followStatus.isFollowing;
+          amFollowing = followStatus.amFollowing;
+        });
+      }
+    }
+  } on SessionExpiredException {
+    print("SessionExpired detected in this class");
+    handleSessionExpired(context); // Trigger session expired dialog
+  } catch (e) {
+    print('Error loading user profile: $e');
+  } finally {
     setState(() {
-      username = userProfile!.fullName;
-      bio = userProfile!.bio;
-      rating = userProfile!.rating;
-      postNb = userProfile!.postNb;
-      followersNb = userProfile!.followersNb;
-      followingNb = userProfile!.followingNb;
+      isLoading = false;
     });
-
-    // Fetch and update privacy settings
-    try {
-      Map<String, bool> privacySettings = await _userProfileService.checkProfilePrivacy(widget.otherUserId);
-      setState(() {
-        isProfilePublic = privacySettings['isPublic'] ?? false;
-        isFollowersPublic = privacySettings['isFollowersPublic'] ?? false;
-        isFollowingPublic = privacySettings['isFollowingPublic'] ?? false;
-      });
-    } catch (e) {
-      print('Error loading privacy settings: $e');
-    }
-
-    await _fetchUserPosts();
-    await _fetchSharedPosts();
-
-    final followStatus = await _checkFollowStatus();
-    if (followStatus != null) {
-      setState(() {
-        isFollowing = followStatus.isFollowing;
-        amFollowing = followStatus.amFollowing;
-      });
-    }
   }
-
-  setState(() {
-    isLoading = false;
-  });
 }
+
+
 
 
 Future<void> _fetchUserPosts() async {
@@ -128,20 +143,36 @@ Future<void> _fetchUserPosts() async {
     setState(() {
       isPaginating = true;
     });
+    
+    // Fetch the user posts
     List<Post> newPosts = await _userpostService.fetchUserPosts(
-        widget.otherUserId, currentUserId!, currentPageNumber, pageSize);
+      widget.otherUserId, 
+      currentUserId!, 
+      currentPageNumber, 
+      pageSize
+    );
+    
     setState(() {
       userPosts.addAll(newPosts);
       currentPageNumber++;
       isPaginating = false;
     });
+  } on SessionExpiredException {
+    print("SessionExpired detected in _fetchUserPosts (OtherUserProfile)");
+    // Handle session expiration
+    handleSessionExpired(context); // Trigger session expired dialog or UI
   } catch (e) {
     print("Error fetching posts: $e");
     setState(() {
       isPaginating = false;
     });
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('An error occurred while fetching user posts.'),
+      backgroundColor: Colors.red,
+    ));
   }
 }
+
 
 
 Future<void> _fetchSharedPosts() async {

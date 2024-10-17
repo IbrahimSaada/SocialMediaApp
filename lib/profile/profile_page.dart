@@ -18,6 +18,8 @@ import 'shared_post_details_page.dart';
 import '***REMOVED***/profile/followerspage.dart';
 import '***REMOVED***/profile/followingpage.dart';
 import 'qr_code.dart'; // Import the QRCodeModal
+import '***REMOVED***/maintenance/expiredtoken.dart';
+import '***REMOVED***/services/SessionExpiredException.dart';
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -81,36 +83,44 @@ void _openSharedPostDetails(int index) {
   );
 }
 
-  Future<void> _loadUserProfile() async {
+Future<void> _loadUserProfile() async {
   setState(() {
     isLoading = true;
   });
 
-  final isLoggedIn = await _loginService.isLoggedIn();
-  if (isLoggedIn) {
-    final userId = await _loginService.getUserId();
-    if (userId != null) {
-      userProfile = await _userProfileService.fetchUserProfile(userId);
-      if (userProfile != null) {
-        setState(() {
-          this.userId = userId;
-          username = userProfile!.fullName;
-          bio = userProfile!.bio;
-          rating = userProfile!.rating;
-          postNb = userProfile!.postNb;
-          followersNb = userProfile!.followersNb;
-          followingNb = userProfile!.followingNb;
-        });
-      }
-      await _fetchUserPosts();
-      await _fetchBookmarkedPosts();
-      await _fetchSharedPosts(); // Fetch shared posts
-    }
-  }
+  try {
+    final isLoggedIn = await _loginService.isLoggedIn();
+    if (isLoggedIn) {
+      final userId = await _loginService.getUserId();
+      if (userId != null) {
+        userProfile = await _userProfileService.fetchUserProfile(userId);
+        if (userProfile != null) {
+          setState(() {
+            this.userId = userId;
+            username = userProfile!.fullName;
+            bio = userProfile!.bio;
+            rating = userProfile!.rating;
+            postNb = userProfile!.postNb;
+            followersNb = userProfile!.followersNb;
+            followingNb = userProfile!.followingNb;
+          });
+        }
 
-  setState(() {
-    isLoading = false;
-  });
+        await _fetchUserPosts();
+        await _fetchBookmarkedPosts();
+        await _fetchSharedPosts(); // Fetch shared posts
+      }
+    }
+  } on SessionExpiredException {
+    print("SessionExpired detected in this class");
+    handleSessionExpired(context); // Trigger session expired dialog
+  } catch (e) {
+    print('Error loading user profile: $e');
+  } finally {
+    setState(() {
+      isLoading = false;
+    });
+  }
 }
   
 Future<void> _fetchSharedPosts() async {
@@ -152,21 +162,36 @@ Future<void> _fetchUserPosts() async {
       });
       int viewerUserId = userId!; // Use the logged-in user's ID as the viewerUserId
       print("UserId is: $userId");
-      List<Post> newPosts =
-          await _userpostService.fetchUserPosts(userId!, viewerUserId, currentPageNumber, pageSize);
+      
+      List<Post> newPosts = await _userpostService.fetchUserPosts(
+        userId!, 
+        viewerUserId, 
+        currentPageNumber, 
+        pageSize
+      );
+
       setState(() {
         userPosts.addAll(newPosts);
         currentPageNumber++;
         isPaginating = false;
       });
     }
+  } on SessionExpiredException {
+    print("SessionExpired detected in _fetchUserPosts");
+    // Handle session expiration
+    handleSessionExpired(context); // Trigger session expired dialog or UI
   } catch (e) {
     print("Error fetching posts: $e");
     setState(() {
       isPaginating = false;
     });
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('An error occurred while fetching user posts.'),
+      backgroundColor: Colors.red,
+    ));
   }
 }
+
 
   Future<void> _fetchBookmarkedPosts() async {
     if (isPaginatingBookmarks || userId == null) return;
