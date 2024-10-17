@@ -14,7 +14,7 @@ import '***REMOVED***/home/comment.dart';
 import '***REMOVED***/home/report_dialog.dart';
 import '***REMOVED***/services/SessionExpiredException.dart';
 import '***REMOVED***/maintenance/expiredtoken.dart';
-
+import '***REMOVED***/services/userpost_service.dart';
 
 
 class SharedPostDetailsPage extends StatefulWidget {
@@ -40,19 +40,37 @@ class _SharedPostDetailsPageState extends State<SharedPostDetailsPage> with Tick
   late ScrollController _scrollController;
   final LoginService _loginService = LoginService();
   final UserProfileService _userProfileService = UserProfileService();
+  final UserpostService _userpostService = UserpostService();
 
   // Lists to keep track of like status, like counts, and bookmark status for each post
   late List<bool> _isLikedList;
   late List<int> _likeCountList;
   late List<bool> _isBookmarkedList;
   late List<AnimationController> _bookmarkAnimationControllers;
+    // Pagination variables
+  bool isPaginating = false;
+  bool hasMoreSharedPosts = true;
+  int currentPageNumber = 1;
+  final int pageSize = 10;
+  int? userId;
 
   @override
   void initState() {
-    super.initState();
-    _scrollController = ScrollController(
-      initialScrollOffset: widget.initialIndex * 300.0,
-    );
+      super.initState();
+  _scrollController = ScrollController(
+    initialScrollOffset: widget.initialIndex * 300.0,
+  );
+  _scrollController.addListener(_scrollListener);
+
+  // Initialize userId
+  _loginService.getUserId().then((id) {
+    setState(() {
+      userId = id;
+    });
+  });
+
+  // Initialize currentPageNumber
+  currentPageNumber = 1 + (widget.sharedPosts.length ~/ pageSize);
 
     // Initialize the lists
     _isLikedList = widget.sharedPosts.map((post) => post.isLiked).toList();
@@ -68,14 +86,84 @@ class _SharedPostDetailsPageState extends State<SharedPostDetailsPage> with Tick
     ));
   }
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    for (var controller in _bookmarkAnimationControllers) {
-      controller.dispose();
-    }
-    super.dispose();
+  void _scrollListener() {
+  if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent &&
+      !isPaginating &&
+      hasMoreSharedPosts) {
+    _fetchMoreSharedPosts();
   }
+}
+
+
+@override
+void dispose() {
+  _scrollController.removeListener(_scrollListener);
+  _scrollController.dispose();
+  for (var controller in _bookmarkAnimationControllers) {
+    controller.dispose();
+  }
+  super.dispose();
+}
+
+Future<void> _fetchMoreSharedPosts() async {
+  if (isPaginating || !hasMoreSharedPosts || userId == null) return;
+
+  setState(() {
+    isPaginating = true;
+  });
+
+  try {
+    List<SharedPostDetails> newSharedPosts = await _userpostService.fetchSharedPosts(
+      userId!, // Assuming you're viewing your own shared posts
+      userId!,
+      currentPageNumber,
+      pageSize,
+    );
+
+    setState(() {
+      // Prevent duplicates
+      final existingShareIds = widget.sharedPosts.map((post) => post.shareId).toSet();
+      final uniqueNewSharedPosts = newSharedPosts.where((post) => !existingShareIds.contains(post.shareId)).toList();
+
+      widget.sharedPosts.addAll(uniqueNewSharedPosts);
+      currentPageNumber++;
+
+if (newSharedPosts.length == pageSize) {
+  currentPageNumber++;
+} else {
+  hasMoreSharedPosts = false; // No more posts to load
+}
+
+      isPaginating = false;
+
+      // Update helper lists
+      _isLikedList.addAll(uniqueNewSharedPosts.map((post) => post.isLiked));
+      _likeCountList.addAll(uniqueNewSharedPosts.map((post) => post.likecount));
+      _isBookmarkedList.addAll(uniqueNewSharedPosts.map((post) => post.isBookmarked));
+      _bookmarkAnimationControllers.addAll(
+        List.generate(uniqueNewSharedPosts.length, (_) => AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 300),
+          lowerBound: 0.8,
+          upperBound: 1.2,
+        )),
+      );
+    });
+  } on SessionExpiredException {
+    print("SessionExpired detected in _fetchMoreSharedPosts");
+    handleSessionExpired(context);
+    setState(() {
+      isPaginating = false;
+    });
+  } catch (e) {
+    print('Error fetching more shared posts: $e');
+    setState(() {
+      isPaginating = false;
+    });
+  }
+}
+
+
 
 Future<void> _editSharedPostComment(SharedPostDetails sharedPost, String newComment) async {
   final userId = await _loginService.getUserId();
@@ -237,41 +325,53 @@ Future<void> _handleBookmark(int index) async {
     );
   }
 
-  @override
+    @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar:AppBar(
+      appBar: AppBar(
           centerTitle: true,
           title: Text('Shared Posts', style: TextStyle(color: Color(0xFFF45F67))),
           backgroundColor: Colors.white,
           iconTheme: IconThemeData(color: Color(0xFFF45F67)),
         ),
       backgroundColor: Colors.grey[100],
-      body: ListView.builder(
-      controller: _scrollController,
-      itemCount: widget.sharedPosts.length,
-      padding: EdgeInsets.zero,
-      itemBuilder: (context, index) {
-        final sharedPost = widget.sharedPosts[index];
-        return SharedPostCard(
-          sharedPost: sharedPost,
-          isLiked: _isLikedList[index],
-          likeCount: _likeCountList[index],
-          isBookmarked: _isBookmarkedList[index],
-          bookmarkAnimationController: _bookmarkAnimationControllers[index],
-          handleLike: () => _handleLike(index),
-          handleBookmark: () => _handleBookmark(index),
-          viewComments: () => _viewComments(sharedPost.postId),
-          isCurrentUserProfile: widget.isCurrentUserProfile,
-          handleEdit: (newComment) => _editSharedPostComment(sharedPost, newComment),  // Pass edit method
-          handleDelete: () => _deleteSharedPost(index),  // Pass the index here
-        );
-      },
-    ),
+      body: widget.sharedPosts.isEmpty
+          ? Center(
+              child: Text(
+                'No shared posts yet.',
+                style: TextStyle(fontSize: 18.0, color: Colors.grey[600]),
+              ),
+            )
+      :ListView.builder(
+  controller: _scrollController,
+  itemCount: widget.sharedPosts.length + (isPaginating ? 1 : 0),
+  padding: EdgeInsets.zero,
+  itemBuilder: (context, index) {
+    if (index == widget.sharedPosts.length) {
+      // Loading indicator at the end of the list
+      return Center(child: CircularProgressIndicator(color: Color(0xFFF45F67)));
+    }
+
+    final sharedPost = widget.sharedPosts[index];
+    return SharedPostCard(
+      sharedPost: sharedPost,
+      isLiked: _isLikedList[index],
+      likeCount: _likeCountList[index],
+      isBookmarked: _isBookmarkedList[index],
+      bookmarkAnimationController: _bookmarkAnimationControllers[index],
+      handleLike: () => _handleLike(index),
+      handleBookmark: () => _handleBookmark(index),
+      viewComments: () => _viewComments(sharedPost.postId),
+      isCurrentUserProfile: widget.isCurrentUserProfile,
+      handleEdit: (newComment) => _editSharedPostComment(sharedPost, newComment),
+      handleDelete: () => _deleteSharedPost(index),
+    );
+  },
+)
+
     );
   }
 }
-
 class SharedPostCard extends StatefulWidget {
   final SharedPostDetails sharedPost;
   final bool isLiked;

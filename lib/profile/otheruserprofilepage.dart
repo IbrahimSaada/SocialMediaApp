@@ -57,7 +57,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   final UserpostService _userpostService = UserpostService();
   final FollowService _followService = FollowService();
   final LoginService _loginService = LoginService();
-
+  bool hasMoreSharedPosts = true;
   bool isFollowing = false;
   bool amFollowing = false;
 
@@ -135,32 +135,28 @@ Future<void> _loadUserProfile() async {
         });
       }
     } else {
-      // Assume if userProfile is null, check if it's due to a session expiration
-      // Adjust this section based on how you log/monitor error details
       print('Failed to load user profile. Possibly due to session expiration.');
       handleSessionExpired(context);
     }
   } catch (e) {
-    // Here, if you have specific error types or messages you could check those:
     print("Error fetching user profile: $e");
 
-    // Example: If e contains "401" or if you have specific status monitoring within _apiService
     if (e.toString().contains('401')) { 
-      handleSessionExpired(context); // Trigger session expired only on 401 error
+      handleSessionExpired(context);
     } else {
-      // Handle other types of errors with a general message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("An unexpected error occurred."),
-          backgroundColor: Color(0xFFF45F67),
+          backgroundColor: Color(0xFFF45F65),
         ),
       );
     }
+  } finally {
+    setState(() {
+      isLoading = false;
+    });
   }
 }
-
-
-
 
 Future<void> _fetchUserPosts() async {
   if (isPaginating || currentUserId == null) return; // Ensure currentUserId is set
@@ -202,7 +198,7 @@ Future<void> _fetchUserPosts() async {
 
 
 Future<void> _fetchSharedPosts() async {
-  if (isPaginatingSharedPosts || currentUserId == null) return;
+  if (isPaginatingSharedPosts || currentUserId == null || !hasMoreSharedPosts) return;
 
   try {
     setState(() {
@@ -220,30 +216,34 @@ Future<void> _fetchSharedPosts() async {
       sharedPosts.addAll(newSharedPosts);
       currentSharedPageNumber++;
       isPaginatingSharedPosts = false;
-      isPrivateAccount = false; // Set to false since posts were fetched
+      isPrivateAccount = false;
+
+      // Check if we've received fewer items than pageSize
+      if (newSharedPosts.length < pageSize) {
+        hasMoreSharedPosts = false;
+      }
     });
   } catch (e) {
     print("Error fetching shared posts: $e");
     setState(() {
       isPaginatingSharedPosts = false;
       if (e.toString().contains('Access denied')) {
-        isPrivateAccount = true; // Set to true on privacy error
+        isPrivateAccount = true;
       }
     });
   }
 }
 
-
-
-  void _scrollListener() {
-    if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
-      if (isPostsSelected && !isPaginating) {
-        _fetchUserPosts();
-      } else if (isSharedPostsSelected && !isPaginatingSharedPosts) {
-        _fetchSharedPosts();
-      }
+void _scrollListener() {
+  if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
+    if (isPostsSelected && !isPaginating) {
+      _fetchUserPosts();
+    } else if (isSharedPostsSelected && !isPaginatingSharedPosts && hasMoreSharedPosts) {
+      _fetchSharedPosts();
     }
   }
+}
+
 
   Future<FollowStatusResponse?> _checkFollowStatus() async {
     currentUserId ??= await _loginService.getUserId(); // Ensure currentUserId is set
@@ -619,11 +619,13 @@ Future<void> _fetchSharedPosts() async {
                             : SharedPostsGrid(
                               sharedPosts: sharedPosts,
                               isPaginatingSharedPosts: isPaginatingSharedPosts,
+                              hasMoreSharedPosts: hasMoreSharedPosts, // Pass the variable here
                               scrollController: _scrollController,
                               screenWidth: screenWidth,
                               openSharedPost: _openSharedPostDetails,
-                              isPrivateAccount: isPrivateAccount, // Pass privacy status here
+                              isPrivateAccount: isPrivateAccount,
                             )
+
                   ),
                 ],
               ),

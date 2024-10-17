@@ -42,45 +42,138 @@ class ProfilePostDetails extends StatefulWidget {
 class _ProfilePostDetailsState extends State<ProfilePostDetails> {
   late ScrollController _scrollController;
   late List<Post> displayedPosts;
+  bool isPaginating = false;
+  bool hasMorePosts = true;
+  int currentPageNumber = 1;
+  final int pageSize = 10;
+  final UserpostService _userpostService = UserpostService();
 
-  @override
-  void initState() {
-    super.initState();
-    _scrollController = ScrollController(
-      initialScrollOffset: widget.initialIndex * 300.0,
-    );
-    displayedPosts = widget.isPostsSelected ? widget.userPosts : widget.bookmarkedPosts;
-  }
+ @override
+void initState() {
+  super.initState();
+  _scrollController = ScrollController(
+    initialScrollOffset: widget.initialIndex * 300.0,
+  );
+  _scrollController.addListener(_scrollListener);
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
+  displayedPosts = widget.isPostsSelected ? widget.userPosts : widget.bookmarkedPosts;
+
+  // Calculate the current page number based on the number of posts already loaded
+  currentPageNumber = 1 + (displayedPosts.length ~/ pageSize);
+}
+
+void _scrollListener() {
+  if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent &&
+      !isPaginating &&
+      hasMorePosts) {
+    _fetchMorePosts();
   }
+}
+
+
+
+Future<void> _fetchMorePosts() async {
+  if (isPaginating || !hasMorePosts) return;
+
+  setState(() {
+    isPaginating = true;
+  });
+
+  try {
+    List<Post> newPosts = [];
+
+    if (widget.isPostsSelected) {
+      // Fetch user posts
+      newPosts = await _userpostService.fetchUserPosts(
+        widget.userId,
+        widget.userId, // Assuming the viewer is the user themselves
+        currentPageNumber,
+        pageSize,
+      );
+    } else {
+      // Fetch bookmarked posts
+      newPosts = await _userpostService.fetchBookmarkedPosts(
+        widget.userId,
+        currentPageNumber,
+        pageSize,
+      );
+    }
+
+    setState(() {
+      // Prevent duplicates
+      final existingPostIds = displayedPosts.map((post) => post.postId).toSet();
+      final uniqueNewPosts = newPosts.where((post) => !existingPostIds.contains(post.postId)).toList();
+
+      displayedPosts.addAll(uniqueNewPosts);
+      currentPageNumber++;
+
+if (newPosts.length == pageSize) {
+  currentPageNumber++;
+} else {
+  hasMorePosts = false; // No more posts to load
+}
+
+      isPaginating = false;
+    });
+  } on SessionExpiredException {
+    print("SessionExpired detected in _fetchMorePosts");
+    handleSessionExpired(context);
+    setState(() {
+      isPaginating = false;
+    });
+  } catch (e) {
+    print('Error fetching more posts: $e');
+    setState(() {
+      isPaginating = false;
+    });
+  }
+}
+
+
+ @override
+void dispose() {
+  _scrollController.removeListener(_scrollListener);
+  _scrollController.dispose();
+  super.dispose();
+}
+
 
  @override
 Widget build(BuildContext context) {
   return Scaffold(
     appBar: _buildCustomAppBar(),
     backgroundColor: Colors.grey[100],
-    body: ListView.builder(
-      controller: _scrollController,
-      itemCount: displayedPosts.length,
-      padding: EdgeInsets.zero,
-      itemBuilder: (context, index) {
-        final post = displayedPosts[index];
-        return PostCard(
-          post: post,
-          isPostsSelected: widget.isPostsSelected,
-          isCurrentUserProfile: widget.isCurrentUserProfile,
-          onDelete: () {
-            setState(() {
-              displayedPosts.remove(post); // Remove the post from the list
-            });
-          }, // <-- Ensure this onDelete parameter is included
-        );
+    body: displayedPosts.isEmpty
+        ? Center(
+            child: Text(
+              'No posts available',
+              style: TextStyle(fontSize: 18.0, color: Colors.grey[600]),
+            ),
+          )
+        : ListView.builder(
+  controller: _scrollController,
+  itemCount: displayedPosts.length + (hasMorePosts ? 1 : 0),
+  padding: EdgeInsets.zero,
+  itemBuilder: (context, index) {
+    if (index == displayedPosts.length) {
+      // Loading indicator at the end of the list
+      return Center(child: CircularProgressIndicator(color: Color(0xFFF45F67)));
+    }
+
+    final post = displayedPosts[index];
+    return PostCard(
+      post: post,
+      isPostsSelected: widget.isPostsSelected,
+      isCurrentUserProfile: widget.isCurrentUserProfile,
+      onDelete: () {
+        setState(() {
+          displayedPosts.remove(post);
+        });
       },
-    ),
+    );
+  },
+)
+
   );
 }
 

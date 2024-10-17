@@ -5,19 +5,21 @@ import '***REMOVED***/models/sharedpost_model.dart';
 class SharedPostsGrid extends StatelessWidget {
   final List<SharedPostDetails> sharedPosts;
   final bool isPaginatingSharedPosts;
+  final bool hasMoreSharedPosts;
   final ScrollController scrollController;
   final double screenWidth;
   final Function(int) openSharedPost;
-  final bool isPrivateAccount; // New parameter to indicate private account
+  final bool isPrivateAccount;
 
   const SharedPostsGrid({
     Key? key,
     required this.sharedPosts,
     required this.isPaginatingSharedPosts,
+    required this.hasMoreSharedPosts,
     required this.scrollController,
     required this.screenWidth,
     required this.openSharedPost,
-    required this.isPrivateAccount, // Accept the parameter here
+    required this.isPrivateAccount,
   }) : super(key: key);
 
   @override
@@ -54,8 +56,14 @@ class SharedPostsGrid extends StatelessWidget {
       );
     }
 
+     int itemCount = sharedPosts.length;
+    if (isPaginatingSharedPosts) {
+      itemCount += 1; // For the loading indicator
+    }
+
+
     // If neither condition applies, display the grid of shared posts
-    return GridView.builder(
+ return GridView.builder(
       controller: scrollController,
       padding: EdgeInsets.all(10.0),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -63,9 +71,10 @@ class SharedPostsGrid extends StatelessWidget {
         crossAxisSpacing: screenWidth * 0.02,
         mainAxisSpacing: screenWidth * 0.02,
       ),
-      itemCount: sharedPosts.length + (isPaginatingSharedPosts ? 1 : 0),
+      itemCount: itemCount,
       itemBuilder: (context, index) {
         if (index == sharedPosts.length) {
+          // Loading indicator at the end
           return Center(
             child: CircularProgressIndicator(color: Color(0xFFF45F67)),
           );
@@ -80,6 +89,7 @@ class SharedPostsGrid extends StatelessWidget {
       },
     );
   }
+
 
   Widget _buildSharedPostThumbnail(SharedPostDetails sharedPost, double screenWidth) {
     if (sharedPost.media.isNotEmpty) {
