@@ -1,24 +1,65 @@
 import 'package:flutter/material.dart';
+import 'package:app_links/app_links.dart'; // Add for deep linking
 import '***REMOVED***/logo.dart';
 import '***REMOVED***/home/home.dart';
 import '***REMOVED***/login/login_page.dart';
+import '***REMOVED***/profile/otheruserprofilepage.dart';
+import 'dart:async'; // Import this for StreamSubscription
+
 
 void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyApp extends StatefulWidget {
+  const MyApp({Key? key}) : super(key: key);
+
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late final AppLinks _appLinks;
+  StreamSubscription<Uri>? _sub;
+
+  @override
+  void initState() {
+    super.initState();
+    _appLinks = AppLinks();
+    _initDeepLinkListener();
+  }
+
+  void _initDeepLinkListener() {
+    _sub = _appLinks.uriLinkStream.listen((Uri uri) {
+      // Handle the deep link here
+      if (uri.host == 'profile' && uri.pathSegments.isNotEmpty) {
+        final userId = uri.pathSegments.last;
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => OtherUserProfilePage(otherUserId: int.parse(userId)),
+          ),
+        );
+      }
+    }, onError: (err) {
+      print("Error with deep link: $err");
+    });
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primaryColor: Color(0xFFF45F67), // Your primary color
+        primaryColor: Color(0xFFF45F67),
         colorScheme: ColorScheme.fromSwatch().copyWith(
-          primary: Color(0xFFF45F67), // Set primary color
-          secondary: Colors.white,    // Set secondary color
+          primary: Color(0xFFF45F67),
+          secondary: Colors.white,
         ),
         scaffoldBackgroundColor: Colors.white,
         appBarTheme: AppBarTheme(
@@ -31,10 +72,10 @@ class MyApp extends StatelessWidget {
           textTheme: ButtonTextTheme.primary,
         ),
         textSelectionTheme: const TextSelectionThemeData(
-          cursorColor: Color(0xFFF45F67), // Set the cursor color here
+          cursorColor: Color(0xFFF45F67),
         ),
       ),
-      home: const SplashScreen(),
+      home: const SplashScreen(), // Default home screen
       routes: {
         '/login': (context) => const LoginPage(),
         '/home': (context) => HomePage(),
