@@ -148,6 +148,12 @@ Future<void> _fetchSharedPosts() async {
         hasMoreSharedPosts = false;
       }
     });
+      } on SessionExpiredException {
+    print("SessionExpired detected in _fetchSharedPosts");
+    setState(() {
+      isPaginatingSharedPosts = false;
+    });
+    handleSessionExpired(context); // Display the session expired UI
   } catch (e) {
     print("Error fetching shared posts: $e");
     setState(() {
@@ -212,6 +218,12 @@ Future<void> _fetchUserPosts() async {
         currentBookmarkedPageNumber++;
         isPaginatingBookmarks = false;
       });
+        } on SessionExpiredException {
+    print("SessionExpired detected in _fetchBookmarkedPosts");
+    setState(() {
+      isPaginatingBookmarks = false;
+    });
+    handleSessionExpired(context); // Display the session expired UI
     } catch (e) {
       print("Error fetching bookmarks: $e");
       setState(() {
