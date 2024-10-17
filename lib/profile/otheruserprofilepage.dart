@@ -19,6 +19,7 @@ import 'package:cook/profile/followerspage.dart';
 import 'package:cook/profile/followingpage.dart';
 import 'package:cook/maintenance/expiredtoken.dart';
 import 'package:cook/services/SessionExpiredException.dart';
+import 'package:cook/profile/qr_code.dart';
 
 class OtherUserProfilePage extends StatefulWidget {
   final int otherUserId;
@@ -75,13 +76,34 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     super.dispose();
   }
 
+  // Add a new method to show the QR Code Modal
+void _showQRCode() {
+  if (userProfile?.qrCode != null) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return QRCodeModal(qrCodeUrl: userProfile!.qrCode);
+      },
+    );
+  } else {
+    // Optional: Show a message if QR code is not available
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("QR code not available."),
+        backgroundColor: Color(0xFFF45F67),
+      ),
+    );
+  }
+}
+
 Future<void> _loadUserProfile() async {
   setState(() {
     isLoading = true;
   });
 
+  currentUserId = await _loginService.getUserId();
+
   try {
-    currentUserId = await _loginService.getUserId();
     userProfile = await _userProfileService.fetchUserProfile(widget.otherUserId);
 
     if (userProfile != null) {
@@ -95,20 +117,12 @@ Future<void> _loadUserProfile() async {
       });
 
       // Fetch and update privacy settings
-      try {
-        Map<String, bool> privacySettings = await _userProfileService.checkProfilePrivacy(widget.otherUserId);
-        setState(() {
-          isProfilePublic = privacySettings['isPublic'] ?? false;
-          isFollowersPublic = privacySettings['isFollowersPublic'] ?? false;
-          isFollowingPublic = privacySettings['isFollowingPublic'] ?? false;
-        });
-      } on SessionExpiredException {
-        print('SessionExpired detected while loading privacy settings');
-        handleSessionExpired(context);
-        return; // Exit the method early
-      } catch (e) {
-        print('Error loading privacy settings: $e');
-      }
+      Map<String, bool> privacySettings = await _userProfileService.checkProfilePrivacy(widget.otherUserId);
+      setState(() {
+        isProfilePublic = privacySettings['isPublic'] ?? false;
+        isFollowersPublic = privacySettings['isFollowersPublic'] ?? false;
+        isFollowingPublic = privacySettings['isFollowingPublic'] ?? false;
+      });
 
       await _fetchUserPosts();
       await _fetchSharedPosts();
@@ -120,16 +134,28 @@ Future<void> _loadUserProfile() async {
           amFollowing = followStatus.amFollowing;
         });
       }
+    } else {
+      // Assume if userProfile is null, check if it's due to a session expiration
+      // Adjust this section based on how you log/monitor error details
+      print('Failed to load user profile. Possibly due to session expiration.');
+      handleSessionExpired(context);
     }
-  } on SessionExpiredException {
-    print("SessionExpired detected in this class");
-    handleSessionExpired(context); // Trigger session expired dialog
   } catch (e) {
-    print('Error loading user profile: $e');
-  } finally {
-    setState(() {
-      isLoading = false;
-    });
+    // Here, if you have specific error types or messages you could check those:
+    print("Error fetching user profile: $e");
+
+    // Example: If e contains "401" or if you have specific status monitoring within _apiService
+    if (e.toString().contains('401')) { 
+      handleSessionExpired(context); // Trigger session expired only on 401 error
+    } else {
+      // Handle other types of errors with a general message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("An unexpected error occurred."),
+          backgroundColor: Color(0xFFF45F67),
+        ),
+      );
+    }
   }
 }
 
@@ -483,9 +509,20 @@ Future<void> _fetchSharedPosts() async {
                         ),
                       ),
                       SizedBox(width: 10),
-                      Icon(Icons.qr_code, size: screenWidth * 0.07, color: Colors.grey),
+
+                      // QR Code Icon with onTap functionality
+                      GestureDetector(
+                        onTap: _showQRCode,
+                        child: Icon(
+                          Icons.qr_code,
+                          size: screenWidth * 0.07,
+                          color: Colors.grey,
+                        ),
+                      ),
                     ],
                   ),
+
+                  // Keep the remaining widgets intact:
                   SizedBox(height: 10),
                   _buildFollowAndMessageButtons(screenWidth),
                   SizedBox(height: 10),
@@ -521,7 +558,6 @@ Future<void> _fetchSharedPosts() async {
                       ),
                     ),
                   ),
-
                   SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -580,16 +616,14 @@ Future<void> _fetchSharedPosts() async {
                               openFullPost: _openFullPost,
                               isPrivateAccount: isPrivateAccount, // Pass privacy status here
                             )
-
                             : SharedPostsGrid(
                               sharedPosts: sharedPosts,
                               isPaginatingSharedPosts: isPaginatingSharedPosts,
                               scrollController: _scrollController,
                               screenWidth: screenWidth,
                               openSharedPost: _openSharedPostDetails,
-                              isPrivateAccount: isPrivateAccount, // Pass the privacy status here
+                              isPrivateAccount: isPrivateAccount, // Pass privacy status here
                             )
-
                   ),
                 ],
               ),
