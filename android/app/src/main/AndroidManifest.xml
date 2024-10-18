@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Allows internet access for the app -->
-    <uses-permission android:name="android.permission.INTERNET"/>  
+    <uses-permission android:name="android.permission.INTERNET"/>
 
     <application
         android:label="cook"
@@ -11,7 +11,7 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="default_channel_id" />
-        
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -21,11 +21,11 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
-            
+
             <!-- Theme metadata for the main activity -->
             <meta-data
-              android:name="io.flutter.embedding.android.NormalTheme"
-              android:resource="@style/NormalTheme" />
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
 
             <!-- Intent filter for launching the app -->
             <intent-filter>
@@ -34,13 +34,12 @@
             </intent-filter>
 
             <!-- Intent filter for custom URL scheme to handle deep linking -->
-<intent-filter>
-    <action android:name="android.intent.action.VIEW" />
-    <category android:name="android.intent.category.DEFAULT" />
-    <category android:name="android.intent.category.BROWSABLE" />
-    <data android:scheme="cooktalk" android:host="profile" />
-</intent-filter>
-
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="cooktalk" android:host="profile" />
+            </intent-filter>
 
         </activity>
 
@@ -48,7 +47,7 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-    </application>   
+    </application>
 
     <!-- Required for querying activities that can process text -->
     <queries>
