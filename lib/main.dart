@@ -29,21 +29,21 @@ class _MyAppState extends State<MyApp> {
     _initDeepLinkListener();
   }
 
-  void _initDeepLinkListener() {
-    _sub = _appLinks.uriLinkStream.listen((Uri uri) {
-      // Handle the deep link here
-      if (uri.host == 'profile' && uri.pathSegments.isNotEmpty) {
-        final userId = uri.pathSegments.last;
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => OtherUserProfilePage(otherUserId: int.parse(userId)),
-          ),
-        );
-      }
-    }, onError: (err) {
-      print("Error with deep link: $err");
-    });
-  }
+ void _initDeepLinkListener() {
+  _sub = _appLinks.uriLinkStream.listen((Uri uri) {
+    if (uri.scheme == 'cooktalk' && uri.host == 'profile' && uri.pathSegments.isNotEmpty) {
+      final userId = uri.pathSegments.last;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => OtherUserProfilePage(otherUserId: int.parse(userId)),
+        ),
+      );
+    }
+  }, onError: (err) {
+    print("Error with deep link: $err");
+  });
+}
+
 
   @override
   void dispose() {
