@@ -53,7 +53,6 @@ class _HomePageState extends State<HomePage> {
   final List<story_model.Story> _userGeneratedStories =
       []; // Use Storys for user-generated stories
   int? _userId; // Store the user ID
-  bool _isLoading = false;
 
 
 
@@ -66,7 +65,6 @@ class _HomePageState extends State<HomePage> {
 
  Future<void> _fetchUserIdAndStories() async {
   setState(() {
-    _isLoading = true;
   });
   
   try {
@@ -81,7 +79,6 @@ class _HomePageState extends State<HomePage> {
     print('Failed to fetch user ID or stories: $e');
   } finally {
     setState(() {
-      _isLoading = false;
     });
   }
 }
@@ -139,7 +136,6 @@ class _HomePageState extends State<HomePage> {
 
 Future<void> _initializeApp() async {
   setState(() {
-    _isLoading = true;
   });
   
   try {
@@ -154,7 +150,6 @@ Future<void> _initializeApp() async {
     print('Initialization failed: $e');
   } finally {
     setState(() {
-      _isLoading = false;
     });
   }
 }
@@ -194,14 +189,12 @@ Future<void> _initializeApp() async {
 
 Future<void> _refreshPosts() async {
   setState(() {
-    _isLoading = true;
   });
 
   await _fetchPostsAndReposts();
   await _fetchStories();
 
   setState(() {
-    _isLoading = false;
   });
 }
 
@@ -296,14 +289,12 @@ PreferredSizeWidget buildTopAppBar(BuildContext context) {
 
 Widget buildBottomNavigationBar() {
   return SizedBox(
-    height: 65, // Set a slightly larger height for a modern look
+    height: 65,
     child: BottomAppBar(
-      color: const Color(0xFFF45F67), // Pinkish bottom bar color
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 0.0, // Increase margin for a pronounced notch
-      elevation: 8.0, // Add a shadow for depth
+      color: const Color(0xFFF45F67),
+      elevation: 8.0,
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Evenly spaces out the icons
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           IconButton(
             icon: const Icon(Icons.person_add_alt, color: Colors.white, size: 28),
@@ -323,7 +314,15 @@ Widget buildBottomNavigationBar() {
               );
             },
           ),
-          SizedBox(width: 50), // Adds space for the search icon in the center
+          IconButton(
+            icon: const Icon(Icons.search, color: Colors.white, size: 28),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const Search()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.help_outline, color: Colors.white, size: 28),
             onPressed: () {
@@ -347,52 +346,6 @@ Widget buildBottomNavigationBar() {
     ),
   );
 }
-
-Widget buildSearchIcon() {
-  return Positioned(
-    bottom: 10, // Adjust to align within the notch more naturally
-    left: MediaQuery.of(context).size.width / 2 - 28, // Center the search icon precisely
-    child: Container(
-      width: 50,
-      height: 50,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            spreadRadius: 2,
-            blurRadius: 6,
-          ),
-        ],
-      ),
-      child: IconButton(
-        icon: const Icon(Icons.search, color: Color(0xFFF45F67), size: 30),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => Search()),
-          );
-        },
-      ),
-    ),
-  );
-}
-
-
-FloatingActionButton buildCenterSearchButton() {
-  return FloatingActionButton(
-    onPressed: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const Search()),
-      );
-    },
-    backgroundColor: Colors.white,
-    child: const Icon(Icons.search, color: Color(0xFFF45F67)), // Main color for the search icon
-  );
-}
-
 
 Widget buildDivider() {
   return Divider(
@@ -554,8 +507,6 @@ Widget build(BuildContext context) {
       ),
     ),
     bottomNavigationBar: buildBottomNavigationBar(),
-    floatingActionButton: buildSearchIcon(),
-    floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
   );
 }
 
