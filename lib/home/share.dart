@@ -1,13 +1,15 @@
+// share.dart
+
 import 'package:flutter/material.dart';
-import '***REMOVED***/models/post_model.dart';
 import '***REMOVED***/services/LoginService.dart';
 import '***REMOVED***/services/RepostServices.dart';
 import '***REMOVED***/maintenance/expiredtoken.dart'; // Import expired token handler
+import '***REMOVED***/services/feed_service.dart';
 
 class ShareBottomSheet extends StatelessWidget {
-  final Post post;
+  final int postId;
 
-  ShareBottomSheet({super.key, required this.post});
+  ShareBottomSheet({Key? key, required this.postId}) : super(key: key);
 
   final TextEditingController _shareTextController = TextEditingController();
 
@@ -17,8 +19,7 @@ class ShareBottomSheet extends StatelessWidget {
       padding: MediaQuery.of(context).viewInsets, // Handles keyboard overlap
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(
-            horizontal: 16.0), // Padding for the bottom sheet
+        padding: const EdgeInsets.symmetric(horizontal: 16.0), // Padding for the bottom sheet
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
@@ -103,7 +104,7 @@ class ShareBottomSheet extends StatelessWidget {
                               // Perform the repost action
                               try {
                                 await RepostService().createRepost(
-                                    userId, post.postId, shareText);
+                                    userId, postId, shareText);
                                 Navigator.pop(context); // Close bottom sheet after successful share
                               } catch (e) {
                                 print('Failed to repost: $e');
