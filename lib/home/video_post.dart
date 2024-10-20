@@ -1,9 +1,8 @@
-// widgets/video_post.dart
-
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 class VideoPost extends StatefulWidget {
   final String mediaUrl;
@@ -22,17 +21,7 @@ class _VideoPostState extends State<VideoPost> {
   @override
   void initState() {
     super.initState();
-    _videoPlayerController =
-        VideoPlayerController.networkUrl(Uri.parse(widget.mediaUrl))
-          ..initialize().then((_) {
-            setState(() {});
-            _chewieController = ChewieController(
-              videoPlayerController: _videoPlayerController,
-              aspectRatio: _videoPlayerController.value.aspectRatio,
-              autoPlay: false,
-              looping: true,
-            );
-          });
+    _initializeVideo();  // Only call the caching-based initialization
   }
 
   @override
@@ -40,6 +29,28 @@ class _VideoPostState extends State<VideoPost> {
     _videoPlayerController.dispose();
     _chewieController?.dispose();
     super.dispose();
+  }
+
+  // Method to initialize the video player with caching
+  Future<void> _initializeVideo() async {
+    try {
+      // Fetch and cache the video file
+      final file = await DefaultCacheManager().getSingleFile(widget.mediaUrl);
+      
+      // Initialize video player with the cached file
+      _videoPlayerController = VideoPlayerController.file(file)
+        ..initialize().then((_) {
+          setState(() {});  // Update the UI when the video is ready
+          _chewieController = ChewieController(
+            videoPlayerController: _videoPlayerController,
+            aspectRatio: _videoPlayerController.value.aspectRatio,
+            autoPlay: false,
+            looping: true,
+          );
+        });
+    } catch (e) {
+      print('Error initializing video: $e');
+    }
   }
 
   void _handleVisibility(double visibleFraction) {
