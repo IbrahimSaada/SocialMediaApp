@@ -517,12 +517,42 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
   final DateTime commentTime = comment.localCreatedAt;
   final String timeDisplay = timeago.format(commentTime, locale: 'en_short');
 
-  return GestureDetector(
-    onTapDown: (details) => _showCommentOptions(context, details, comment),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
+return GestureDetector(
+  onTapDown: (details) => _showCommentOptions(context, details, comment),
+  child: Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      GestureDetector(
+        onTap: () async {
+          int? currentUserId = await LoginService().getUserId(); // Fetch current user's ID
+          if (currentUserId == comment.userId) {
+            // If it's the logged-in user, navigate to ProfilePage
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ProfilePage(), // Navigate to ProfilePage
+              ),
+            );
+          } else {
+            // If it's another user, navigate to OtherUserProfilePage
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => OtherUserProfilePage(
+                  otherUserId: comment.userId, // Navigate to the other user's profile
+                ),
+              ),
+            );
+          }
+        },
+        child: CircleAvatar(
+          backgroundImage: NetworkImage(comment.userProfilePic),
+          radius: 20.0,
+        ),
+      ),
+      const SizedBox(width: 12.0),
+      Expanded(  // Move Expanded here as a direct child of Row
+        child: GestureDetector(
           onTap: () async {
             int? currentUserId = await LoginService().getUserId(); // Fetch current user's ID
             if (currentUserId == comment.userId) {
@@ -545,76 +575,47 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
               );
             }
           },
-          child: CircleAvatar(
-            backgroundImage: NetworkImage(comment.userProfilePic),
-            radius: 20.0,
-          ),
-        ),
-        const SizedBox(width: 12.0),
-        GestureDetector(
-          onTap: () async {
-            int? currentUserId = await LoginService().getUserId(); // Fetch current user's ID
-            if (currentUserId == comment.userId) {
-              // If it's the logged-in user, navigate to ProfilePage
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ProfilePage(), // Navigate to ProfilePage
-                ),
-              );
-            } else {
-              // If it's another user, navigate to OtherUserProfilePage
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => OtherUserProfilePage(
-                    otherUserId: comment.userId, // Navigate to the other user's profile
-                  ),
-                ),
-              );
-            }
-          },
-          child: Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      comment.fullName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(width: 8.0),
-                    Text(
-                      timeDisplay,
-                      style: const TextStyle(color: Colors.grey, fontSize: 14),
-                    ),
-                  ],
-                ),
-                if (parentFullName != null) // Display the username being replied to
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4.0),
-                    child: Text(
-                      'Replying to $parentFullName',
-                      style: const TextStyle(color: Colors.grey, fontSize: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    comment.fullName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                      fontSize: 16,
                     ),
                   ),
-                const SizedBox(height: 6.0),
-                Text(
-                  comment.text,
-                  style: const TextStyle(color: Colors.black, fontSize: 16),
+                  const SizedBox(width: 8.0),
+                  Text(
+                    timeDisplay,
+                    style: const TextStyle(color: Colors.grey, fontSize: 14),
+                  ),
+                ],
+              ),
+              if (parentFullName != null) // Display the username being replied to
+                Padding(
+                  padding: const EdgeInsets.only(top: 4.0),
+                  child: Text(
+                    'Replying to $parentFullName',
+                    style: const TextStyle(color: Colors.grey, fontSize: 14),
+                  ),
                 ),
-              ],
-            ),
+              const SizedBox(height: 6.0),
+              Text(
+                comment.text,
+                style: const TextStyle(color: Colors.black, fontSize: 16),
+              ),
+            ],
           ),
         ),
-      ],
-    ),
-  );
+      ),
+    ],
+  ),
+);
+
 }
 
 

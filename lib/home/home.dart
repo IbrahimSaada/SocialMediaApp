@@ -281,7 +281,7 @@ Widget build(BuildContext context) {
       color: const Color(0xFFF45F67),
       child: ListView.builder(
         controller: _scrollController,
-        itemCount: _isFetchingData && _feedItems.isEmpty ? 6 : _feedItems.length + 6, // Show shimmer if loading and feed is empty
+        itemCount: _isFetchingData ? 10 : _feedItems.length + 6, // Show 10 shimmer cards while loading
         itemBuilder: (context, index) {
           if (index == 0) {
             return StorySection(userId: _userId);
@@ -291,17 +291,17 @@ Widget build(BuildContext context) {
             return buildPostInputSection();
           } else if (index == 3) {
             return buildDivider();
+          } else if (_isFetchingData) {
+            // Show shimmer cards for all posts while fetching
+            return index % 2 == 0 
+              ? const ShimmerPostCard() 
+              : const ShimmerRepostCard();
           } else if (index - 4 < _feedItems.length) {
-            // Display actual feed item when data is loaded
+            // Show actual posts once data is loaded
             return Container(
               color: Colors.grey[100], // Background color for posts and reposts
               child: buildFeedItem(_feedItems[index - 4]),
             );
-          } else if (_isFetchingData && _feedItems.isEmpty) {
-            // Show shimmer effect while loading
-            return index % 2 == 0 
-              ? const ShimmerPostCard() 
-              : const ShimmerRepostCard();
           } else if (index == _feedItems.length + 4) {
             // Show loading indicator at the bottom if more data is being fetched
             return _hasMoreData
