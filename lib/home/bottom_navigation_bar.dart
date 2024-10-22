@@ -5,7 +5,7 @@ import '***REMOVED***/home/add_friends_page.dart';
 import '***REMOVED***/home/notification_page.dart';
 import '***REMOVED***/home/search.dart';
 import '***REMOVED***/askquestion/qna_page.dart';
-import '***REMOVED***/home/contacts_page.dart';
+import '***REMOVED***/chat/contacts_page.dart';
 
 Widget buildBottomNavigationBar(BuildContext context) {
   return SizedBox(
@@ -56,9 +56,13 @@ Widget buildBottomNavigationBar(BuildContext context) {
             icon: const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 28),
             onPressed: () {
               Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ContactsPage()),
-              );
+              context,
+              MaterialPageRoute(
+                builder: (context) => ContactsPage(
+                  username: 'YourUsernameHere',  // Pass the username here
+                ),
+              ),
+            );
             },
           ),
         ],
