@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 class MessageInput extends StatefulWidget {
   final Function(String) onSendMessage;
+  final Function onTyping; // Add typing callback
 
-  MessageInput({required this.onSendMessage});
+  MessageInput({required this.onSendMessage, required this.onTyping});
 
   @override
   _MessageInputState createState() => _MessageInputState();
@@ -18,6 +19,9 @@ class _MessageInputState extends State<MessageInput> {
     setState(() {
       _isTyping = value.isNotEmpty;  // Show send button only if user types something
     });
+    if (_isTyping) {
+      widget.onTyping();  // Notify that the user is typing
+    }
   }
 
   // Clear the input and send the message
@@ -54,7 +58,7 @@ class _MessageInputState extends State<MessageInput> {
                   Expanded(
                     child: TextField(
                       controller: _controller,
-                      onChanged: _onTextChanged,
+                      onChanged: _onTextChanged,  // Detect typing
                       decoration: InputDecoration(
                         hintText: 'Type a message...',
                         border: InputBorder.none,  // No border since the outer Container has it

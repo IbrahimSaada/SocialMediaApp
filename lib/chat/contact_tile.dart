@@ -6,7 +6,8 @@ class ContactTile extends StatelessWidget {
   final String profileImage;
   final bool isOnline;
   final String lastActive;
-  final bool isMuted;  // New state to track if the contact is muted
+  final bool isMuted;  // State to track if the contact is muted
+  final bool isTyping;  // State to track if the contact is typing
   final int unreadMessages;
   final Function onMuteToggle;  // Function to toggle mute/unmute
   final Function onDelete;
@@ -18,6 +19,7 @@ class ContactTile extends StatelessWidget {
     required this.isOnline,
     required this.lastActive,
     required this.isMuted,  // Pass the mute state
+    required this.isTyping,  // Pass the typing state
     required this.unreadMessages,
     required this.onMuteToggle,  // Function to handle muting/unmuting
     required this.onDelete,
@@ -106,7 +108,11 @@ class ContactTile extends StatelessWidget {
           ],
         ),
         subtitle: Text(
-          isOnline ? 'Active now' : 'Active $lastActive',
+          isTyping
+              ? 'typing...'  // Show typing status if contact is typing
+              : isOnline
+                  ? 'Active now'
+                  : 'Active $lastActive',  // If not typing, show online/last active status
           style: TextStyle(color: Colors.grey),
         ),
         trailing: unreadMessages > 0
