@@ -28,15 +28,15 @@ class _ContactsPageState extends State<ContactsPage> {
   }
 
   // Function to navigate to ChatPage
-  void _navigateToChat(BuildContext context, String contactName, bool isOnline, String lastSeen) {
+  void _navigateToChat(BuildContext context, String contactName, bool isOnline, String lastSeen, int index) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ChatPage(
           contactName: contactName,
-          profileImageUrl: 'https://example.com/profile.jpg',  // Example profile image URL
-          isOnline: isOnline,  // Pass the online status
-          lastSeen: lastSeen,  // Pass the last seen info
+          profileImageUrl: 'https://example.com/profile.jpg',
+          isOnline: isOnline,
+          lastSeen: lastSeen,
         ),
       ),
     );
@@ -112,7 +112,8 @@ class _ContactsPageState extends State<ContactsPage> {
                       context, 
                       contactName, 
                       index % 2 == 0,  // Example value for isOnline
-                      index % 2 == 0 ? 'now' : '5 minutes ago'  // Example value for lastSeen
+                      index % 2 == 0 ? 'now' : '5 minutes ago',
+                      index,
                     );  // Navigate to chat on tap
                   },
                   child: ContactTile(
@@ -121,10 +122,11 @@ class _ContactsPageState extends State<ContactsPage> {
                     profileImage: 'assets/contact_image.jpg',
                     isOnline: index % 2 == 0,
                     lastActive: index % 2 == 0 ? 'now' : '5 minutes ago',
-                    isMuted: muteStatus[index] ?? false,
+                    isMuted: muteStatus[index] ?? false,  // Pass mute state
                     unreadMessages: index % 2 == 0 ? index : 0,
-                    onMuteToggle: () => _toggleMute(index),
-                    onDelete: () => _onDelete(contactName),
+                    onMuteToggle: () => _toggleMute(index),  // Pass toggle mute function
+                    onDelete: () => _onDelete(contactName),  // Pass delete function
+                    isTyping: false,  // You can adjust this if you have the typing status
                   ),
                 );
               },

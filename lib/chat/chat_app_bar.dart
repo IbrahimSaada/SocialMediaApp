@@ -3,14 +3,12 @@ import 'package:flutter/material.dart';
 class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String username;
   final String profileImageUrl;
-  final bool isOnline;
-  final String lastSeen;
+  final String status;  // Replace isOnline/lastSeen with a dynamic status like "typing..."
 
   ChatAppBar({
     required this.username,
     required this.profileImageUrl,
-    required this.isOnline,
-    required this.lastSeen,
+    required this.status,
   });
 
   @override
@@ -32,7 +30,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       leading: IconButton(
         icon: Icon(Icons.arrow_back, color: Color(0xFFF45F67)),
-        onPressed: () {
+                onPressed: () {
           Navigator.pop(context);
         },
       ),
@@ -44,36 +42,6 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                 backgroundImage: NetworkImage(profileImageUrl),
                 radius: 18,
                 // Adding animated glow effect if online
-                child: isOnline
-                    ? Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.green.withOpacity(0.7),
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                              offset: Offset(0, 0),
-                            ),
-                          ],
-                        ),
-                      )
-                    : null,
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: isOnline ? Colors.green : Colors.grey,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                ),
               ),
             ],
           ),
@@ -91,7 +59,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
               SizedBox(height: 2),
               Text(
-                isOnline ? 'Active now' : 'Last seen $lastSeen',
+                status, // Display "typing..." or "Active now" dynamically
                 style: TextStyle(
                   color: Colors.grey[600],
                   fontSize: 12,
@@ -108,3 +76,4 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => Size.fromHeight(kToolbarHeight);
 }
+
