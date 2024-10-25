@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
+import '***REMOVED***/services/chat_service.dart';
+import '***REMOVED***/models/message_model.dart';
 import 'message_input.dart';
 import 'message_bubble.dart';
 import 'chat_app_bar.dart';
-import 'dart:async';  // For typing timer
+import 'dart:async';
 
 class ChatPage extends StatefulWidget {
   final String contactName;
   final String profileImageUrl;
   final bool isOnline;
   final String lastSeen;
+  final int chatId;
 
   ChatPage({
     required this.contactName,
     required this.profileImageUrl,
     required this.isOnline,
     required this.lastSeen,
+    required this.chatId,
   });
 
   @override
@@ -22,55 +26,54 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
-  List<Map<String, dynamic>> messages = [
-    {
-      'message': 'Hello! How are you?',
-      'isSender': true,
-      'timestamp': DateTime.now().subtract(Duration(days: 3, hours: 2)),
-    },
-    {
-      'message': 'I am good, how about you?',
-      'isSender': false,
-      'timestamp': DateTime.now().subtract(Duration(days: 3, hours: 1)),
-    },
-    {
-      'message': 'Doing well, thanks!',
-      'isSender': true,
-      'timestamp': DateTime.now().subtract(Duration(days: 2, hours: 5)),
-    },
-    {
-      'message': 'Great to hear!',
-      'isSender': false,
-      'timestamp': DateTime.now().subtract(Duration(days: 2, hours: 2)),
-    },
-    {
-      'message': 'Thanks! Catch up soon!',
-      'isSender': true,
-      'timestamp': DateTime.now().subtract(Duration(days: 1, minutes: 15)),
-    },
-    {
-      'message': 'Sure! Bye!',
-      'isSender': false,
-      'timestamp': DateTime.now().subtract(Duration(days: 1, minutes: 10)),
-    },
-  ];
-
+  final ChatService _chatService = ChatService();
+  List<Message> messages = [];
+  bool _isLoading = true;
   bool isSeen = true;
-  String currentStatus = "Active now";  // Initial status
+  String currentStatus = "Active now"; // Initial status
   Timer? _typingTimer;
-  final ScrollController _scrollController = ScrollController();  // For scrolling to last message
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchMessages();
+  }
+
+  Future<void> _fetchMessages() async {
+    try {
+      final fetchedMessages = await _chatService.fetchMessages(widget.chatId);
+      setState(() {
+        messages = fetchedMessages;
+        _isLoading = false;
+      });
+      _scrollToBottom();
+    } catch (e) {
+      print('Error fetching messages: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   // Handle sending a message
-  void _handleSendMessage(String message) {
+  void _handleSendMessage(String messageContent) {
     setState(() {
-      messages.add({
-        'message': message,
-        'isSender': true,
-        'timestamp': DateTime.now(),
-      });
+      messages.add(Message(
+        messageId: DateTime.now().millisecondsSinceEpoch,
+        chatId: widget.chatId,
+        senderId: widget.chatId,
+        senderUsername: widget.contactName,
+        senderProfilePic: widget.profileImageUrl,
+        messageType: 'text',
+        messageContent: messageContent,
+        createdAt: DateTime.now(),
+        readAt: null,
+        isEdited: false,
+        isUnsent: false,
+        mediaUrls: [],
+      ));
     });
-
-    // Scroll to the bottom when a message is sent
     _scrollToBottom();
   }
 
@@ -106,42 +109,15 @@ class _ChatPageState extends State<ChatPage> {
   // Determine if a new day has started
   bool _isNewDay(int index) {
     if (index == 0) return true;
-    DateTime currentMessageDate = messages[index]['timestamp'];
-    DateTime previousMessageDate = messages[index - 1]['timestamp'];
+    DateTime currentMessageDate = messages[index].createdAt;
+    DateTime previousMessageDate = messages[index - 1].createdAt;
     return currentMessageDate.day != previousMessageDate.day;
-  }
-
-  // Handle editing a message
-  void _handleEditMessage(int index, String newText) {
-    setState(() {
-      messages[index]['message'] = newText;
-    });
-  }
-
-  // Handle deleting a message for all users
-  void _handleDeleteForAll(int index) {
-    setState(() {
-      messages[index]['message'] = 'This message has been deleted.';
-    });
-  }
-
-  // Handle deleting a message for the user only
-  void _handleDeleteForMe(int index) {
-    setState(() {
-      messages.removeAt(index);
-    });
   }
 
   @override
   void dispose() {
-    _typingTimer?.cancel();  // Cancel typing timer if active
+    _typingTimer?.cancel();
     super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollToBottom();  // Scroll to the last message when entering the chat
   }
 
   @override
@@ -150,57 +126,101 @@ class _ChatPageState extends State<ChatPage> {
       appBar: ChatAppBar(
         username: widget.contactName,
         profileImageUrl: widget.profileImageUrl,
-        status: currentStatus,  // Display current status (typing or active)
+        status: currentStatus,
       ),
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,  // Attach the scroll controller
-              reverse: false,
-              itemCount: messages.length,  // Total number of messages
-              itemBuilder: (context, index) {
-                bool isSender = messages[index]['isSender'];
-                String message = messages[index]['message'];
-                DateTime timestamp = messages[index]['timestamp'];
+            child: _isLoading
+                ? Center(child: CircularProgressIndicator())
+                : ListView.builder(
+                    controller: _scrollController,
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final message = messages[index];
+                      final isSender = message.senderId == widget.chatId;
+                      final showDate = _isNewDay(index);
 
-                // Check if we need to show a date separator
-                bool showDate = _isNewDay(index);
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,  // Ensure date separator is centered
-                  children: [
-                    if (showDate)  // Display date separator in the center if it's a new day
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Center(
-                          child: Text(
-                            _formatDate(timestamp),
-                            style: TextStyle(color: Colors.grey),
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (showDate)
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Center(
+                                child: Text(
+                                  _formatDate(message.createdAt),
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                          Align(
+                            alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
+                            child: MessageBubble(
+                              isSender: isSender,
+                              message: message.messageContent,
+                              timestamp: message.createdAt,
+                              isSeen: isSender && index == messages.length - 1 && isSeen,
+                              onEdit: (newText) => _handleEditMessage(index, newText),
+                              onDeleteForAll: () => _handleDeleteForAll(index),
+                              onDeleteForMe: () => _handleDeleteForMe(index),
+                            ),
                           ),
-                        ),
-                      ),
-                    Align(
-                      alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,  // Align messages like before
-                      child: MessageBubble(
-                        isSender: isSender,
-                        message: message,
-                        timestamp: timestamp,
-                        isSeen: isSender && index == messages.length - 1 && isSeen,
-                        onEdit: (newText) => _handleEditMessage(index, newText),
-                        onDeleteForAll: () => _handleDeleteForAll(index),
-                        onDeleteForMe: () => _handleDeleteForMe(index),
-                        
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
+                        ],
+                      );
+                    },
+                  ),
           ),
-          MessageInput(onSendMessage: _handleSendMessage, onTyping: _handleTyping),  // Handle typing and sending messages
+          MessageInput(onSendMessage: _handleSendMessage, onTyping: _handleTyping),
         ],
       ),
     );
+  }
+
+  // Handle editing a message (optional functionality)
+  void _handleEditMessage(int index, String newText) {
+    setState(() {
+      messages[index] = Message(
+        messageId: messages[index].messageId,
+        chatId: messages[index].chatId,
+        senderId: messages[index].senderId,
+        senderUsername: messages[index].senderUsername,
+        senderProfilePic: messages[index].senderProfilePic,
+        messageType: messages[index].messageType,
+        messageContent: newText,
+        createdAt: messages[index].createdAt,
+        readAt: messages[index].readAt,
+        isEdited: true,
+        isUnsent: messages[index].isUnsent,
+        mediaUrls: messages[index].mediaUrls,
+      );
+    });
+  }
+
+  // Handle deleting a message for all users
+  void _handleDeleteForAll(int index) {
+    setState(() {
+      messages[index] = Message(
+        messageId: messages[index].messageId,
+        chatId: messages[index].chatId,
+        senderId: messages[index].senderId,
+        senderUsername: messages[index].senderUsername,
+        senderProfilePic: messages[index].senderProfilePic,
+        messageType: messages[index].messageType,
+        messageContent: 'This message has been deleted.',
+        createdAt: messages[index].createdAt,
+        readAt: messages[index].readAt,
+        isEdited: messages[index].isEdited,
+        isUnsent: true,
+        mediaUrls: messages[index].mediaUrls,
+      );
+    });
+  }
+
+  // Handle deleting a message for the user only
+  void _handleDeleteForMe(int index) {
+    setState(() {
+      messages.removeAt(index);
+    });
   }
 }

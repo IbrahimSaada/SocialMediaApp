@@ -1,3 +1,5 @@
+// widgets/contact_tile.dart
+
 import 'package:flutter/material.dart';
 
 class ContactTile extends StatelessWidget {
@@ -6,10 +8,10 @@ class ContactTile extends StatelessWidget {
   final String profileImage;
   final bool isOnline;
   final String lastActive;
-  final bool isMuted;  // State to track if the contact is muted
-  final bool isTyping;  // State to track if the contact is typing
+  final bool isMuted;
+  final bool isTyping;
   final int unreadMessages;
-  final Function onMuteToggle;  // Function to toggle mute/unmute
+  final Function onMuteToggle;
   final Function onDelete;
 
   const ContactTile({
@@ -18,43 +20,37 @@ class ContactTile extends StatelessWidget {
     required this.profileImage,
     required this.isOnline,
     required this.lastActive,
-    required this.isMuted,  // Pass the mute state
-    required this.isTyping,  // Pass the typing state
+    required this.isMuted,
+    required this.isTyping,
     required this.unreadMessages,
-    required this.onMuteToggle,  // Function to handle muting/unmuting
+    required this.onMuteToggle,
     required this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
     return Dismissible(
-      key: UniqueKey(),  // Each contact must have a unique key
+      key: UniqueKey(),
       background: Container(
-        color: Colors.blue,  // Mute/Unmute background
+        color: Colors.blue,
         padding: EdgeInsets.symmetric(horizontal: 20),
         alignment: Alignment.centerLeft,
         child: Row(
           children: [
-            Icon(isMuted ? Icons.volume_up : Icons.volume_off, color: Colors.white),  // Mute or unmute icon
+            Icon(isMuted ? Icons.volume_up : Icons.volume_off, color: Colors.white),
             SizedBox(width: 8),
-            Text(
-              isMuted ? 'Unmute' : 'Mute',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
+            Text(isMuted ? 'Unmute' : 'Mute', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
       secondaryBackground: Container(
-        color: Colors.red,  // Delete background
+        color: Colors.red,
         padding: EdgeInsets.symmetric(horizontal: 20),
         alignment: Alignment.centerRight,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Text(
-              'Delete',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
+            Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             SizedBox(width: 8),
             Icon(Icons.delete, color: Colors.white),
           ],
@@ -62,11 +58,9 @@ class ContactTile extends StatelessWidget {
       ),
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.startToEnd) {
-          // Mute or Unmute action when swiping left
           onMuteToggle();
-          return false;  // Prevent dismiss to keep the item in the list
+          return false;
         } else if (direction == DismissDirection.endToStart) {
-          // Allow delete when swiping right
           return true;
         }
         return false;
@@ -75,9 +69,8 @@ class ContactTile extends StatelessWidget {
         leading: Stack(
           children: [
             CircleAvatar(
-              backgroundImage: AssetImage(profileImage),
+              backgroundImage: NetworkImage(profileImage),
               radius: 25,
-              backgroundColor: Color(0xFFF45F67),
             ),
             if (isOnline)
               Positioned(
@@ -98,26 +91,22 @@ class ContactTile extends StatelessWidget {
         title: Row(
           children: [
             Expanded(
-              child: Text(
-                contactName,
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
+              child: Text(contactName, style: TextStyle(fontWeight: FontWeight.bold)),
             ),
-            if (isMuted)
-              Icon(Icons.volume_off, color: Colors.grey),  // Show mute icon if muted
+            if (isMuted) Icon(Icons.volume_off, color: Colors.grey),
           ],
         ),
         subtitle: Text(
           isTyping
-              ? 'typing...'  // Show typing status if contact is typing
+              ? 'typing...'
               : isOnline
                   ? 'Active now'
-                  : 'Active $lastActive',  // If not typing, show online/last active status
+                  : 'Active $lastActive',
           style: TextStyle(color: Colors.grey),
         ),
         trailing: unreadMessages > 0
             ? CircleAvatar(
-                backgroundColor: Color(0xFFF45F67),
+                backgroundColor: Colors.red,
                 radius: 12,
                 child: Text(
                   '$unreadMessages',
