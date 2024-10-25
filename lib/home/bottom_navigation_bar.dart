@@ -6,8 +6,10 @@ import 'package:cook/home/notification_page.dart';
 import 'package:cook/home/search.dart';
 import 'package:cook/askquestion/qna_page.dart';
 import 'package:cook/chat/contacts_page.dart';
+import 'package:cook/services/LoginService.dart';
 
 Widget buildBottomNavigationBar(BuildContext context) {
+    final LoginService loginService = LoginService();
   return SizedBox(
     height: 65,
     child: BottomAppBar(
@@ -54,15 +56,29 @@ Widget buildBottomNavigationBar(BuildContext context) {
           ),
           IconButton(
             icon: const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 28),
-            onPressed: () {
-              Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ContactsPage(
-                  username: 'YourUsernameHere',  // Pass the username here
-                ),
-              ),
-            );
+            onPressed: () async {
+              // Retrieve userId using LoginService
+              int? userId = await loginService.getUserId();
+              String username = 'example'; // Use 'example' as username
+
+              if (userId != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ContactsPage(
+                      username: username,
+                      userId: userId,
+                      // Since token is not needed, we can omit it or pass an empty string
+                    ),
+                  ),
+                );
+              } else {
+                // Handle the case where userId is not available
+                // For example, navigate to login page or show a message
+                print('User is not logged in');
+                // Navigate to LoginPage or show a dialog
+                Navigator.pushNamed(context, '/login');
+              }
             },
           ),
         ],

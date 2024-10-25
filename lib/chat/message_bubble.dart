@@ -25,17 +25,23 @@ class MessageBubble extends StatefulWidget {
 
 class _MessageBubbleState extends State<MessageBubble> {
   bool _isEditing = false;
-  TextEditingController _editingController = TextEditingController();
+  late TextEditingController _editingController;
 
   @override
   void initState() {
     super.initState();
-    _editingController.text = widget.message;
+    _editingController = TextEditingController(text: widget.message);
+  }
+
+  @override
+  void dispose() {
+    _editingController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    bool isDeleted = widget.message == 'This message has been deleted.';
+    final bool isDeleted = widget.message == 'This message has been deleted.';
 
     return Column(
       crossAxisAlignment:
@@ -48,8 +54,8 @@ class _MessageBubbleState extends State<MessageBubble> {
                   _showMessageOptions(context);
                 },
           child: Container(
-            margin: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-            padding: EdgeInsets.all(12),
+            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: isDeleted
                   ? Colors.grey[300]
@@ -70,27 +76,20 @@ class _MessageBubbleState extends State<MessageBubble> {
                 ),
               ],
             ),
-            child: isDeleted
-                ? Text(
+            child: _isEditing
+                ? _buildEditField()
+                : Text(
                     widget.message,
                     style: TextStyle(
-                      color: Colors.black54,
-                      fontStyle: FontStyle.italic,
+                      color: widget.isSender ? Colors.white : Colors.black,
+                      fontStyle: isDeleted ? FontStyle.italic : FontStyle.normal,
                     ),
-                  )
-                : _isEditing
-                    ? _buildEditField()
-                    : Text(
-                        widget.message,
-                        style: TextStyle(
-                          color: widget.isSender ? Colors.white : Colors.black,
-                        ),
-                      ),
+                  ),
           ),
         ),
         if (!isDeleted)
           Padding(
-            padding: EdgeInsets.only(top: 8.0, left: 16.0, right: 16.0),
+            padding: const EdgeInsets.only(top: 4.0, left: 16.0, right: 16.0),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -103,10 +102,10 @@ class _MessageBubbleState extends State<MessageBubble> {
                 ),
                 if (widget.isSender && widget.isSeen)
                   Padding(
-                    padding: EdgeInsets.only(left: 8.0),
+                    padding: const EdgeInsets.only(left: 8.0),
                     child: Text(
                       'Seen at ${_formatTimestamp(widget.timestamp)}',
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.grey,
                         fontSize: 10,
                       ),
@@ -119,10 +118,10 @@ class _MessageBubbleState extends State<MessageBubble> {
     );
   }
 
-  // Updated edit design with better styling
+  // Edit field for inline message editing
   Widget _buildEditField() {
     return Container(
-      padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 10.0),
+      padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 10.0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
@@ -130,20 +129,21 @@ class _MessageBubbleState extends State<MessageBubble> {
           BoxShadow(
             color: Colors.grey.withOpacity(0.2),
             blurRadius: 4,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: TextField(
         controller: _editingController,
         autofocus: true,
-        style: TextStyle(fontSize: 14, color: Colors.black), // Improved design with smaller font
+        style: const TextStyle(fontSize: 14, color: Colors.black),
         decoration: InputDecoration(
           isDense: true,
-          contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.grey, width: 1),
+            borderSide: const BorderSide(color: Colors.grey, width: 1),
           ),
         ),
         onSubmitted: (newText) {
@@ -156,6 +156,7 @@ class _MessageBubbleState extends State<MessageBubble> {
     );
   }
 
+  // Message options for editing and deleting
   void _showMessageOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -164,8 +165,8 @@ class _MessageBubbleState extends State<MessageBubble> {
           children: [
             if (widget.isSender) ...[
               ListTile(
-                leading: Icon(Icons.edit, color: Colors.blue),
-                title: Text('Edit'),
+                leading: const Icon(Icons.edit, color: Colors.blue),
+                title: const Text('Edit'),
                 onTap: () {
                   setState(() {
                     _isEditing = true;
@@ -174,24 +175,23 @@ class _MessageBubbleState extends State<MessageBubble> {
                 },
               ),
               ListTile(
-                leading: Icon(Icons.delete, color: Colors.red),
-                title: Text('Delete for all'),
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Delete for all'),
                 onTap: () {
                   Navigator.pop(context);
                   widget.onDeleteForAll();
                 },
               ),
             ],
-            if (!widget.isSender) ...[
+            if (!widget.isSender)
               ListTile(
-                leading: Icon(Icons.delete, color: Colors.red),
-                title: Text('Delete for me'),
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Delete for me'),
                 onTap: () {
                   Navigator.pop(context);
                   widget.onDeleteForMe();
                 },
               ),
-            ],
           ],
         );
       },
