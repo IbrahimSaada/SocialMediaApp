@@ -1,5 +1,3 @@
-// message_bubble.dart
-
 import 'package:flutter/material.dart';
 
 class MessageBubble extends StatefulWidget {
@@ -62,8 +60,8 @@ class _MessageBubbleState extends State<MessageBubble> {
               color: isDeleted
                   ? Colors.grey[300]
                   : widget.isSender
-                      ? Color(0xFFDCF8C6) // WhatsApp-like green bubble
-                      : Colors.white,
+                      ? Color(0xFFF45F67)
+                      : Colors.grey[200],
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(widget.isSender ? 12 : 0),
                 topRight: Radius.circular(widget.isSender ? 0 : 12),
@@ -83,27 +81,25 @@ class _MessageBubbleState extends State<MessageBubble> {
                 : _buildMessageContent(isDeleted),
           ),
         ),
-        if (!isDeleted) _buildTimestamp(),
+        if (!isDeleted) _buildTimestampAndEditedLabel(),
       ],
     );
   }
 
-  Widget _buildMessageContent(bool isDeleted) {
-    return Text(
-      isDeleted
-          ? 'This message was deleted'
-          : widget.message + (widget.isEdited ? ' (edited)' : ''),
-      style: TextStyle(
-        color: isDeleted
-            ? Colors.black54
-            : widget.isSender
-                ? Colors.black
-                : Colors.black,
-        fontStyle: isDeleted ? FontStyle.italic : FontStyle.normal,
-        fontSize: 16,
-      ),
-    );
-  }
+Widget _buildMessageContent(bool isDeleted) {
+  return Text(
+    isDeleted ? 'This message was deleted' : widget.message,
+    style: TextStyle(
+      color: isDeleted
+          ? Colors.black54
+          : widget.isSender
+              ? Colors.white
+              : Colors.black,
+      fontSize: 16,
+    ),
+  );
+}
+
 
   Widget _buildEditField() {
     return TextField(
@@ -122,15 +118,33 @@ class _MessageBubbleState extends State<MessageBubble> {
     );
   }
 
-  Widget _buildTimestamp() {
+  Widget _buildTimestampAndEditedLabel() {
     return Padding(
       padding: const EdgeInsets.only(top: 2.0, left: 16.0, right: 16.0),
-      child: Text(
-        _formatTimestamp(widget.timestamp),
-        style: TextStyle(
-          color: Colors.grey,
-          fontSize: 10,
-        ),
+      child: Row(
+        mainAxisAlignment:
+            widget.isSender ? MainAxisAlignment.end : MainAxisAlignment.start,
+        children: [
+          Text(
+            _formatTimestamp(widget.timestamp),
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 10,
+            ),
+          ),
+          if (widget.isEdited && !widget.isUnsent)
+            Padding(
+              padding: const EdgeInsets.only(left: 4.0),
+              child: Text(
+                'Edited',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 10,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
