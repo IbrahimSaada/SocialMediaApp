@@ -1,3 +1,5 @@
+// chat_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:cook/services/chat_service.dart';
 import 'package:cook/models/message_model.dart';
@@ -5,7 +7,6 @@ import 'package:cook/services/signalr_service.dart';
 import 'message_input.dart';
 import 'message_bubble.dart';
 import 'chat_app_bar.dart';
-import 'dart:async';
 
 class ChatPage extends StatefulWidget {
   final int chatId;
@@ -97,7 +98,6 @@ class _ChatPageState extends State<ChatPage> {
     print('ReceiveMessage event received: $arguments');
     if (arguments != null && arguments.isNotEmpty) {
       final messageData = Map<String, dynamic>.from(arguments[0] as Map);
-      print('Parsed message data: $messageData');
 
       // Convert date strings to DateTime objects
       if (messageData['createdAt'] is String) {
@@ -123,36 +123,35 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-void _handleMessageSent(List<Object?>? arguments) {
-  print('MessageSent event received: $arguments');
-  if (arguments != null && arguments.isNotEmpty) {
-    final Map<String, dynamic> messageData = Map<String, dynamic>.from(arguments[0] as Map);
+  void _handleMessageSent(List<Object?>? arguments) {
+    print('MessageSent event received: $arguments');
+    if (arguments != null && arguments.isNotEmpty) {
+      final Map<String, dynamic> messageData = Map<String, dynamic>.from(arguments[0] as Map);
 
-    // Convert DateTime strings to DateTime objects if necessary
-    if (messageData['createdAt'] is String) {
-      messageData['createdAt'] = DateTime.parse(messageData['createdAt']);
-    }
-    if (messageData['readAt'] != null && messageData['readAt'] is String) {
-      messageData['readAt'] = DateTime.parse(messageData['readAt']);
-    }
+      // Convert DateTime strings to DateTime objects if necessary
+      if (messageData['createdAt'] is String) {
+        messageData['createdAt'] = DateTime.parse(messageData['createdAt']);
+      }
+      if (messageData['readAt'] != null && messageData['readAt'] is String) {
+        messageData['readAt'] = DateTime.parse(messageData['readAt']);
+      }
 
-    final message = Message.fromJson(messageData);
+      final message = Message.fromJson(messageData);
 
-    print('Parsed Message in MessageSent: $message');
+      print('Parsed Message in MessageSent: $message');
 
-    if (message.chatId == widget.chatId) {
-      setState(() {
-        messages.add(message);
-        print('Message added to list: ${message.messageContent}');
-        print('Total messages in list: ${messages.length}');
-      });
-      _scrollToBottom();
-    } else {
-      print('MessageSent event for different chat');
+      if (message.chatId == widget.chatId) {
+        setState(() {
+          messages.add(message);
+          print('Message added to list: ${message.messageContent}');
+          print('Total messages in list: ${messages.length}');
+        });
+        _scrollToBottom();
+      } else {
+        print('MessageSent event for different chat');
+      }
     }
   }
-}
-
 
   // Handle sending a message
   void _handleSendMessage(String messageContent) async {
@@ -170,23 +169,27 @@ void _handleMessageSent(List<Object?>? arguments) {
   }
 
   // Scroll to the last message
-void _scrollToBottom() {
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
-  });
-}
-
-
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
 
   @override
   void dispose() {
-    _signalRService.hubConnection.stop();
+    // Do not stop the SignalR connection here to keep it active
+    // _signalRService.hubConnection.stop();
+
+    // Unregister event handlers to prevent memory leaks
+    _signalRService.hubConnection.off('ReceiveMessage', method: _handleReceiveMessage);
+    _signalRService.hubConnection.off('MessageSent', method: _handleMessageSent);
+
     super.dispose();
   }
 
@@ -217,56 +220,55 @@ void _scrollToBottom() {
             child: _isLoading
                 ? Center(child: CircularProgressIndicator())
                 : ListView.builder(
-  controller: _scrollController,
-  itemCount: messages.length,
-  itemBuilder: (context, index) {
-    final message = messages[index];
-    final isSender = message.senderId == widget.currentUserId;
-    final showDate = _isNewDay(index);
+                    controller: _scrollController,
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final message = messages[index];
+                      final isSender = message.senderId == widget.currentUserId;
+                      final showDate = _isNewDay(index);
 
-    print('Building message at index $index: ${message.messageContent}');
+                      print('Building message at index $index: ${message.messageContent}');
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (showDate)
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Center(
-              child: Text(
-                _formatDate(message.createdAt),
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-          ),
-        Align(
-          alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
-          child: MessageBubble(
-            isSender: isSender,
-            message: message.messageContent,
-            timestamp: message.createdAt,
-            isSeen: false,
-            onEdit: (newText) {
-              // Empty function or implement later
-            },
-            onDeleteForAll: () {
-              // Empty function or implement later
-            },
-            onDeleteForMe: () {
-              // Empty function or implement later
-            },
-          ),
-        ),
-      ],
-    );
-  },
-)
-
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (showDate)
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Center(
+                                child: Text(
+                                  _formatDate(message.createdAt),
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                          Align(
+                            alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
+                            child: MessageBubble(
+                              isSender: isSender,
+                              message: message.messageContent,
+                              timestamp: message.createdAt,
+                              isSeen: false,
+                              onEdit: (newText) {
+                                // Empty function or implement later
+                              },
+                              onDeleteForAll: () {
+                                // Empty function or implement later
+                              },
+                              onDeleteForMe: () {
+                                // Empty function or implement later
+                              },
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
           ),
           MessageInput(
             onSendMessage: _handleSendMessage,
             onTyping: () {
-              // Empty function or implement later
+              // Implement typing indicator if needed
             },
           ),
         ],

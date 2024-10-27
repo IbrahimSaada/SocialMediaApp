@@ -25,7 +25,7 @@ class SignalRService {
 
     _hubConnection = HubConnectionBuilder()
         .withUrl(
-          'https://8dcc-185-89-86-31.ngrok-free.app/chatHub',
+          'https://be2d-185-89-86-31.ngrok-free.app/chatHub',
           HttpConnectionOptions(
             accessTokenFactory: () async => accessToken!,
           ),
@@ -36,9 +36,14 @@ class SignalRService {
     // Start the connection
     await _hubConnection.start();
 
-    // Handle connection events if necessary
+    // Handle connection events
+    _setupConnectionEvents();
+  }
+
+  void _setupConnectionEvents() {
     _hubConnection.onclose((error) {
       print('Connection closed: $error');
+      // Optionally attempt to reconnect or handle the disconnection
     });
 
     _hubConnection.onreconnecting((error) {
