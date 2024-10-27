@@ -65,4 +65,35 @@ class Message {
       mediaUrls: json['mediaUrls'] != null ? List<String>.from(json['mediaUrls']) : [],
     );
   }
+
+    // Add a copyWith method for easy updates
+  Message copyWith({
+    int? messageId,
+    int? chatId,
+    int? senderId,
+    String? senderUsername,
+    String? senderProfilePic,
+    String? messageType,
+    String? messageContent,
+    DateTime? createdAt,
+    DateTime? readAt,
+    bool? isEdited,
+    bool? isUnsent,
+    List<String>? mediaUrls,
+  }) {
+    return Message(
+      messageId: messageId ?? this.messageId,
+      chatId: chatId ?? this.chatId,
+      senderId: senderId ?? this.senderId,
+      senderUsername: senderUsername ?? this.senderUsername,
+      senderProfilePic: senderProfilePic ?? this.senderProfilePic,
+      messageType: messageType ?? this.messageType,
+      messageContent: messageContent ?? this.messageContent,
+      createdAt: createdAt ?? this.createdAt,
+      readAt: readAt ?? this.readAt,
+      isEdited: isEdited ?? this.isEdited,
+      isUnsent: isUnsent ?? this.isUnsent,
+      mediaUrls: mediaUrls ?? this.mediaUrls,
+    );
+  }
 }

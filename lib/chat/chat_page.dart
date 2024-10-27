@@ -51,6 +51,8 @@ class _ChatPageState extends State<ChatPage> {
       // Register event handlers
       _signalRService.hubConnection.on('ReceiveMessage', _handleReceiveMessage);
       _signalRService.hubConnection.on('MessageSent', _handleMessageSent);
+      _signalRService.hubConnection.on('MessageEdited', _handleMessageEdited);
+      _signalRService.hubConnection.on('MessageUnsent', _handleMessageUnsent);
 
       // Fetch messages via SignalR after connection is established
       await _fetchMessages();
@@ -153,6 +155,59 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+  // Handle 'MessageEdited' event from backend
+  void _handleMessageEdited(List<Object?>? arguments) {
+    print('MessageEdited event received: $arguments');
+    if (arguments != null && arguments.isNotEmpty) {
+      final messageData = Map<String, dynamic>.from(arguments[0] as Map);
+
+      // Convert date strings to DateTime objects
+      if (messageData['createdAt'] is String) {
+        messageData['createdAt'] = DateTime.parse(messageData['createdAt']);
+      }
+      if (messageData['readAt'] != null && messageData['readAt'] is String) {
+        messageData['readAt'] = DateTime.parse(messageData['readAt']);
+      }
+
+      final editedMessage = Message.fromJson(messageData);
+
+      print('Parsed edited Message: $editedMessage');
+
+      if (editedMessage.chatId == widget.chatId) {
+        // Find the message in the messages list and update it
+        setState(() {
+          int index = messages.indexWhere((msg) => msg.messageId == editedMessage.messageId);
+          if (index != -1) {
+            messages[index] = editedMessage;
+            print('Message updated in list: ${editedMessage.messageContent}');
+          }
+        });
+      } else {
+        print('Edited message belongs to a different chat: ${editedMessage.chatId}');
+      }
+    }
+  }
+
+  // Handle 'MessageUnsent' event from backend
+  void _handleMessageUnsent(List<Object?>? arguments) {
+    print('MessageUnsent event received: $arguments');
+    if (arguments != null && arguments.isNotEmpty) {
+      int messageId = arguments[0] as int;
+
+      setState(() {
+        int index = messages.indexWhere((msg) => msg.messageId == messageId);
+        if (index != -1) {
+          // Mark the message as unsent
+          messages[index] = messages[index].copyWith(
+            isUnsent: true,
+            messageContent: 'This message was deleted',
+          );
+          print('Message marked as unsent: $messageId');
+        }
+      });
+    }
+  }
+
   // Handle sending a message
   void _handleSendMessage(String messageContent) async {
     try {
@@ -165,6 +220,26 @@ class _ChatPageState extends State<ChatPage> {
       print('Message sent successfully');
     } catch (e) {
       print('Error sending message: $e');
+    }
+  }
+
+  // Handle editing a message
+  void _handleEditMessage(int messageId, String newContent) async {
+    try {
+      await _signalRService.editMessage(messageId, newContent);
+      print('Edit message request sent');
+    } catch (e) {
+      print('Error editing message: $e');
+    }
+  }
+
+  // Handle deleting a message for all
+  void _handleDeleteForAll(int messageId) async {
+    try {
+      await _signalRService.unsendMessage(messageId);
+      print('Delete for all request sent');
+    } catch (e) {
+      print('Error deleting message: $e');
     }
   }
 
@@ -183,12 +258,11 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   void dispose() {
-    // Do not stop the SignalR connection here to keep it active
-    // _signalRService.hubConnection.stop();
-
     // Unregister event handlers to prevent memory leaks
     _signalRService.hubConnection.off('ReceiveMessage', method: _handleReceiveMessage);
     _signalRService.hubConnection.off('MessageSent', method: _handleMessageSent);
+    _signalRService.hubConnection.off('MessageEdited', method: _handleMessageEdited);
+    _signalRService.hubConnection.off('MessageUnsent', method: _handleMessageUnsent);
 
     super.dispose();
   }
@@ -246,17 +320,19 @@ class _ChatPageState extends State<ChatPage> {
                             alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
                             child: MessageBubble(
                               isSender: isSender,
-                              message: message.messageContent,
+                              message: message.isUnsent ? 'This message was deleted' : message.messageContent,
                               timestamp: message.createdAt,
                               isSeen: false,
+                              isEdited: message.isEdited,
+                              isUnsent: message.isUnsent,
                               onEdit: (newText) {
-                                // Empty function or implement later
+                                _handleEditMessage(message.messageId, newText);
                               },
                               onDeleteForAll: () {
-                                // Empty function or implement later
+                                _handleDeleteForAll(message.messageId);
                               },
                               onDeleteForMe: () {
-                                // Empty function or implement later
+                                // Implement 'Delete for Me' if needed
                               },
                             ),
                           ),

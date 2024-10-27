@@ -1,3 +1,5 @@
+// message_bubble.dart
+
 import 'package:flutter/material.dart';
 
 class MessageBubble extends StatefulWidget {
@@ -5,6 +7,8 @@ class MessageBubble extends StatefulWidget {
   final String message;
   final DateTime timestamp;
   final bool isSeen;
+  final bool isEdited;
+  final bool isUnsent;
   final Function(String newText) onEdit;
   final Function onDeleteForAll;
   final Function onDeleteForMe;
@@ -14,6 +18,8 @@ class MessageBubble extends StatefulWidget {
     required this.message,
     required this.timestamp,
     required this.isSeen,
+    required this.isEdited,
+    required this.isUnsent,
     required this.onEdit,
     required this.onDeleteForAll,
     required this.onDeleteForMe,
@@ -41,7 +47,7 @@ class _MessageBubbleState extends State<MessageBubble> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isDeleted = widget.message == 'This message has been deleted.';
+    final bool isDeleted = widget.isUnsent;
 
     return Column(
       crossAxisAlignment:
@@ -50,29 +56,31 @@ class _MessageBubbleState extends State<MessageBubble> {
         GestureDetector(
           onLongPress: isDeleted ? null : () => _showMessageOptions(context),
           child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: isDeleted
                   ? Colors.grey[300]
                   : widget.isSender
-                      ? Color(0xFFF45F67)
-                      : Colors.grey[200],
+                      ? Color(0xFFDCF8C6) // WhatsApp-like green bubble
+                      : Colors.white,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(widget.isSender ? 12 : 0),
                 topRight: Radius.circular(widget.isSender ? 0 : 12),
-                bottomLeft: const Radius.circular(20),
-                bottomRight: const Radius.circular(20),
+                bottomLeft: const Radius.circular(12),
+                bottomRight: const Radius.circular(12),
               ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.grey.withOpacity(0.2),
-                  blurRadius: 4,
-                  offset: const Offset(2, 2),
+                  blurRadius: 2,
+                  offset: const Offset(1, 1),
                 ),
               ],
             ),
-            child: _isEditing ? _buildEditField() : _buildMessageContent(isDeleted),
+            child: _isEditing
+                ? _buildEditField()
+                : _buildMessageContent(isDeleted),
           ),
         ),
         if (!isDeleted) _buildTimestamp(),
@@ -82,74 +90,47 @@ class _MessageBubbleState extends State<MessageBubble> {
 
   Widget _buildMessageContent(bool isDeleted) {
     return Text(
-      widget.message,
+      isDeleted
+          ? 'This message was deleted'
+          : widget.message + (widget.isEdited ? ' (edited)' : ''),
       style: TextStyle(
-        color: widget.isSender ? Colors.white : Colors.black,
+        color: isDeleted
+            ? Colors.black54
+            : widget.isSender
+                ? Colors.black
+                : Colors.black,
         fontStyle: isDeleted ? FontStyle.italic : FontStyle.normal,
+        fontSize: 16,
       ),
     );
   }
 
   Widget _buildEditField() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 10.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+    return TextField(
+      controller: _editingController,
+      autofocus: true,
+      style: const TextStyle(fontSize: 16, color: Colors.black),
+      decoration: InputDecoration(
+        isDense: true,
+        contentPadding: EdgeInsets.zero,
+        border: InputBorder.none,
       ),
-      child: TextField(
-        controller: _editingController,
-        autofocus: true,
-        style: const TextStyle(fontSize: 14, color: Colors.black),
-        decoration: InputDecoration(
-          isDense: true,
-          contentPadding:
-              const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Colors.grey, width: 1),
-          ),
-        ),
-        onSubmitted: (newText) {
-          setState(() => _isEditing = false);
-          widget.onEdit(newText);
-        },
-      ),
+      onSubmitted: (newText) {
+        setState(() => _isEditing = false);
+        widget.onEdit(newText);
+      },
     );
   }
 
   Widget _buildTimestamp() {
     return Padding(
-      padding: const EdgeInsets.only(top: 4.0, left: 16.0, right: 16.0),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            _formatTimestamp(widget.timestamp),
-            style: TextStyle(
-              color: widget.isSender ? Colors.white70 : Colors.black54,
-              fontSize: 10,
-            ),
-          ),
-          if (widget.isSender && widget.isSeen)
-            Padding(
-              padding: const EdgeInsets.only(left: 8.0),
-              child: Text(
-                'Seen at ${_formatTimestamp(widget.timestamp)}',
-                style: const TextStyle(
-                  color: Colors.grey,
-                  fontSize: 10,
-                ),
-              ),
-            ),
-        ],
+      padding: const EdgeInsets.only(top: 2.0, left: 16.0, right: 16.0),
+      child: Text(
+        _formatTimestamp(widget.timestamp),
+        style: TextStyle(
+          color: Colors.grey,
+          fontSize: 10,
+        ),
       ),
     );
   }
@@ -160,7 +141,7 @@ class _MessageBubbleState extends State<MessageBubble> {
       builder: (BuildContext bc) {
         return Wrap(
           children: [
-            if (widget.isSender) ...[
+            if (widget.isSender && !widget.isUnsent) ...[
               ListTile(
                 leading: const Icon(Icons.edit, color: Colors.blue),
                 title: const Text('Edit'),
@@ -171,14 +152,14 @@ class _MessageBubbleState extends State<MessageBubble> {
               ),
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Delete for all'),
+                title: const Text('Delete for everyone'),
                 onTap: () {
                   Navigator.pop(context);
                   widget.onDeleteForAll();
                 },
               ),
             ],
-            if (!widget.isSender)
+            if (!widget.isSender && !widget.isUnsent)
               ListTile(
                 leading: const Icon(Icons.delete, color: Colors.red),
                 title: const Text('Delete for me'),

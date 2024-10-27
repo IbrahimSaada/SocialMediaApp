@@ -55,5 +55,23 @@ class SignalRService {
     });
   }
 
+    Future<void> editMessage(int messageId, String newContent) async {
+    try {
+      await _hubConnection.invoke('EditMessage', args: [messageId, newContent]);
+      print('EditMessage invoked successfully');
+    } catch (e) {
+      print('Error invoking EditMessage: $e');
+    }
+  }
+
+    Future<void> unsendMessage(int messageId) async {
+    try {
+      await _hubConnection.invoke('UnsendMessage', args: [messageId]);
+      print('UnsendMessage invoked successfully');
+    } catch (e) {
+      print('Error invoking UnsendMessage: $e');
+    }
+  }
+
   HubConnection get hubConnection => _hubConnection;
 }
