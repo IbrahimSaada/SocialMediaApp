@@ -82,20 +82,30 @@ class _ContactsPageState extends State<ContactsPage> {
     print('Deleted chat with $contactName');
   }
 
- void _navigateToChat(BuildContext context, Contact contact) {
+void _navigateToChat(BuildContext context, Contact contact) {
+  int recipientUserId;
+  if (contact.initiatorUserId == widget.userId) {
+    recipientUserId = contact.recipientUserId;
+  } else {
+    recipientUserId = contact.initiatorUserId;
+  }
+
   Navigator.push(
     context,
     MaterialPageRoute(
       builder: (context) => ChatPage(
-        chatId: contact.chatId,  // Pass chatId to ChatPage
+        chatId: contact.chatId,
+        currentUserId: widget.userId,
+        recipientUserId: recipientUserId,
         contactName: _getDisplayName(contact),
         profileImageUrl: _getDisplayProfileImage(contact),
-        isOnline: true, // Placeholder, replace with actual status if available
+        isOnline: true,
         lastSeen: contact.createdAt.toString(),
       ),
     ),
   );
 }
+
 
 
   @override

@@ -1,0 +1,54 @@
+// services/signalr_service.dart
+
+import 'package:signalr_core/signalr_core.dart';
+import 'package:cook/services/loginservice.dart';
+
+class SignalRService {
+  late HubConnection _hubConnection;
+  final LoginService _loginService = LoginService();
+
+  Future<void> initSignalR() async {
+    // Get the access token from LoginService
+    String? accessToken = await _loginService.getToken();
+
+    // Check if the access token is expired and refresh if necessary
+    DateTime? expiration = await _loginService.getTokenExpiration();
+    if (expiration == null || DateTime.now().isAfter(expiration)) {
+      await _loginService.refreshAccessToken();
+      accessToken = await _loginService.getToken();
+    }
+
+    // Ensure accessToken is not null
+    if (accessToken == null) {
+      throw Exception('Access token is null. User might not be logged in.');
+    }
+
+    _hubConnection = HubConnectionBuilder()
+        .withUrl(
+          'https://8dcc-185-89-86-31.ngrok-free.app/chatHub',
+          HttpConnectionOptions(
+            accessTokenFactory: () async => accessToken!,
+          ),
+        )
+        .withAutomaticReconnect()
+        .build();
+
+    // Start the connection
+    await _hubConnection.start();
+
+    // Handle connection events if necessary
+    _hubConnection.onclose((error) {
+      print('Connection closed: $error');
+    });
+
+    _hubConnection.onreconnecting((error) {
+      print('Reconnecting: $error');
+    });
+
+    _hubConnection.onreconnected((connectionId) {
+      print('Reconnected: $connectionId');
+    });
+  }
+
+  HubConnection get hubConnection => _hubConnection;
+}
