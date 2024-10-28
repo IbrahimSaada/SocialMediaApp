@@ -84,5 +84,16 @@ class SignalRService {
     }
   }
 
+    // Method to mark messages as read
+  Future<void> markMessagesAsRead(int chatId) async {
+    try {
+      await _hubConnection.invoke('MarkMessagesAsRead', args: [chatId]);
+      print('MarkMessagesAsRead invoked successfully');
+    } catch (e) {
+      print('Error invoking MarkMessagesAsRead: $e');
+    }
+  }
+
+
   HubConnection get hubConnection => _hubConnection;
 }

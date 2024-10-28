@@ -7,6 +7,7 @@ class MessageBubble extends StatefulWidget {
   final bool isSeen;
   final bool isEdited;
   final bool isUnsent;
+  final DateTime? readAt; // Added to display read time
   final Function(String newText) onEdit;
   final Function onDeleteForAll;
   final Function onDeleteForMe;
@@ -18,6 +19,7 @@ class MessageBubble extends StatefulWidget {
     required this.isSeen,
     required this.isEdited,
     required this.isUnsent,
+    required this.readAt, // Added
     required this.onEdit,
     required this.onDeleteForAll,
     required this.onDeleteForMe,
@@ -86,35 +88,47 @@ class _MessageBubbleState extends State<MessageBubble> {
     );
   }
 
-Widget _buildMessageContent(bool isDeleted) {
-  return Text(
-    isDeleted ? 'This message was deleted' : widget.message,
-    style: TextStyle(
-      color: isDeleted
-          ? Colors.black54
-          : widget.isSender
-              ? Colors.white
-              : Colors.black,
-      fontSize: 16,
-    ),
-  );
-}
-
+  Widget _buildMessageContent(bool isDeleted) {
+    return Text(
+      isDeleted ? 'This message was deleted' : widget.message,
+      style: TextStyle(
+        color: isDeleted
+            ? Colors.black54
+            : widget.isSender
+                ? Colors.white
+                : Colors.black,
+        fontSize: 16,
+      ),
+    );
+  }
 
   Widget _buildEditField() {
-    return TextField(
-      controller: _editingController,
-      autofocus: true,
-      style: const TextStyle(fontSize: 16, color: Colors.white),
-      decoration: InputDecoration(
-        isDense: true,
-        contentPadding: EdgeInsets.zero,
-        border: InputBorder.none,
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 10.0),
+      decoration: BoxDecoration(
+        color: widget.isSender ? Color(0xFFF45F67) : Colors.grey[200],
+        borderRadius: BorderRadius.circular(8),
       ),
-      onSubmitted: (newText) {
-        setState(() => _isEditing = false);
-        widget.onEdit(newText);
-      },
+      child: TextField(
+        controller: _editingController,
+        autofocus: true,
+        style: TextStyle(
+          fontSize: 14,
+          color: widget.isSender ? Colors.white : Colors.black,
+        ),
+        decoration: InputDecoration(
+          isDense: true,
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+          border: InputBorder.none,
+        ),
+        onSubmitted: (newText) {
+          setState(() {
+            _isEditing = false;
+          });
+          widget.onEdit(newText);
+        },
+      ),
     );
   }
 
@@ -144,6 +158,19 @@ Widget _buildMessageContent(bool isDeleted) {
                 ),
               ),
             ),
+          if (widget.isSender && widget.isSeen)
+            Padding(
+              padding: const EdgeInsets.only(left: 4.0),
+              child: CircleAvatar(
+                radius: 8,
+                backgroundColor: Color(0xFFF45F67),
+                child: Icon(
+                  Icons.check,
+                  color: Colors.white,
+                  size: 10,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -153,35 +180,72 @@ Widget _buildMessageContent(bool isDeleted) {
     showModalBottomSheet(
       context: context,
       builder: (BuildContext bc) {
-        return Wrap(
+        return Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (widget.isSender && !widget.isUnsent) ...[
-              ListTile(
-                leading: const Icon(Icons.edit, color: Colors.blue),
-                title: const Text('Edit'),
-                onTap: () {
-                  setState(() => _isEditing = true);
-                  Navigator.pop(context);
-                },
+            Wrap(
+              children: [
+                if (widget.isSender && !widget.isUnsent) ...[
+                  ListTile(
+                    leading: const Icon(Icons.edit, color: Colors.blue),
+                    title: const Text('Edit'),
+                    onTap: () {
+                      setState(() => _isEditing = true);
+                      Navigator.pop(context);
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.delete, color: Colors.red),
+                    title: const Text('Delete for everyone'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      widget.onDeleteForAll();
+                    },
+                  ),
+                ],
+                if (!widget.isSender && !widget.isUnsent)
+                  ListTile(
+                    leading: const Icon(Icons.delete, color: Colors.red),
+                    title: const Text('Delete for me'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      widget.onDeleteForMe();
+                    },
+                  ),
+              ],
+            ),
+            Divider(), // Optional divider
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Message Details',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Sent at: ${_formatFullTimestamp(widget.timestamp)}',
+                    style: TextStyle(
+                      color: Colors.grey[700],
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (widget.readAt != null)
+                    Text(
+                      'Read at: ${_formatFullTimestamp(widget.readAt!)}',
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 14,
+                      ),
+                    ),
+                ],
               ),
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Delete for everyone'),
-                onTap: () {
-                  Navigator.pop(context);
-                  widget.onDeleteForAll();
-                },
-              ),
-            ],
-            if (!widget.isSender && !widget.isUnsent)
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Delete for me'),
-                onTap: () {
-                  Navigator.pop(context);
-                  widget.onDeleteForMe();
-                },
-              ),
+            ),
           ],
         );
       },
@@ -190,5 +254,10 @@ Widget _buildMessageContent(bool isDeleted) {
 
   String _formatTimestamp(DateTime timestamp) {
     return '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
+  }
+
+  String _formatFullTimestamp(DateTime timestamp) {
+    // Format: Day/Month/Year, Hour:Minute
+    return '${timestamp.day}/${timestamp.month}/${timestamp.year}, ${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
   }
 }

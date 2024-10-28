@@ -59,9 +59,13 @@ class _ChatPageState extends State<ChatPage> {
       _signalRService.hubConnection.on('MessageEdited', _handleMessageEdited);
       _signalRService.hubConnection.on('MessageUnsent', _handleMessageUnsent);
       _signalRService.hubConnection.on('UserTyping', _handleUserTyping);
+      _signalRService.hubConnection.on('MessagesRead', _handleMessagesRead);
 
       // Fetch messages via SignalR after connection is established
       await _fetchMessages();
+
+      // Mark messages as read when the chat is opened
+      _signalRService.markMessagesAsRead(widget.chatId);
     } catch (e) {
       print('Error initializing SignalR: $e');
     }
@@ -131,6 +135,7 @@ class _ChatPageState extends State<ChatPage> {
         print('Received message for a different chat: ${message.chatId}');
       }
     }
+     _signalRService.markMessagesAsRead(widget.chatId);
   }
 
   void _handleMessageSent(List<Object?>? arguments) {
@@ -240,6 +245,25 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+  void _handleMessagesRead(List<Object?>? arguments) {
+    print('MessagesRead event received: $arguments');
+    if (arguments != null && arguments.length >= 2) {
+      int chatId = arguments[0] as int;
+      int readerUserId = arguments[1] as int;
+
+      if (chatId == widget.chatId && readerUserId == widget.recipientUserId) {
+        setState(() {
+          messages = messages.map((message) {
+            if (message.senderId == widget.currentUserId && message.readAt == null) {
+              return message.copyWith(readAt: DateTime.now());
+            }
+            return message;
+          }).toList();
+        });
+      }
+    }
+  }
+
   // Handle sending a message
   void _handleSendMessage(String messageContent) async {
     try {
@@ -297,7 +321,7 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-  @override
+ @override
   void dispose() {
     // Unregister event handlers to prevent memory leaks
     _signalRService.hubConnection.off('ReceiveMessage', method: _handleReceiveMessage);
@@ -305,6 +329,7 @@ class _ChatPageState extends State<ChatPage> {
     _signalRService.hubConnection.off('MessageEdited', method: _handleMessageEdited);
     _signalRService.hubConnection.off('MessageUnsent', method: _handleMessageUnsent);
     _signalRService.hubConnection.off('UserTyping', method: _handleUserTyping);
+    _signalRService.hubConnection.off('MessagesRead', method: _handleMessagesRead);
     _typingTimer?.cancel();
     super.dispose();
   }
@@ -362,9 +387,10 @@ class _ChatPageState extends State<ChatPage> {
                             alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
                             child: MessageBubble(
                               isSender: isSender,
+                              readAt: message.readAt,
                               message: message.isUnsent ? 'This message was deleted' : message.messageContent,
                               timestamp: message.createdAt,
-                              isSeen: false,
+                              isSeen: message.readAt != null,
                               isEdited: message.isEdited,
                               isUnsent: message.isUnsent,
                               onEdit: (newText) {
