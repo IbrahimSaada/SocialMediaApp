@@ -7,6 +7,7 @@ import 'package:cook/services/signalr_service.dart';
 import 'message_input.dart';
 import 'message_bubble.dart';
 import 'chat_app_bar.dart';
+import 'dart:async';
 
 class ChatPage extends StatefulWidget {
   final int chatId;
@@ -37,10 +38,14 @@ class _ChatPageState extends State<ChatPage> {
   List<Message> messages = [];
   bool _isLoading = true;
   final ScrollController _scrollController = ScrollController();
+  bool _isRecipientTyping = false;
+  Timer? _typingTimer;
+  String _status = '';
 
   @override
   void initState() {
     super.initState();
+    _status = widget.isOnline ? 'Online' : 'Offline';
     _initSignalR();
   }
 
@@ -53,6 +58,7 @@ class _ChatPageState extends State<ChatPage> {
       _signalRService.hubConnection.on('MessageSent', _handleMessageSent);
       _signalRService.hubConnection.on('MessageEdited', _handleMessageEdited);
       _signalRService.hubConnection.on('MessageUnsent', _handleMessageUnsent);
+      _signalRService.hubConnection.on('UserTyping', _handleUserTyping);
 
       // Fetch messages via SignalR after connection is established
       await _fetchMessages();
@@ -117,6 +123,8 @@ class _ChatPageState extends State<ChatPage> {
         setState(() {
           messages.add(message);
           print('Message added to list: ${message.messageContent}');
+          _isRecipientTyping = false;
+          _status = widget.isOnline ? 'Online' : 'Offline';
         });
         _scrollToBottom();
       } else {
@@ -153,6 +161,30 @@ class _ChatPageState extends State<ChatPage> {
         print('MessageSent event for different chat');
       }
     }
+  }
+
+  void _handleUserTyping(List<Object?>? arguments) {
+    print('UserTyping event received: $arguments');
+    if (arguments != null && arguments.isNotEmpty) {
+      int senderId = arguments[0] as int;
+      if (senderId == widget.recipientUserId) {
+        setState(() {
+          _isRecipientTyping = true;
+          _status = 'Typing...';
+        });
+        _resetTypingTimer();
+      }
+    }
+  }
+
+  void _resetTypingTimer() {
+    _typingTimer?.cancel();
+    _typingTimer = Timer(Duration(seconds: 3), () {
+      setState(() {
+        _isRecipientTyping = false;
+        _status = widget.isOnline ? 'Online' : 'Offline';
+      });
+    });
   }
 
   // Handle 'MessageEdited' event from backend
@@ -243,6 +275,15 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+  // Handle typing event
+  void _handleTyping() {
+    _signalRService.sendTypingNotification(widget.recipientUserId);
+  }
+
+  void _handleTypingStopped() {
+    // Optionally implement if you need to notify when typing has stopped
+  }
+
   // Scroll to the last message
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -263,7 +304,8 @@ class _ChatPageState extends State<ChatPage> {
     _signalRService.hubConnection.off('MessageSent', method: _handleMessageSent);
     _signalRService.hubConnection.off('MessageEdited', method: _handleMessageEdited);
     _signalRService.hubConnection.off('MessageUnsent', method: _handleMessageUnsent);
-
+    _signalRService.hubConnection.off('UserTyping', method: _handleUserTyping);
+    _typingTimer?.cancel();
     super.dispose();
   }
 
@@ -286,7 +328,7 @@ class _ChatPageState extends State<ChatPage> {
       appBar: ChatAppBar(
         username: widget.contactName,
         profileImageUrl: widget.profileImageUrl,
-        status: widget.isOnline ? 'Online' : 'Offline',
+        status: _status,
       ),
       body: Column(
         children: [
@@ -343,9 +385,8 @@ class _ChatPageState extends State<ChatPage> {
           ),
           MessageInput(
             onSendMessage: _handleSendMessage,
-            onTyping: () {
-              // Implement typing indicator if needed
-            },
+            onTyping: _handleTyping,
+            onTypingStopped: _handleTypingStopped,
           ),
         ],
       ),

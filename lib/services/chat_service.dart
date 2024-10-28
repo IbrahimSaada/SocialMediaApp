@@ -6,8 +6,8 @@ import 'package:cook/models/contact_model.dart';
 import 'package:cook/models/message_model.dart';
 
 class ChatService {
-  final String chatBaseUrl = 'https://be2d-185-89-86-31.ngrok-free.app/api/Chat';
-  final String messageBaseUrl = 'https://be2d-185-89-86-31.ngrok-free.app/api/Message';
+  final String chatBaseUrl = 'https://0d21-185-89-86-31.ngrok-free.app/api/Chat';
+  final String messageBaseUrl = 'https://0d21-185-89-86-31.ngrok-free.app/api/Message';
 
   // Fetch user chats
   Future<List<Contact>> fetchUserChats(int userId) async {

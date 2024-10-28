@@ -25,7 +25,7 @@ class SignalRService {
 
     _hubConnection = HubConnectionBuilder()
         .withUrl(
-          'https://be2d-185-89-86-31.ngrok-free.app/chatHub',
+          'https://0d21-185-89-86-31.ngrok-free.app/chatHub',
           HttpConnectionOptions(
             accessTokenFactory: () async => accessToken!,
           ),
@@ -55,7 +55,18 @@ class SignalRService {
     });
   }
 
-    Future<void> editMessage(int messageId, String newContent) async {
+  // Method to send typing notification
+  Future<void> sendTypingNotification(int recipientUserId) async {
+    try {
+      await _hubConnection.invoke('Typing', args: [recipientUserId]);
+      print('Typing notification sent successfully');
+    } catch (e) {
+      print('Error sending typing notification: $e');
+    }
+  }
+
+  // Existing methods...
+  Future<void> editMessage(int messageId, String newContent) async {
     try {
       await _hubConnection.invoke('EditMessage', args: [messageId, newContent]);
       print('EditMessage invoked successfully');

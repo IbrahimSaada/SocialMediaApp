@@ -1,10 +1,18 @@
+// message_input.dart
+
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 class MessageInput extends StatefulWidget {
   final Function(String) onSendMessage;
-  final Function onTyping; // Add typing callback
+  final Function onTyping;
+  final Function onTypingStopped;
 
-  MessageInput({required this.onSendMessage, required this.onTyping});
+  MessageInput({
+    required this.onSendMessage,
+    required this.onTyping,
+    required this.onTypingStopped,
+  });
 
   @override
   _MessageInputState createState() => _MessageInputState();
@@ -13,26 +21,43 @@ class MessageInput extends StatefulWidget {
 class _MessageInputState extends State<MessageInput> {
   final TextEditingController _controller = TextEditingController();
   bool _isTyping = false;
+  Timer? _typingTimer;
 
-  // Listen for changes in the text field
   void _onTextChanged(String value) {
     setState(() {
-      _isTyping = value.isNotEmpty;  // Show send button only if user types something
+      _isTyping = value.isNotEmpty;
     });
     if (_isTyping) {
-      widget.onTyping();  // Notify that the user is typing
+      widget.onTyping();
+      _startTypingTimer();
+    } else {
+      widget.onTypingStopped();
     }
   }
 
-  // Clear the input and send the message
+  void _startTypingTimer() {
+    _typingTimer?.cancel();
+    _typingTimer = Timer(Duration(seconds: 2), () {
+      widget.onTypingStopped();
+    });
+  }
+
   void _sendMessage() {
     if (_isTyping) {
       widget.onSendMessage(_controller.text);
       _controller.clear();
       setState(() {
-        _isTyping = false;  // Reset typing state
+        _isTyping = false;
       });
+      widget.onTypingStopped();
     }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _typingTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -44,13 +69,13 @@ class _MessageInputState extends State<MessageInput> {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                border: Border.all(color: Color(0xFFF45F67), width: 2),  // Primary color border
+                border: Border.all(color: Color(0xFFF45F67), width: 2),
                 borderRadius: BorderRadius.circular(30),
               ),
               child: Row(
                 children: [
                   IconButton(
-                    icon: Icon(Icons.camera_alt, color: Color(0xFFF45F67)),  // Camera icon stays
+                    icon: Icon(Icons.camera_alt, color: Color(0xFFF45F67)),
                     onPressed: () {
                       // Handle camera action
                     },
@@ -58,10 +83,10 @@ class _MessageInputState extends State<MessageInput> {
                   Expanded(
                     child: TextField(
                       controller: _controller,
-                      onChanged: _onTextChanged,  // Detect typing
+                      onChanged: _onTextChanged,
                       decoration: InputDecoration(
                         hintText: 'Type a message...',
-                        border: InputBorder.none,  // No border since the outer Container has it
+                        border: InputBorder.none,
                       ),
                     ),
                   ),
@@ -70,7 +95,7 @@ class _MessageInputState extends State<MessageInput> {
                     child: !_isTyping
                         ? IconButton(
                             key: ValueKey('gallery'),
-                            icon: Icon(Icons.photo, color: Color(0xFFF45F67)),  // Gallery icon
+                            icon: Icon(Icons.photo, color: Color(0xFFF45F67)),
                             onPressed: () {
                               // Handle gallery action
                             },
@@ -86,7 +111,7 @@ class _MessageInputState extends State<MessageInput> {
             child: _isTyping
                 ? IconButton(
                     key: ValueKey('send'),
-                    icon: Icon(Icons.send, color: Color(0xFFF45F67)),  // Send button
+                    icon: Icon(Icons.send, color: Color(0xFFF45F67)),
                     onPressed: _sendMessage,
                   )
                 : SizedBox.shrink(),

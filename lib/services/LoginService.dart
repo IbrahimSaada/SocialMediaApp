@@ -6,7 +6,7 @@ import 'SessionExpiredException.dart';
 
 class LoginService {
   final String baseUrl =
-      'https://be2d-185-89-86-31.ngrok-free.app/api'; // Base URL for API
+      'https://0d21-185-89-86-31.ngrok-free.app/api'; // Base URL for API
   final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
   final SignatureService _signatureService = SignatureService();  // Using SignatureService for HMAC
 
