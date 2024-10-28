@@ -160,12 +160,17 @@ class _CreatePostPageState extends State<CreatePostPage> {
         List<PresignedUrl> presignedUrls =
             await _s3UploadService.getPresignedUrls(fileNames);
 
-        for (int i = 0; i < _mediaFiles.length; i++) {
-          String objectUrl = await _s3UploadService.uploadFile(presignedUrls[i], _mediaFiles[i]);
+          for (int i = 0; i < _mediaFiles.length; i++) {
+            String objectUrl = await _s3UploadService.uploadFile(
+              presignedUrls[i],
+              _mediaFiles[i],
+              onProgress: (progress) {
+                setState(() {
+                  _uploadProgress = (i + progress / 100) / _mediaFiles.length;
 
-          setState(() {
-            _uploadProgress = (i + 1) / _mediaFiles.length;
-          });
+                });
+              },
+            );
 
           String mediaType =
               _mediaFiles[i].path.endsWith('.mp4') ? 'video' : 'photo';
@@ -609,8 +614,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                           height: 100,
                           child: CircularProgressIndicator(
                             value: _uploadProgress,
-                            valueColor:
-                                const AlwaysStoppedAnimation<Color>(Color(0xFFF45F67)),
+                            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFF45F67)),
                             strokeWidth: 8,
                           ),
                         ),
