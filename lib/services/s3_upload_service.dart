@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 //import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:cook/services/LoginService.dart'; // Import LoginService
 import 'SignatureService.dart';  // Import the SignatureService
+import 'package:dio/dio.dart';
 
 class S3UploadService {
   //final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
@@ -76,22 +77,27 @@ class S3UploadService {
     }
   }
 
-  Future<String> uploadFile(PresignedUrl urlData, XFile file) async {
+  Future<String> uploadFile(PresignedUrl urlData, XFile file, {Function(double)? onProgress}) async {
    // final fileStream = File(file.path).openRead();
-    final fileLength = await File(file.path).length();
     final fileType = lookupMimeType(file.path);
+    final fileSize = await File(file.path).length();
 
-    final request = http.Request('PUT', Uri.parse(urlData.url));
-    request.headers.addAll({
-      'Content-Length': fileLength.toString(),
-      'Content-Type': fileType!,
-    });
-    request.bodyBytes = await File(file.path).readAsBytes();
-
-    final response = await request.send();
-
-    if (response.statusCode != 200) {
-      throw Exception('Failed to upload file: ${response.statusCode}');
+    Dio dio = Dio();
+    try {
+      await dio.put(
+        urlData.url,
+        data: File(file.path).openRead(),
+        options: Options(headers: {
+          'Content-Type': fileType,
+          'Content-Length': fileSize.toString(),
+        }),
+        onSendProgress: (int sent, int total) {
+          double progress = (sent / total) * 100;
+          if (onProgress != null) onProgress(progress); // Call progress callback
+        },
+      );
+    } catch (e) {
+      throw Exception('Failed to upload file: $e');
     }
 
     print('File uploaded successfully');
