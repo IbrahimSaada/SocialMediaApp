@@ -105,7 +105,7 @@ Widget _buildMessageContent(bool isDeleted) {
     return TextField(
       controller: _editingController,
       autofocus: true,
-      style: const TextStyle(fontSize: 16, color: Colors.black),
+      style: const TextStyle(fontSize: 16, color: Colors.white),
       decoration: InputDecoration(
         isDense: true,
         contentPadding: EdgeInsets.zero,
