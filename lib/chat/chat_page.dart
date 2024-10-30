@@ -4,10 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:cook/services/chat_service.dart';
 import 'package:cook/models/message_model.dart';
 import 'package:cook/services/signalr_service.dart';
+import 'package:cook/services/s3_upload_service.dart';
+import 'package:image_picker/image_picker.dart';
 import 'message_input.dart';
 import 'message_bubble.dart';
 import 'chat_app_bar.dart';
 import 'dart:async';
+import 'dart:io';
 
 class ChatPage extends StatefulWidget {
   final int chatId;
@@ -35,12 +38,15 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final ChatService _chatService = ChatService();
   final SignalRService _signalRService = SignalRService();
+  final S3UploadService _s3UploadService = S3UploadService(); // Added for media upload
   List<Message> messages = [];
   bool _isLoading = true;
   final ScrollController _scrollController = ScrollController();
   bool _isRecipientTyping = false;
   Timer? _typingTimer;
   String _status = '';
+  bool _isUploadingMedia = false;
+  double _uploadProgress = 0.0;
 
   @override
   void initState() {
@@ -135,7 +141,7 @@ class _ChatPageState extends State<ChatPage> {
         print('Received message for a different chat: ${message.chatId}');
       }
     }
-     _signalRService.markMessagesAsRead(widget.chatId);
+    _signalRService.markMessagesAsRead(widget.chatId);
   }
 
   void _handleMessageSent(List<Object?>? arguments) {
@@ -264,7 +270,7 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  // Handle sending a message
+  // Handle sending a text message
   void _handleSendMessage(String messageContent) async {
     try {
       await _signalRService.hubConnection.invoke('SendMessage', args: [
@@ -273,7 +279,7 @@ class _ChatPageState extends State<ChatPage> {
         'text', // Message type
         null, // Media URLs if any
       ]);
-      print('Message sent successfully');
+      print('Text message sent successfully');
     } catch (e) {
       print('Error sending message: $e');
     }
@@ -299,6 +305,45 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+Future<void> _handleSendMediaMessage(File mediaFile, String mediaType) async {
+  setState(() {
+    _isUploadingMedia = true;
+    _uploadProgress = 0.0;
+  });
+
+  try {
+    final fileName = mediaFile.path.split('/').last;
+    final presignedUrls = await _s3UploadService.getPresignedUrls([fileName]);
+
+    final mediaUrl = await _s3UploadService.uploadFile(
+      presignedUrls[0],
+      XFile(mediaFile.path), // Convert to XFile for compatibility
+      onProgress: (progress) {
+        setState(() {
+          _uploadProgress = progress;
+        });
+      },
+    );
+
+    await _signalRService.hubConnection.invoke('SendMessage', args: [
+      widget.recipientUserId,
+      mediaUrl,
+      mediaType,
+      null,
+    ]);
+
+    print('$mediaType message sent successfully with URL: $mediaUrl');
+    _scrollToBottom();  // <-- Scroll to the bottom after sending media
+  } catch (e) {
+    print('Error sending media message: $e');
+  } finally {
+    setState(() {
+      _isUploadingMedia = false;
+    });
+  }
+}
+
+
   // Handle typing event
   void _handleTyping() {
     _signalRService.sendTypingNotification(widget.recipientUserId);
@@ -321,16 +366,15 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
- @override
+  @override
   void dispose() {
-    // Unregister event handlers to prevent memory leaks
     _signalRService.hubConnection.off('ReceiveMessage', method: _handleReceiveMessage);
     _signalRService.hubConnection.off('MessageSent', method: _handleMessageSent);
     _signalRService.hubConnection.off('MessageEdited', method: _handleMessageEdited);
     _signalRService.hubConnection.off('MessageUnsent', method: _handleMessageUnsent);
     _signalRService.hubConnection.off('UserTyping', method: _handleUserTyping);
     _signalRService.hubConnection.off('MessagesRead', method: _handleMessagesRead);
-    _typingTimer?.cancel();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -388,11 +432,14 @@ class _ChatPageState extends State<ChatPage> {
                             child: MessageBubble(
                               isSender: isSender,
                               readAt: message.readAt,
-                              message: message.isUnsent ? 'This message was deleted' : message.messageContent,
+                              message: message.isUnsent
+                                  ? 'This message was deleted'
+                                  : message.messageContent,
                               timestamp: message.createdAt,
                               isSeen: message.readAt != null,
                               isEdited: message.isEdited,
                               isUnsent: message.isUnsent,
+                              messageType: message.messageType, // Specify message type here
                               onEdit: (newText) {
                                 _handleEditMessage(message.messageId, newText);
                               },
@@ -409,10 +456,22 @@ class _ChatPageState extends State<ChatPage> {
                     },
                   ),
           ),
+         if (_isUploadingMedia)
+  Center(
+    child: Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: CircularProgressIndicator(
+        value: _uploadProgress / 100,
+        color: Theme.of(context).primaryColor,
+      ),
+    ),
+  ),
+
           MessageInput(
             onSendMessage: _handleSendMessage,
-            onTyping: _handleTyping,
-            onTypingStopped: _handleTypingStopped,
+            onTyping: () => _signalRService.sendTypingNotification(widget.recipientUserId),
+            onTypingStopped: () {}, // Optional typing stopped handler
+            onSendMediaMessage: (file, type) => _handleSendMediaMessage(File(file.path), type), // Updated to accept File
           ),
         ],
       ),

@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
+import 'package:chewie/chewie.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 class MessageBubble extends StatefulWidget {
   final bool isSender;
@@ -7,10 +11,11 @@ class MessageBubble extends StatefulWidget {
   final bool isSeen;
   final bool isEdited;
   final bool isUnsent;
-  final DateTime? readAt; // Added to display read time
+  final DateTime? readAt;
   final Function(String newText) onEdit;
   final Function onDeleteForAll;
   final Function onDeleteForMe;
+  final String messageType;
 
   const MessageBubble({
     required this.isSender,
@@ -19,10 +24,11 @@ class MessageBubble extends StatefulWidget {
     required this.isSeen,
     required this.isEdited,
     required this.isUnsent,
-    required this.readAt, // Added
+    required this.readAt,
     required this.onEdit,
     required this.onDeleteForAll,
     required this.onDeleteForMe,
+    required this.messageType,
   });
 
   @override
@@ -32,6 +38,8 @@ class MessageBubble extends StatefulWidget {
 class _MessageBubbleState extends State<MessageBubble> {
   bool _isEditing = false;
   late TextEditingController _editingController;
+   VideoPlayerController? _videoPlayerController; // Make sure this line is present
+  final double _mediaSize = 200.0;
 
   @override
   void initState() {
@@ -50,14 +58,13 @@ class _MessageBubbleState extends State<MessageBubble> {
     final bool isDeleted = widget.isUnsent;
 
     return Column(
-      crossAxisAlignment:
-          widget.isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: widget.isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
         GestureDetector(
           onLongPress: isDeleted ? null : () => _showMessageOptions(context),
           child: Container(
             margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: isDeleted
                   ? Colors.grey[300]
@@ -80,13 +87,103 @@ class _MessageBubbleState extends State<MessageBubble> {
             ),
             child: _isEditing
                 ? _buildEditField()
-                : _buildMessageContent(isDeleted),
+                : widget.messageType == 'photo'
+                    ? _buildImageBubble()
+                    : widget.messageType == 'video'
+                        ? _buildVideoBubble()
+                        : _buildMessageContent(isDeleted),
           ),
         ),
         if (!isDeleted) _buildTimestampAndEditedLabel(),
       ],
     );
   }
+
+  Widget _buildImageBubble() {
+    if (widget.isUnsent) {
+      return _buildMessageContent(widget.isUnsent);
+    }
+    return GestureDetector(
+      onTap: () => _openFullScreenImage(widget.message),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: CachedNetworkImage(
+          imageUrl: widget.message,
+          height: _mediaSize,
+          width: _mediaSize,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => Container(
+            height: _mediaSize,
+            width: _mediaSize,
+            color: Colors.grey[200],
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVideoBubble() {
+    if (widget.isUnsent) {
+      return _buildMessageContent(true);
+    }
+    return GestureDetector(
+      onTap: _openFullScreenVideo,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            height: 200,
+            width: 200,
+            color: Colors.black12,
+            child: Icon(Icons.videocam, color: Colors.grey, size: 50),
+          ),
+          Icon(Icons.play_circle_outline, color: Colors.white, size: 50),
+        ],
+      ),
+    );
+  }
+
+ void _openFullScreenVideo() async {
+    final cachedFile = await DefaultCacheManager().getSingleFile(widget.message);
+    _videoPlayerController = VideoPlayerController.file(cachedFile);
+
+    await _videoPlayerController!.initialize();
+    final chewieController = ChewieController(
+      videoPlayerController: _videoPlayerController!,
+      autoPlay: true,
+      looping: false,
+      aspectRatio: 16 / 9,
+    );
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.black,
+          insetPadding: EdgeInsets.zero,
+          child: Stack(
+            children: [
+              Chewie(controller: chewieController),
+              Positioned(
+                top: 40,
+                right: 20,
+                child: IconButton(
+                  icon: Icon(Icons.close, color: Colors.white, size: 30),
+                  onPressed: () {
+                    chewieController.dispose();
+                    _videoPlayerController?.dispose();
+                    Navigator.pop(context);
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
 
   Widget _buildMessageContent(bool isDeleted) {
     return Text(
@@ -118,8 +215,7 @@ class _MessageBubbleState extends State<MessageBubble> {
         ),
         decoration: InputDecoration(
           isDense: true,
-          contentPadding:
-              const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
           border: InputBorder.none,
         ),
         onSubmitted: (newText) {
@@ -136,8 +232,7 @@ class _MessageBubbleState extends State<MessageBubble> {
     return Padding(
       padding: const EdgeInsets.only(top: 2.0, left: 16.0, right: 16.0),
       child: Row(
-        mainAxisAlignment:
-            widget.isSender ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: widget.isSender ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           Text(
             _formatTimestamp(widget.timestamp),
@@ -185,7 +280,7 @@ class _MessageBubbleState extends State<MessageBubble> {
           children: [
             Wrap(
               children: [
-                if (widget.isSender && !widget.isUnsent) ...[
+                if (widget.isSender && widget.messageType == 'text' && !widget.isUnsent)
                   ListTile(
                     leading: const Icon(Icons.edit, color: Colors.blue),
                     title: const Text('Edit'),
@@ -194,6 +289,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                       Navigator.pop(context);
                     },
                   ),
+                if (widget.isSender && !widget.isUnsent)
                   ListTile(
                     leading: const Icon(Icons.delete, color: Colors.red),
                     title: const Text('Delete for everyone'),
@@ -202,7 +298,6 @@ class _MessageBubbleState extends State<MessageBubble> {
                       widget.onDeleteForAll();
                     },
                   ),
-                ],
                 if (!widget.isSender && !widget.isUnsent)
                   ListTile(
                     leading: const Icon(Icons.delete, color: Colors.red),
@@ -214,7 +309,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                   ),
               ],
             ),
-            Divider(), // Optional divider
+            Divider(),
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -252,12 +347,47 @@ class _MessageBubbleState extends State<MessageBubble> {
     );
   }
 
+  void _openFullScreenImage(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.black,
+          insetPadding: EdgeInsets.zero,
+          child: GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Stack(
+              children: [
+                InteractiveViewer(
+                  child: Center(
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      fit: BoxFit.contain,
+                      placeholder: (context, url) => Center(child: CircularProgressIndicator()),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 40,
+                  right: 20,
+                  child: IconButton(
+                    icon: Icon(Icons.close, color: Colors.white, size: 30),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   String _formatTimestamp(DateTime timestamp) {
     return '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
   }
 
   String _formatFullTimestamp(DateTime timestamp) {
-    // Format: Day/Month/Year, Hour:Minute
     return '${timestamp.day}/${timestamp.month}/${timestamp.year}, ${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
   }
 }
