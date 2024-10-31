@@ -1,8 +1,11 @@
+// message_bubble.dart
+
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import '/models/media_item.dart'; // Import MediaItem
 
 class MessageBubble extends StatefulWidget {
   final bool isSender;
@@ -16,6 +19,7 @@ class MessageBubble extends StatefulWidget {
   final Function onDeleteForAll;
   final Function onDeleteForMe;
   final String messageType;
+  final List<MediaItem> mediaItems; // Updated to use MediaItem
 
   const MessageBubble({
     required this.isSender,
@@ -29,6 +33,7 @@ class MessageBubble extends StatefulWidget {
     required this.onDeleteForAll,
     required this.onDeleteForMe,
     required this.messageType,
+    required this.mediaItems,
   });
 
   @override
@@ -38,7 +43,7 @@ class MessageBubble extends StatefulWidget {
 class _MessageBubbleState extends State<MessageBubble> {
   bool _isEditing = false;
   late TextEditingController _editingController;
-   VideoPlayerController? _videoPlayerController; // Make sure this line is present
+  VideoPlayerController? _videoPlayerController;
   final double _mediaSize = 200.0;
 
   @override
@@ -50,6 +55,7 @@ class _MessageBubbleState extends State<MessageBubble> {
   @override
   void dispose() {
     _editingController.dispose();
+    _videoPlayerController?.dispose();
     super.dispose();
   }
 
@@ -87,11 +93,9 @@ class _MessageBubbleState extends State<MessageBubble> {
             ),
             child: _isEditing
                 ? _buildEditField()
-                : widget.messageType == 'photo'
-                    ? _buildImageBubble()
-                    : widget.messageType == 'video'
-                        ? _buildVideoBubble()
-                        : _buildMessageContent(isDeleted),
+                : widget.messageType == 'media'
+                    ? _buildMediaContent()
+                    : _buildMessageContent(isDeleted),
           ),
         ),
         if (!isDeleted) _buildTimestampAndEditedLabel(),
@@ -99,16 +103,30 @@ class _MessageBubbleState extends State<MessageBubble> {
     );
   }
 
-  Widget _buildImageBubble() {
-    if (widget.isUnsent) {
-      return _buildMessageContent(widget.isUnsent);
+  Widget _buildMediaContent() {
+    if (widget.isUnsent || widget.mediaItems.isEmpty) {
+      return _buildMessageContent(true);
     }
+
+    // Assuming only one media item per message
+    MediaItem mediaItem = widget.mediaItems.first;
+
+    if (mediaItem.mediaType == 'photo') {
+      return _buildImageBubble(mediaItem.mediaUrl);
+    } else if (mediaItem.mediaType == 'video') {
+      return _buildVideoBubble(mediaItem.mediaUrl);
+    } else {
+      return Text('Unsupported media type');
+    }
+  }
+
+  Widget _buildImageBubble(String imageUrl) {
     return GestureDetector(
-      onTap: () => _openFullScreenImage(widget.message),
+      onTap: () => _openFullScreenImage(imageUrl),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: CachedNetworkImage(
-          imageUrl: widget.message,
+          imageUrl: imageUrl,
           height: _mediaSize,
           width: _mediaSize,
           fit: BoxFit.cover,
@@ -123,18 +141,15 @@ class _MessageBubbleState extends State<MessageBubble> {
     );
   }
 
-  Widget _buildVideoBubble() {
-    if (widget.isUnsent) {
-      return _buildMessageContent(true);
-    }
+  Widget _buildVideoBubble(String videoUrl) {
     return GestureDetector(
-      onTap: _openFullScreenVideo,
+      onTap: () => _openFullScreenVideo(videoUrl),
       child: Stack(
         alignment: Alignment.center,
         children: [
           Container(
-            height: 200,
-            width: 200,
+            height: _mediaSize,
+            width: _mediaSize,
             color: Colors.black12,
             child: Icon(Icons.videocam, color: Colors.grey, size: 50),
           ),
@@ -144,8 +159,8 @@ class _MessageBubbleState extends State<MessageBubble> {
     );
   }
 
- void _openFullScreenVideo() async {
-    final cachedFile = await DefaultCacheManager().getSingleFile(widget.message);
+  void _openFullScreenVideo(String videoUrl) async {
+    final cachedFile = await DefaultCacheManager().getSingleFile(videoUrl);
     _videoPlayerController = VideoPlayerController.file(cachedFile);
 
     await _videoPlayerController!.initialize();
@@ -153,7 +168,7 @@ class _MessageBubbleState extends State<MessageBubble> {
       videoPlayerController: _videoPlayerController!,
       autoPlay: true,
       looping: false,
-      aspectRatio: 16 / 9,
+      aspectRatio: _videoPlayerController!.value.aspectRatio,
     );
 
     showDialog(
@@ -183,7 +198,6 @@ class _MessageBubbleState extends State<MessageBubble> {
       },
     );
   }
-
 
   Widget _buildMessageContent(bool isDeleted) {
     return Text(

@@ -1,5 +1,7 @@
 // models/message_model.dart
 
+import 'media_item.dart';
+
 class Message {
   final int messageId;
   final int chatId;
@@ -12,7 +14,7 @@ class Message {
   final DateTime? readAt;
   final bool isEdited;
   final bool isUnsent;
-  final List<String> mediaUrls;
+  final List<MediaItem> mediaItems; // Updated to use MediaItem
 
   Message({
     required this.messageId,
@@ -26,7 +28,7 @@ class Message {
     this.readAt,
     required this.isEdited,
     required this.isUnsent,
-    required this.mediaUrls,
+    required this.mediaItems,
   });
 
   factory Message.fromJson(Map<String, dynamic> json) {
@@ -50,6 +52,14 @@ class Message {
       }
     }
 
+    // Parse media items
+    List<MediaItem> mediaItems = [];
+    if (json['mediaItems'] != null) {
+      mediaItems = (json['mediaItems'] as List)
+          .map((item) => MediaItem.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+
     return Message(
       messageId: json['messageId'] ?? 0,
       chatId: json['chatId'] ?? 0,
@@ -62,11 +72,11 @@ class Message {
       readAt: readAt,
       isEdited: json['isEdited'] ?? false,
       isUnsent: json['isUnsent'] ?? false,
-      mediaUrls: json['mediaUrls'] != null ? List<String>.from(json['mediaUrls']) : [],
+      mediaItems: mediaItems,
     );
   }
 
-    // Add a copyWith method for easy updates
+  // Add a copyWith method for easy updates
   Message copyWith({
     int? messageId,
     int? chatId,
@@ -79,7 +89,7 @@ class Message {
     DateTime? readAt,
     bool? isEdited,
     bool? isUnsent,
-    List<String>? mediaUrls,
+    List<MediaItem>? mediaItems,
   }) {
     return Message(
       messageId: messageId ?? this.messageId,
@@ -93,7 +103,7 @@ class Message {
       readAt: readAt ?? this.readAt,
       isEdited: isEdited ?? this.isEdited,
       isUnsent: isUnsent ?? this.isUnsent,
-      mediaUrls: mediaUrls ?? this.mediaUrls,
+      mediaItems: mediaItems ?? this.mediaItems,
     );
   }
 }

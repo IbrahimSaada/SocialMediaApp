@@ -11,6 +11,7 @@ import 'message_bubble.dart';
 import 'chat_app_bar.dart';
 import 'dart:async';
 import 'dart:io';
+//import 'package:cook/models/media_item.dart'; // Import MediaItem
 
 class ChatPage extends StatefulWidget {
   final int chatId;
@@ -38,7 +39,7 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final ChatService _chatService = ChatService();
   final SignalRService _signalRService = SignalRService();
-  final S3UploadService _s3UploadService = S3UploadService(); // Added for media upload
+  final S3UploadService _s3UploadService = S3UploadService();
   List<Message> messages = [];
   bool _isLoading = true;
   final ScrollController _scrollController = ScrollController();
@@ -244,6 +245,7 @@ class _ChatPageState extends State<ChatPage> {
           messages[index] = messages[index].copyWith(
             isUnsent: true,
             messageContent: 'This message was deleted',
+            mediaItems: [], // Clear media items
           );
           print('Message marked as unsent: $messageId');
         }
@@ -277,11 +279,58 @@ class _ChatPageState extends State<ChatPage> {
         widget.recipientUserId,
         messageContent,
         'text', // Message type
-        null, // Media URLs if any
+        null, // Media items if any
       ]);
       print('Text message sent successfully');
     } catch (e) {
       print('Error sending message: $e');
+    }
+  }
+
+  // Handle sending a media message
+  Future<void> _handleSendMediaMessage(File mediaFile, String mediaType) async {
+    setState(() {
+      _isUploadingMedia = true;
+      _uploadProgress = 0.0;
+    });
+
+    try {
+      final fileName = mediaFile.path.split('/').last;
+      final presignedUrls = await _s3UploadService.getPresignedUrls([fileName]);
+
+      final mediaUrl = await _s3UploadService.uploadFile(
+        presignedUrls[0],
+        XFile(mediaFile.path), // Convert to XFile for compatibility
+        onProgress: (progress) {
+          setState(() {
+            _uploadProgress = progress;
+          });
+        },
+      );
+
+      // Create a list of MediaItem objects
+      List<Map<String, dynamic>> mediaItems = [
+        {
+          'mediaUrl': mediaUrl,
+          'mediaType': mediaType, // 'photo' or 'video'
+        },
+      ];
+
+      await _signalRService.hubConnection.invoke('SendMessage', args: [
+        widget.recipientUserId,
+        '',             // Empty messageContent for media messages
+        'media',        // Message type
+        mediaItems,     // Pass the list of media items
+      ]);
+
+      print('Media message sent successfully with URL: $mediaUrl');
+      _scrollToBottom();
+    } catch (e) {
+      print('Error sending media message: $e');
+    } finally {
+      setState(() {
+        _isUploadingMedia = false;
+      });
     }
   }
 
@@ -304,45 +353,6 @@ class _ChatPageState extends State<ChatPage> {
       print('Error deleting message: $e');
     }
   }
-
-Future<void> _handleSendMediaMessage(File mediaFile, String mediaType) async {
-  setState(() {
-    _isUploadingMedia = true;
-    _uploadProgress = 0.0;
-  });
-
-  try {
-    final fileName = mediaFile.path.split('/').last;
-    final presignedUrls = await _s3UploadService.getPresignedUrls([fileName]);
-
-    final mediaUrl = await _s3UploadService.uploadFile(
-      presignedUrls[0],
-      XFile(mediaFile.path), // Convert to XFile for compatibility
-      onProgress: (progress) {
-        setState(() {
-          _uploadProgress = progress;
-        });
-      },
-    );
-
-    await _signalRService.hubConnection.invoke('SendMessage', args: [
-      widget.recipientUserId,
-      mediaUrl,
-      mediaType,
-      null,
-    ]);
-
-    print('$mediaType message sent successfully with URL: $mediaUrl');
-    _scrollToBottom();  // <-- Scroll to the bottom after sending media
-  } catch (e) {
-    print('Error sending media message: $e');
-  } finally {
-    setState(() {
-      _isUploadingMedia = false;
-    });
-  }
-}
-
 
   // Handle typing event
   void _handleTyping() {
@@ -439,7 +449,8 @@ Future<void> _handleSendMediaMessage(File mediaFile, String mediaType) async {
                               isSeen: message.readAt != null,
                               isEdited: message.isEdited,
                               isUnsent: message.isUnsent,
-                              messageType: message.messageType, // Specify message type here
+                              messageType: message.messageType,
+                              mediaItems: message.mediaItems, // Pass media items
                               onEdit: (newText) {
                                 _handleEditMessage(message.messageId, newText);
                               },
@@ -456,22 +467,21 @@ Future<void> _handleSendMediaMessage(File mediaFile, String mediaType) async {
                     },
                   ),
           ),
-         if (_isUploadingMedia)
-  Center(
-    child: Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: CircularProgressIndicator(
-        value: _uploadProgress / 100,
-        color: Theme.of(context).primaryColor,
-      ),
-    ),
-  ),
-
+          if (_isUploadingMedia)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: CircularProgressIndicator(
+                  value: _uploadProgress / 100,
+                  color: Theme.of(context).primaryColor,
+                ),
+              ),
+            ),
           MessageInput(
             onSendMessage: _handleSendMessage,
             onTyping: () => _signalRService.sendTypingNotification(widget.recipientUserId),
             onTypingStopped: () {}, // Optional typing stopped handler
-            onSendMediaMessage: (file, type) => _handleSendMediaMessage(File(file.path), type), // Updated to accept File
+            onSendMediaMessage: (file, type) => _handleSendMediaMessage(File(file.path), type),
           ),
         ],
       ),

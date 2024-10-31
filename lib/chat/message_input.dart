@@ -5,18 +5,17 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:async';
 import 'package:permission_handler/permission_handler.dart';
 
-
 class MessageInput extends StatefulWidget {
   final Function(String) onSendMessage;
   final Function onTyping;
   final Function onTypingStopped;
-  final Function(XFile, String) onSendMediaMessage; // Updated to accept XFile
+  final Function(XFile, String) onSendMediaMessage;
 
   MessageInput({
     required this.onSendMessage,
     required this.onTyping,
     required this.onTypingStopped,
-    required this.onSendMediaMessage, // New for media sending
+    required this.onSendMediaMessage,
   });
 
   @override
@@ -27,9 +26,7 @@ class _MessageInputState extends State<MessageInput> {
   final TextEditingController _controller = TextEditingController();
   bool _isTyping = false;
   Timer? _typingTimer;
-  final ImagePicker _picker = ImagePicker(); // ImagePicker for camera
-  XFile? _mediaFile; // Holds captured media as XFile
-  String? _mediaType; // Tracks if the media is "photo" or "video"
+  final ImagePicker _picker = ImagePicker();
 
   // Handle text changes
   void _onTextChanged(String value) {
@@ -96,6 +93,10 @@ class _MessageInputState extends State<MessageInput> {
   Widget build(BuildContext context) {
     return Column(
       children: [
+        if (_isTyping)
+          LinearProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF45F67)),
+          ),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: Row(
@@ -140,17 +141,17 @@ class _MessageInputState extends State<MessageInput> {
                         },
                       ),
                       Expanded(
-                      child: TextField(
-                        controller: _controller,
-                        onChanged: _onTextChanged,
-                        decoration: InputDecoration(
-                          hintText: 'Type a message...',
-                          border: InputBorder.none,
+                        child: TextField(
+                          controller: _controller,
+                          onChanged: _onTextChanged,
+                          decoration: InputDecoration(
+                            hintText: 'Type a message...',
+                            border: InputBorder.none,
+                          ),
+                          minLines: 1,
+                          maxLines: null,
                         ),
-                        minLines: 1,    // Set minimum number of lines
-                        maxLines: null, // Allows TextField to expand as user types
                       ),
-                    ),
                       AnimatedSwitcher(
                         duration: Duration(milliseconds: 200),
                         child: !_isTyping
