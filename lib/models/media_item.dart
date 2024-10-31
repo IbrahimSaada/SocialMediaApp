@@ -2,7 +2,7 @@
 
 class MediaItem {
   final String mediaUrl;
-  final String mediaType; // 'photo' or 'video'
+  final String mediaType;
 
   MediaItem({
     required this.mediaUrl,
@@ -11,8 +11,8 @@ class MediaItem {
 
   factory MediaItem.fromJson(Map<String, dynamic> json) {
     return MediaItem(
-      mediaUrl: json['mediaUrl'],
-      mediaType: json['mediaType'],
+      mediaUrl: json['mediaUrl'] ?? '',
+      mediaType: json['mediaType'] ?? '',
     );
   }
 
@@ -21,5 +21,16 @@ class MediaItem {
       'mediaUrl': mediaUrl,
       'mediaType': mediaType,
     };
+  }
+
+  // Add the copyWith method
+  MediaItem copyWith({
+    String? mediaUrl,
+    String? mediaType,
+  }) {
+    return MediaItem(
+      mediaUrl: mediaUrl ?? this.mediaUrl,
+      mediaType: mediaType ?? this.mediaType,
+    );
   }
 }

@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:cook/services/chat_service.dart';
 import 'package:cook/models/message_model.dart';
+import 'package:cook/models/media_item.dart';
 import 'package:cook/services/signalr_service.dart';
 import 'package:cook/services/s3_upload_service.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,8 +11,6 @@ import 'message_input.dart';
 import 'message_bubble.dart';
 import 'chat_app_bar.dart';
 import 'dart:async';
-import 'dart:io';
-//import 'package:cook/models/media_item.dart'; // Import MediaItem
 
 class ChatPage extends StatefulWidget {
   final int chatId;
@@ -48,6 +47,7 @@ class _ChatPageState extends State<ChatPage> {
   String _status = '';
   bool _isUploadingMedia = false;
   double _uploadProgress = 0.0;
+  List<MediaItem> _uploadingMediaItems = [];
 
   @override
   void initState() {
@@ -68,7 +68,7 @@ class _ChatPageState extends State<ChatPage> {
       _signalRService.hubConnection.on('UserTyping', _handleUserTyping);
       _signalRService.hubConnection.on('MessagesRead', _handleMessagesRead);
 
-      // Fetch messages via SignalR after connection is established
+      // Fetch messages via ChatService
       await _fetchMessages();
 
       // Mark messages as read when the chat is opened
@@ -112,7 +112,7 @@ class _ChatPageState extends State<ChatPage> {
       });
     }
   }
-
+  
   void _handleReceiveMessage(List<Object?>? arguments) {
     print('ReceiveMessage event received: $arguments');
     if (arguments != null && arguments.isNotEmpty) {
@@ -124,6 +124,13 @@ class _ChatPageState extends State<ChatPage> {
       }
       if (messageData['readAt'] != null && messageData['readAt'] is String) {
         messageData['readAt'] = DateTime.parse(messageData['readAt']);
+      }
+
+      // Ensure mediaItems are parsed correctly
+      if (messageData['mediaItems'] != null) {
+        messageData['mediaItems'] = (messageData['mediaItems'] as List)
+            .map((item) => MediaItem.fromJson(Map<String, dynamic>.from(item)))
+            .toList();
       }
 
       final message = Message.fromJson(messageData);
@@ -158,12 +165,22 @@ class _ChatPageState extends State<ChatPage> {
         messageData['readAt'] = DateTime.parse(messageData['readAt']);
       }
 
+      // Ensure mediaItems are parsed correctly
+      if (messageData['mediaItems'] != null) {
+        messageData['mediaItems'] = (messageData['mediaItems'] as List)
+            .map((item) => MediaItem.fromJson(Map<String, dynamic>.from(item)))
+            .toList();
+      }
+
       final message = Message.fromJson(messageData);
 
       print('Parsed Message in MessageSent: $message');
 
       if (message.chatId == widget.chatId) {
         setState(() {
+          // Remove the placeholder uploading message
+          messages.removeWhere((msg) => msg.messageId == -1);
+
           messages.add(message);
           print('Message added to list: ${message.messageContent}');
           print('Total messages in list: ${messages.length}');
@@ -211,6 +228,13 @@ class _ChatPageState extends State<ChatPage> {
       }
       if (messageData['readAt'] != null && messageData['readAt'] is String) {
         messageData['readAt'] = DateTime.parse(messageData['readAt']);
+      }
+
+      // Ensure mediaItems are parsed correctly
+      if (messageData['mediaItems'] != null) {
+        messageData['mediaItems'] = (messageData['mediaItems'] as List)
+            .map((item) => MediaItem.fromJson(Map<String, dynamic>.from(item)))
+            .toList();
       }
 
       final editedMessage = Message.fromJson(messageData);
@@ -287,34 +311,77 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  // Handle sending a media message
-  Future<void> _handleSendMediaMessage(File mediaFile, String mediaType) async {
+  // Handle sending media messages (multiple media items)
+  Future<void> _handleSendMediaMessage(List<XFile> mediaFiles, String mediaType) async {
     setState(() {
       _isUploadingMedia = true;
       _uploadProgress = 0.0;
+
+      // Prepare uploading media items
+      _uploadingMediaItems = mediaFiles.map((file) {
+        return MediaItem(
+          mediaUrl: '', // Placeholder URL
+          mediaType: _getMediaType(file.path),
+        );
+      }).toList();
+
+      // Show a placeholder message bubble for uploading
+      messages.add(
+        Message(
+          messageId: -1, // Temporary ID
+          chatId: widget.chatId,
+          senderId: widget.currentUserId,
+          messageType: 'media',
+          messageContent: '', // or 'Sending...'
+          createdAt: DateTime.now(),
+          isEdited: false,
+          isUnsent: false, // Ensure this is set to false
+          mediaItems: _uploadingMediaItems,
+        ),
+      );
     });
+    _scrollToBottom();
 
     try {
-      final fileName = mediaFile.path.split('/').last;
-      final presignedUrls = await _s3UploadService.getPresignedUrls([fileName]);
+      // Prepare file names
+      final fileNames = mediaFiles.map((file) => file.path.split('/').last).toList();
 
-      final mediaUrl = await _s3UploadService.uploadFile(
-        presignedUrls[0],
-        XFile(mediaFile.path), // Convert to XFile for compatibility
-        onProgress: (progress) {
-          setState(() {
-            _uploadProgress = progress;
-          });
-        },
-      );
+      // Get presigned URLs
+      final presignedUrls = await _s3UploadService.getPresignedUrls(fileNames);
 
-      // Create a list of MediaItem objects
-      List<Map<String, dynamic>> mediaItems = [
-        {
-          'mediaUrl': mediaUrl,
-          'mediaType': mediaType, // 'photo' or 'video'
-        },
-      ];
+      List<Future<String>> uploadFutures = [];
+      for (int i = 0; i < mediaFiles.length; i++) {
+        final file = mediaFiles[i];
+        final presignedUrl = presignedUrls[i];
+
+        uploadFutures.add(_s3UploadService.uploadFile(
+          presignedUrl,
+          file,
+          onProgress: (progress) {
+            setState(() {
+              _uploadProgress = progress;
+            });
+          },
+        ));
+      }
+
+      // Wait for all uploads to complete
+      final mediaUrls = await Future.wait(uploadFutures);
+
+      // Update the placeholder media items with actual URLs
+      for (int i = 0; i < _uploadingMediaItems.length; i++) {
+        _uploadingMediaItems[i] = _uploadingMediaItems[i].copyWith(
+          mediaUrl: mediaUrls[i],
+        );
+      }
+
+      // Create a list of media items to send
+      List<Map<String, dynamic>> mediaItems = _uploadingMediaItems.map((item) {
+        return {
+          'mediaUrl': item.mediaUrl,
+          'mediaType': item.mediaType,
+        };
+      }).toList();
 
       await _signalRService.hubConnection.invoke('SendMessage', args: [
         widget.recipientUserId,
@@ -323,14 +390,30 @@ class _ChatPageState extends State<ChatPage> {
         mediaItems,     // Pass the list of media items
       ]);
 
-      print('Media message sent successfully with URL: $mediaUrl');
+      print('Media message sent successfully with URLs: $mediaUrls');
       _scrollToBottom();
     } catch (e) {
       print('Error sending media message: $e');
+      // Remove the placeholder message bubble in case of error
+      setState(() {
+        messages.removeWhere((msg) => msg.messageId == -1);
+      });
     } finally {
       setState(() {
         _isUploadingMedia = false;
+        _uploadingMediaItems = [];
       });
+    }
+  }
+
+  String _getMediaType(String filePath) {
+    final extension = filePath.split('.').last.toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].contains(extension)) {
+      return 'photo';
+    } else if (['mp4', 'mov', 'wmv', 'avi', 'mkv', 'flv', 'webm'].contains(extension)) {
+      return 'video';
+    } else {
+      return 'unknown';
     }
   }
 
@@ -339,6 +422,17 @@ class _ChatPageState extends State<ChatPage> {
     try {
       await _signalRService.editMessage(messageId, newContent);
       print('Edit message request sent');
+
+      // Update the message locally
+      setState(() {
+        int index = messages.indexWhere((msg) => msg.messageId == messageId);
+        if (index != -1) {
+          messages[index] = messages[index].copyWith(
+            messageContent: newContent,
+            isEdited: true,
+          );
+        }
+      });
     } catch (e) {
       print('Error editing message: $e');
     }
@@ -450,7 +544,7 @@ class _ChatPageState extends State<ChatPage> {
                               isEdited: message.isEdited,
                               isUnsent: message.isUnsent,
                               messageType: message.messageType,
-                              mediaItems: message.mediaItems, // Pass media items
+                              mediaItems: message.mediaItems,
                               onEdit: (newText) {
                                 _handleEditMessage(message.messageId, newText);
                               },
@@ -467,21 +561,11 @@ class _ChatPageState extends State<ChatPage> {
                     },
                   ),
           ),
-          if (_isUploadingMedia)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: CircularProgressIndicator(
-                  value: _uploadProgress / 100,
-                  color: Theme.of(context).primaryColor,
-                ),
-              ),
-            ),
           MessageInput(
             onSendMessage: _handleSendMessage,
             onTyping: () => _signalRService.sendTypingNotification(widget.recipientUserId),
             onTypingStopped: () {}, // Optional typing stopped handler
-            onSendMediaMessage: (file, type) => _handleSendMediaMessage(File(file.path), type),
+            onSendMediaMessage: _handleSendMediaMessage,
           ),
         ],
       ),

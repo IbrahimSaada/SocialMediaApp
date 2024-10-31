@@ -14,7 +14,7 @@ class Message {
   final DateTime? readAt;
   final bool isEdited;
   final bool isUnsent;
-  final List<MediaItem> mediaItems; // Updated to use MediaItem
+  final List<MediaItem> mediaItems;
 
   Message({
     required this.messageId,
@@ -32,6 +32,8 @@ class Message {
   });
 
   factory Message.fromJson(Map<String, dynamic> json) {
+    print('Parsing Message from JSON: $json'); // Print the initial JSON data
+
     // Handle 'createdAt'
     DateTime createdAt;
     if (json['createdAt'] is String) {
@@ -60,7 +62,7 @@ class Message {
           .toList();
     }
 
-    return Message(
+    final message = Message(
       messageId: json['messageId'] ?? 0,
       chatId: json['chatId'] ?? 0,
       senderId: json['senderId'] ?? 0,
@@ -74,6 +76,9 @@ class Message {
       isUnsent: json['isUnsent'] ?? false,
       mediaItems: mediaItems,
     );
+
+    print('Parsed Message: $message'); // Print the parsed Message object
+    return message;
   }
 
   // Add a copyWith method for easy updates
@@ -91,7 +96,7 @@ class Message {
     bool? isUnsent,
     List<MediaItem>? mediaItems,
   }) {
-    return Message(
+    final updatedMessage = Message(
       messageId: messageId ?? this.messageId,
       chatId: chatId ?? this.chatId,
       senderId: senderId ?? this.senderId,
@@ -105,5 +110,8 @@ class Message {
       isUnsent: isUnsent ?? this.isUnsent,
       mediaItems: mediaItems ?? this.mediaItems,
     );
+
+    print('Updated Message with copyWith: $updatedMessage'); // Print the updated Message object
+    return updatedMessage;
   }
 }

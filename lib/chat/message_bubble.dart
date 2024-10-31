@@ -44,7 +44,6 @@ class _MessageBubbleState extends State<MessageBubble> {
   bool _isEditing = false;
   late TextEditingController _editingController;
   VideoPlayerController? _videoPlayerController;
-  final double _mediaSize = 200.0;
 
   @override
   void initState() {
@@ -69,6 +68,7 @@ class _MessageBubbleState extends State<MessageBubble> {
         GestureDetector(
           onLongPress: isDeleted ? null : () => _showMessageOptions(context),
           child: Container(
+            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
             margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
@@ -108,9 +108,35 @@ class _MessageBubbleState extends State<MessageBubble> {
       return _buildMessageContent(true);
     }
 
-    // Assuming only one media item per message
-    MediaItem mediaItem = widget.mediaItems.first;
+    final double bubbleWidth = MediaQuery.of(context).size.width * 0.75;
+    final double bubbleHeight = bubbleWidth; // Keep height same as width for a square bubble
 
+    return Container(
+      width: bubbleWidth,
+      height: bubbleHeight,
+      child: widget.mediaItems.length == 1
+          ? _buildSingleMedia(widget.mediaItems.first)
+          : _buildMediaGrid(bubbleWidth),
+    );
+  }
+
+   Widget _buildMediaCarousel() {
+    return PageView.builder(
+      itemCount: widget.mediaItems.length,
+      itemBuilder: (context, index) {
+        MediaItem mediaItem = widget.mediaItems[index];
+        if (mediaItem.mediaType == 'photo') {
+          return _buildImageBubble(mediaItem.mediaUrl);
+        } else if (mediaItem.mediaType == 'video') {
+          return _buildVideoBubble(mediaItem.mediaUrl);
+        } else {
+          return Center(child: Text('Unsupported media type'));
+        }
+      },
+    );
+  }
+
+  Widget _buildSingleMedia(MediaItem mediaItem) {
     if (mediaItem.mediaType == 'photo') {
       return _buildImageBubble(mediaItem.mediaUrl);
     } else if (mediaItem.mediaType == 'video') {
@@ -120,44 +146,108 @@ class _MessageBubbleState extends State<MessageBubble> {
     }
   }
 
-  Widget _buildImageBubble(String imageUrl) {
-    return GestureDetector(
-      onTap: () => _openFullScreenImage(imageUrl),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: CachedNetworkImage(
-          imageUrl: imageUrl,
-          height: _mediaSize,
-          width: _mediaSize,
-          fit: BoxFit.cover,
-          placeholder: (context, url) => Container(
-            height: _mediaSize,
-            width: _mediaSize,
-            color: Colors.grey[200],
-            child: Center(child: CircularProgressIndicator()),
-          ),
-        ),
+  Widget _buildMediaGrid(double bubbleWidth) {
+    int extraCount = widget.mediaItems.length > 4 ? widget.mediaItems.length - 4 : 0;
+    List<MediaItem> displayMedia = widget.mediaItems.take(4).toList();
+
+    return GridView.builder(
+      physics: NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2, // Display 2 items per row
+        mainAxisSpacing: 2,
+        crossAxisSpacing: 2,
       ),
+      itemCount: displayMedia.length,
+      itemBuilder: (context, index) {
+        MediaItem mediaItem = displayMedia[index];
+        Widget mediaWidget;
+
+        if (mediaItem.mediaType == 'photo') {
+          mediaWidget = _buildImageBubble(mediaItem.mediaUrl);
+        } else if (mediaItem.mediaType == 'video') {
+          mediaWidget = _buildVideoBubble(mediaItem.mediaUrl);
+        } else {
+          mediaWidget = Text('Unsupported media type');
+        }
+
+        return Stack(
+          children: [
+            mediaWidget,
+            if (index == 3 && extraCount > 0)
+              Container(
+                color: Colors.black54,
+                child: Center(
+                  child: Text(
+                    '+$extraCount',
+                    style: TextStyle(color: Colors.white, fontSize: 24),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildVideoBubble(String videoUrl) {
-    return GestureDetector(
-      onTap: () => _openFullScreenVideo(videoUrl),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            height: _mediaSize,
-            width: _mediaSize,
-            color: Colors.black12,
-            child: Icon(Icons.videocam, color: Colors.grey, size: 50),
+  Widget _buildImageBubble(String imageUrl) {
+    if (imageUrl.isEmpty) {
+      // Return a placeholder or uploading animation
+      return Container(
+        color: Colors.grey[200],
+        child: Center(
+          child: CircularProgressIndicator(), // Uploading animation
+        ),
+      );
+    } else {
+      return AspectRatio(
+        aspectRatio: 1.0, // Square aspect ratio
+        child: GestureDetector(
+          onTap: () => _openFullScreenImage(imageUrl),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: CachedNetworkImage(
+              imageUrl: imageUrl,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(
+                color: Colors.grey[200],
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ),
           ),
-          Icon(Icons.play_circle_outline, color: Colors.white, size: 50),
-        ],
-      ),
-    );
+        ),
+      );
+    }
   }
+
+  Widget _buildVideoBubble(String videoUrl) {
+    if (videoUrl.isEmpty) {
+      // Return a placeholder or uploading animation
+      return Container(
+        color: Colors.grey[200],
+        child: Center(
+          child: CircularProgressIndicator(), // Uploading animation
+        ),
+      );
+    } else {
+      return AspectRatio(
+        aspectRatio: 1.0, // Square aspect ratio
+        child: GestureDetector(
+          onTap: () => _openFullScreenVideo(videoUrl),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                color: Colors.black12,
+                child: Icon(Icons.videocam, color: Colors.grey, size: 50),
+              ),
+              Icon(Icons.play_circle_outline, color: Colors.white, size: 50),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+
 
   void _openFullScreenVideo(String videoUrl) async {
     final cachedFile = await DefaultCacheManager().getSingleFile(videoUrl);
@@ -214,31 +304,48 @@ class _MessageBubbleState extends State<MessageBubble> {
   }
 
   Widget _buildEditField() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 10.0),
-      decoration: BoxDecoration(
-        color: widget.isSender ? Color(0xFFF45F67) : Colors.grey[200],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: TextField(
-        controller: _editingController,
-        autofocus: true,
-        style: TextStyle(
-          fontSize: 14,
-          color: widget.isSender ? Colors.white : Colors.black,
+    return Column(
+      children: [
+        TextField(
+          controller: _editingController,
+          autofocus: true,
+          style: TextStyle(
+            fontSize: 16,
+            color: widget.isSender ? Colors.white : Colors.black,
+          ),
+          decoration: InputDecoration(
+            hintText: 'Edit message...',
+            border: InputBorder.none,
+          ),
+          maxLines: null,
         ),
-        decoration: InputDecoration(
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-          border: InputBorder.none,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _isEditing = false;
+                });
+                _editingController.text = widget.message; // Reset text
+              },
+              child: Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () {
+                final newText = _editingController.text.trim();
+                if (newText.isNotEmpty) {
+                  widget.onEdit(newText);
+                  setState(() {
+                    _isEditing = false;
+                  });
+                }
+              },
+              child: Text('Save', style: TextStyle(color: Colors.blue)),
+            ),
+          ],
         ),
-        onSubmitted: (newText) {
-          setState(() {
-            _isEditing = false;
-          });
-          widget.onEdit(newText);
-        },
-      ),
+      ],
     );
   }
 
@@ -303,13 +410,13 @@ class _MessageBubbleState extends State<MessageBubble> {
                       Navigator.pop(context);
                     },
                   ),
-                if (widget.isSender && !widget.isUnsent)
-                  ListTile(
-                    leading: const Icon(Icons.delete, color: Colors.red),
-                    title: const Text('Delete for everyone'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      widget.onDeleteForAll();
+                    if (widget.isSender && !widget.isUnsent)
+                                ListTile(
+                                  leading: const Icon(Icons.delete, color: Colors.red),
+                                  title: const Text('Delete For Everyone'),
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    widget.onDeleteForAll();
                     },
                   ),
                 if (!widget.isSender && !widget.isUnsent)
