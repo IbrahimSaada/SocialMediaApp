@@ -6,34 +6,43 @@ import 'package:http/http.dart' as http;
 import 'package:mime/mime.dart';
 import 'package:cook/models/presigned_url.dart';
 import 'package:image_picker/image_picker.dart';
+//import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:cook/services/LoginService.dart'; // Import LoginService
-import 'SignatureService.dart'; // Import the SignatureService
+import 'SignatureService.dart';  // Import the SignatureService
 import 'package:dio/dio.dart';
 
 class S3UploadService {
+  //final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
   final SignatureService _signatureService = SignatureService();
   final LoginService _loginService = LoginService(); // Initialize LoginService
 
   // Method to retrieve token, refresh if expired
   Future<String?> _getToken() async {
+    // Check token expiration
     DateTime? expiration = await _loginService.getTokenExpiration();
     
+    // If the token is expired, refresh it
     if (expiration == null || DateTime.now().isAfter(expiration)) {
+      // ignore: avoid_print
       print('Token expired. Refreshing...');
       await _loginService.refreshAccessToken();
     }
     
+    // Get the updated token
     return await _loginService.getToken();
   }
 
   Future<List<PresignedUrl>> getPresignedUrls(List<String> fileNames,
       {String folderName = 'posts'}) async {
+    // Get the token (refresh if needed)
     final token = await _getToken();
     if (token == null) {
       throw Exception('Token not found');
     }
 
+    // Join the file names into a single string separated by commas
     final String fileNamesString = fileNames.join(',');
+
     final Map<String, dynamic> payload = {
       'fileNames': fileNamesString,
       'folderName': folderName,
@@ -51,8 +60,8 @@ class S3UploadService {
           'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/media/s3-presigned-upload-urls'),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-        'X-Signature': signature,
+        'Authorization': 'Bearer $token',  // Use the updated token
+        'X-Signature': signature,          // Include the HMAC signature here
       },
       body: jsonEncode(payload),
     );
@@ -69,6 +78,7 @@ class S3UploadService {
   }
 
   Future<String> uploadFile(PresignedUrl urlData, XFile file, {Function(double)? onProgress}) async {
+   // final fileStream = File(file.path).openRead();
     final fileType = lookupMimeType(file.path);
     final fileSize = await File(file.path).length();
 
@@ -83,7 +93,7 @@ class S3UploadService {
         }),
         onSendProgress: (int sent, int total) {
           double progress = (sent / total) * 100;
-          if (onProgress != null) onProgress(progress);
+          if (onProgress != null) onProgress(progress); // Call progress callback
         },
       );
     } catch (e) {
