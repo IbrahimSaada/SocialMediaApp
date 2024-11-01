@@ -68,7 +68,7 @@ class _ChatPageState extends State<ChatPage> {
       _signalRService.hubConnection.on('UserTyping', _handleUserTyping);
       _signalRService.hubConnection.on('MessagesRead', _handleMessagesRead);
 
-      // Fetch messages via ChatService
+      // Fetch messages via SignalR
       await _fetchMessages();
 
       // Mark messages as read when the chat is opened
@@ -112,7 +112,7 @@ class _ChatPageState extends State<ChatPage> {
       });
     }
   }
-  
+
   void _handleReceiveMessage(List<Object?>? arguments) {
     print('ReceiveMessage event received: $arguments');
     if (arguments != null && arguments.isNotEmpty) {
@@ -130,6 +130,11 @@ class _ChatPageState extends State<ChatPage> {
       if (messageData['mediaItems'] != null) {
         messageData['mediaItems'] = (messageData['mediaItems'] as List)
             .map((item) => MediaItem.fromJson(Map<String, dynamic>.from(item)))
+            .toList();
+      } else if (messageData['mediaUrls'] != null) {
+        // Handle mediaUrls if mediaItems is null
+        messageData['mediaItems'] = (messageData['mediaUrls'] as List)
+            .map((url) => MediaItem(mediaUrl: url as String, mediaType: 'photo'))
             .toList();
       }
 
@@ -169,6 +174,11 @@ class _ChatPageState extends State<ChatPage> {
       if (messageData['mediaItems'] != null) {
         messageData['mediaItems'] = (messageData['mediaItems'] as List)
             .map((item) => MediaItem.fromJson(Map<String, dynamic>.from(item)))
+            .toList();
+      } else if (messageData['mediaUrls'] != null) {
+        // Handle mediaUrls if mediaItems is null
+        messageData['mediaItems'] = (messageData['mediaUrls'] as List)
+            .map((url) => MediaItem(mediaUrl: url as String, mediaType: 'photo'))
             .toList();
       }
 
@@ -234,6 +244,11 @@ class _ChatPageState extends State<ChatPage> {
       if (messageData['mediaItems'] != null) {
         messageData['mediaItems'] = (messageData['mediaItems'] as List)
             .map((item) => MediaItem.fromJson(Map<String, dynamic>.from(item)))
+            .toList();
+      } else if (messageData['mediaUrls'] != null) {
+        // Handle mediaUrls if mediaItems is null
+        messageData['mediaItems'] = (messageData['mediaUrls'] as List)
+            .map((url) => MediaItem(mediaUrl: url as String, mediaType: 'photo'))
             .toList();
       }
 
@@ -311,12 +326,98 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  // Handle sending media messages (multiple media items)
-  Future<void> _handleSendMediaMessage(List<XFile> mediaFiles, String mediaType) async {
-    setState(() {
-      _isUploadingMedia = true;
-      _uploadProgress = 0.0;
+// Updated code
+Future<void> _handleSendMediaMessage(List<XFile> mediaFiles, String mediaType) async {
+  setState(() {
+    _isUploadingMedia = true;
+    _uploadProgress = 0.0;
+  });
 
+  try {
+    // Treat up to 3 media files as a single message
+    if (mediaFiles.length <= 3) {
+      await _sendMultipleMediaMessage(mediaFiles); // Changed to send as a single message
+    } else {
+      // If more than 3 media files, also send them as a single message
+      await _sendMultipleMediaMessage(mediaFiles);
+    }
+  } catch (e) {
+    print('Error sending media message: $e');
+  } finally {
+    setState(() {
+      _isUploadingMedia = false;
+      _uploadingMediaItems = [];
+    });
+  }
+}
+
+
+  Future<void> _sendSingleMediaMessage(XFile mediaFile) async {
+    setState(() {
+      // Add placeholder message
+      messages.add(
+        Message(
+          messageId: -1, // Temporary ID
+          chatId: widget.chatId,
+          senderId: widget.currentUserId,
+          messageType: 'media',
+          messageContent: '',
+          createdAt: DateTime.now(),
+          isEdited: false,
+          isUnsent: false,
+          mediaItems: [
+            MediaItem(
+              mediaUrl: '', // Placeholder URL
+              mediaType: _getMediaType(mediaFile.path),
+            ),
+          ],
+        ),
+      );
+    });
+    _scrollToBottom();
+
+    try {
+      final fileName = mediaFile.path.split('/').last;
+
+      // Get presigned URL
+      final presignedUrls = await _s3UploadService.getPresignedUrls([fileName]);
+
+      // Upload file
+      final mediaUrl = await _s3UploadService.uploadFile(
+        presignedUrls.first,
+        mediaFile,
+        onProgress: (progress) {
+          setState(() {
+            _uploadProgress = progress;
+          });
+        },
+      );
+
+      // Send message via SignalR
+      await _signalRService.hubConnection.invoke('SendMessage', args: [
+        widget.recipientUserId,
+        '', // Empty messageContent for media messages
+        'media', // Message type
+        [
+          {
+            'mediaUrl': mediaUrl,
+            'mediaType': _getMediaType(mediaFile.path),
+          }
+        ], // Single media item
+      ]);
+
+      print('Single media message sent successfully with URL: $mediaUrl');
+    } catch (e) {
+      print('Error sending single media message: $e');
+      // Remove the placeholder message bubble in case of error
+      setState(() {
+        messages.removeWhere((msg) => msg.messageId == -1);
+      });
+    }
+  }
+
+  Future<void> _sendMultipleMediaMessage(List<XFile> mediaFiles) async {
+    setState(() {
       // Prepare uploading media items
       _uploadingMediaItems = mediaFiles.map((file) {
         return MediaItem(
@@ -332,10 +433,10 @@ class _ChatPageState extends State<ChatPage> {
           chatId: widget.chatId,
           senderId: widget.currentUserId,
           messageType: 'media',
-          messageContent: '', // or 'Sending...'
+          messageContent: '',
           createdAt: DateTime.now(),
           isEdited: false,
-          isUnsent: false, // Ensure this is set to false
+          isUnsent: false,
           mediaItems: _uploadingMediaItems,
         ),
       );
@@ -385,23 +486,17 @@ class _ChatPageState extends State<ChatPage> {
 
       await _signalRService.hubConnection.invoke('SendMessage', args: [
         widget.recipientUserId,
-        '',             // Empty messageContent for media messages
-        'media',        // Message type
-        mediaItems,     // Pass the list of media items
+        '', // Empty messageContent for media messages
+        'media', // Message type
+        mediaItems, // Pass the list of media items
       ]);
 
-      print('Media message sent successfully with URLs: $mediaUrls');
-      _scrollToBottom();
+      print('Multiple media message sent successfully with URLs: $mediaUrls');
     } catch (e) {
-      print('Error sending media message: $e');
+      print('Error sending multiple media message: $e');
       // Remove the placeholder message bubble in case of error
       setState(() {
         messages.removeWhere((msg) => msg.messageId == -1);
-      });
-    } finally {
-      setState(() {
-        _isUploadingMedia = false;
-        _uploadingMediaItems = [];
       });
     }
   }

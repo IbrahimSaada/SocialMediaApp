@@ -19,7 +19,7 @@ class MessageBubble extends StatefulWidget {
   final Function onDeleteForAll;
   final Function onDeleteForMe;
   final String messageType;
-  final List<MediaItem> mediaItems; // Updated to use MediaItem
+  final List<MediaItem> mediaItems;
 
   const MessageBubble({
     required this.isSender,
@@ -108,32 +108,13 @@ class _MessageBubbleState extends State<MessageBubble> {
       return _buildMessageContent(true);
     }
 
-    final double bubbleWidth = MediaQuery.of(context).size.width * 0.75;
-    final double bubbleHeight = bubbleWidth; // Keep height same as width for a square bubble
-
-    return Container(
-      width: bubbleWidth,
-      height: bubbleHeight,
-      child: widget.mediaItems.length == 1
-          ? _buildSingleMedia(widget.mediaItems.first)
-          : _buildMediaGrid(bubbleWidth),
-    );
-  }
-
-   Widget _buildMediaCarousel() {
-    return PageView.builder(
-      itemCount: widget.mediaItems.length,
-      itemBuilder: (context, index) {
-        MediaItem mediaItem = widget.mediaItems[index];
-        if (mediaItem.mediaType == 'photo') {
-          return _buildImageBubble(mediaItem.mediaUrl);
-        } else if (mediaItem.mediaType == 'video') {
-          return _buildVideoBubble(mediaItem.mediaUrl);
-        } else {
-          return Center(child: Text('Unsupported media type'));
-        }
-      },
-    );
+    if (widget.mediaItems.length == 1) {
+      return _buildSingleMedia(widget.mediaItems.first);
+    } else if (widget.mediaItems.length == 2 || widget.mediaItems.length == 3) {
+      return _buildSmallGrid(widget.mediaItems);
+    } else {
+      return _buildMediaGrid(widget.mediaItems);
+    }
   }
 
   Widget _buildSingleMedia(MediaItem mediaItem) {
@@ -146,18 +127,46 @@ class _MessageBubbleState extends State<MessageBubble> {
     }
   }
 
-  Widget _buildMediaGrid(double bubbleWidth) {
-    int extraCount = widget.mediaItems.length > 4 ? widget.mediaItems.length - 4 : 0;
-    List<MediaItem> displayMedia = widget.mediaItems.take(4).toList();
+  Widget _buildSmallGrid(List<MediaItem> mediaItems) {
+    int crossAxisCount = mediaItems.length == 2 ? 2 : 2;
+    double aspectRatio = mediaItems.length == 2 ? 1.0 : 1.0;
 
     return GridView.builder(
       physics: NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
+      itemCount: mediaItems.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        childAspectRatio: aspectRatio,
+        mainAxisSpacing: 2,
+        crossAxisSpacing: 2,
+      ),
+      itemBuilder: (context, index) {
+        MediaItem mediaItem = mediaItems[index];
+        if (mediaItem.mediaType == 'photo') {
+          return _buildImageBubble(mediaItem.mediaUrl);
+        } else if (mediaItem.mediaType == 'video') {
+          return _buildVideoBubble(mediaItem.mediaUrl);
+        } else {
+          return Center(child: Text('Unsupported media type'));
+        }
+      },
+    );
+  }
+
+  Widget _buildMediaGrid(List<MediaItem> mediaItems) {
+    int extraCount = mediaItems.length > 4 ? mediaItems.length - 4 : 0;
+    List<MediaItem> displayMedia = mediaItems.take(4).toList();
+
+    return GridView.builder(
+      physics: NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
+      itemCount: displayMedia.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2, // Display 2 items per row
         mainAxisSpacing: 2,
         crossAxisSpacing: 2,
       ),
-      itemCount: displayMedia.length,
       itemBuilder: (context, index) {
         MediaItem mediaItem = displayMedia[index];
         Widget mediaWidget;
@@ -247,7 +256,6 @@ class _MessageBubbleState extends State<MessageBubble> {
       );
     }
   }
-
 
   void _openFullScreenVideo(String videoUrl) async {
     final cachedFile = await DefaultCacheManager().getSingleFile(videoUrl);
@@ -410,13 +418,13 @@ class _MessageBubbleState extends State<MessageBubble> {
                       Navigator.pop(context);
                     },
                   ),
-                    if (widget.isSender && !widget.isUnsent)
-                                ListTile(
-                                  leading: const Icon(Icons.delete, color: Colors.red),
-                                  title: const Text('Delete For Everyone'),
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    widget.onDeleteForAll();
+                if (widget.isSender && !widget.isUnsent)
+                  ListTile(
+                    leading: const Icon(Icons.delete, color: Colors.red),
+                    title: const Text('Delete For Everyone'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      widget.onDeleteForAll();
                     },
                   ),
                 if (!widget.isSender && !widget.isUnsent)
