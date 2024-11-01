@@ -104,7 +104,11 @@ class _ChatPageState extends State<ChatPage> {
         messages = fetchedMessages;
         _isLoading = false;
       });
-      _scrollToBottom();
+
+      // Scroll to the latest message after a slight delay to ensure the UI has built
+      Future.delayed(Duration(milliseconds: 100), () {
+        _scrollToBottom();
+      });
     } catch (e) {
       print('Error fetching messages via SignalR: $e');
       setState(() {
@@ -326,31 +330,32 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-// Updated code
-Future<void> _handleSendMediaMessage(List<XFile> mediaFiles, String mediaType) async {
-  setState(() {
-    _isUploadingMedia = true;
-    _uploadProgress = 0.0;
-  });
-
-  try {
-    // Treat up to 3 media files as a single message
-    if (mediaFiles.length <= 3) {
-      await _sendMultipleMediaMessage(mediaFiles); // Changed to send as a single message
-    } else {
-      // If more than 3 media files, also send them as a single message
-      await _sendMultipleMediaMessage(mediaFiles);
-    }
-  } catch (e) {
-    print('Error sending media message: $e');
-  } finally {
+  // Handle sending media messages
+  Future<void> _handleSendMediaMessage(List<XFile> mediaFiles, String mediaType) async {
     setState(() {
-      _isUploadingMedia = false;
-      _uploadingMediaItems = [];
+      _isUploadingMedia = true;
+      _uploadProgress = 0.0;
     });
-  }
-}
 
+    try {
+      if (mediaFiles.length <= 3) {
+        // Send each media file as a separate message
+        for (XFile mediaFile in mediaFiles) {
+          await _sendSingleMediaMessage(mediaFile);
+        }
+      } else {
+        // If more than 3 media files, send them as a single message
+        await _sendMultipleMediaMessage(mediaFiles);
+      }
+    } catch (e) {
+      print('Error sending media message: $e');
+    } finally {
+      setState(() {
+        _isUploadingMedia = false;
+        _uploadingMediaItems = [];
+      });
+    }
+  }
 
   Future<void> _sendSingleMediaMessage(XFile mediaFile) async {
     setState(() {
@@ -556,11 +561,7 @@ Future<void> _handleSendMediaMessage(List<XFile> mediaFiles, String mediaType) a
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
       }
     });
   }
@@ -596,7 +597,7 @@ Future<void> _handleSendMediaMessage(List<XFile> mediaFiles, String mediaType) a
       appBar: ChatAppBar(
         username: widget.contactName,
         profileImageUrl: widget.profileImageUrl,
-        status: _status,
+        status: _isRecipientTyping ? 'Typing...' : _status,
       ),
       body: Column(
         children: [

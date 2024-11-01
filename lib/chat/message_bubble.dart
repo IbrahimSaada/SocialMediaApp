@@ -44,6 +44,7 @@ class _MessageBubbleState extends State<MessageBubble> {
   bool _isEditing = false;
   late TextEditingController _editingController;
   VideoPlayerController? _videoPlayerController;
+  ChewieController? _chewieController;
 
   @override
   void initState() {
@@ -55,6 +56,7 @@ class _MessageBubbleState extends State<MessageBubble> {
   void dispose() {
     _editingController.dispose();
     _videoPlayerController?.dispose();
+    _chewieController?.dispose();
     super.dispose();
   }
 
@@ -110,10 +112,10 @@ class _MessageBubbleState extends State<MessageBubble> {
 
     if (widget.mediaItems.length == 1) {
       return _buildSingleMedia(widget.mediaItems.first);
-    } else if (widget.mediaItems.length == 2 || widget.mediaItems.length == 3) {
-      return _buildSmallGrid(widget.mediaItems);
-    } else {
+    } else if (widget.mediaItems.length >= 4) {
       return _buildMediaGrid(widget.mediaItems);
+    } else {
+      return _buildMediaCarousel(widget.mediaItems);
     }
   }
 
@@ -127,30 +129,25 @@ class _MessageBubbleState extends State<MessageBubble> {
     }
   }
 
-  Widget _buildSmallGrid(List<MediaItem> mediaItems) {
-    int crossAxisCount = mediaItems.length == 2 ? 2 : 2;
-    double aspectRatio = mediaItems.length == 2 ? 1.0 : 1.0;
-
-    return GridView.builder(
-      physics: NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
-      itemCount: mediaItems.length,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        childAspectRatio: aspectRatio,
-        mainAxisSpacing: 2,
-        crossAxisSpacing: 2,
+  Widget _buildMediaCarousel(List<MediaItem> mediaItems) {
+    return GestureDetector(
+      onTap: () => _openFullScreenGallery(mediaItems, 0),
+      child: Container(
+        height: 250, // Adjust height as needed
+        child: PageView.builder(
+          itemCount: mediaItems.length,
+          itemBuilder: (context, index) {
+            MediaItem mediaItem = mediaItems[index];
+            if (mediaItem.mediaType == 'photo') {
+              return _buildImageBubble(mediaItem.mediaUrl);
+            } else if (mediaItem.mediaType == 'video') {
+              return _buildVideoBubble(mediaItem.mediaUrl);
+            } else {
+              return Center(child: Text('Unsupported media type'));
+            }
+          },
+        ),
       ),
-      itemBuilder: (context, index) {
-        MediaItem mediaItem = mediaItems[index];
-        if (mediaItem.mediaType == 'photo') {
-          return _buildImageBubble(mediaItem.mediaUrl);
-        } else if (mediaItem.mediaType == 'video') {
-          return _buildVideoBubble(mediaItem.mediaUrl);
-        } else {
-          return Center(child: Text('Unsupported media type'));
-        }
-      },
     );
   }
 
@@ -158,43 +155,46 @@ class _MessageBubbleState extends State<MessageBubble> {
     int extraCount = mediaItems.length > 4 ? mediaItems.length - 4 : 0;
     List<MediaItem> displayMedia = mediaItems.take(4).toList();
 
-    return GridView.builder(
-      physics: NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
-      itemCount: displayMedia.length,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2, // Display 2 items per row
-        mainAxisSpacing: 2,
-        crossAxisSpacing: 2,
-      ),
-      itemBuilder: (context, index) {
-        MediaItem mediaItem = displayMedia[index];
-        Widget mediaWidget;
+    return GestureDetector(
+      onTap: () => _openFullScreenGallery(mediaItems, 0),
+      child: GridView.builder(
+        physics: NeverScrollableScrollPhysics(),
+        shrinkWrap: true,
+        itemCount: displayMedia.length,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2, // Display 2 items per row
+          mainAxisSpacing: 2,
+          crossAxisSpacing: 2,
+        ),
+        itemBuilder: (context, index) {
+          MediaItem mediaItem = displayMedia[index];
+          Widget mediaWidget;
 
-        if (mediaItem.mediaType == 'photo') {
-          mediaWidget = _buildImageBubble(mediaItem.mediaUrl);
-        } else if (mediaItem.mediaType == 'video') {
-          mediaWidget = _buildVideoBubble(mediaItem.mediaUrl);
-        } else {
-          mediaWidget = Text('Unsupported media type');
-        }
+          if (mediaItem.mediaType == 'photo') {
+            mediaWidget = _buildImageBubble(mediaItem.mediaUrl);
+          } else if (mediaItem.mediaType == 'video') {
+            mediaWidget = _buildVideoBubble(mediaItem.mediaUrl);
+          } else {
+            mediaWidget = Text('Unsupported media type');
+          }
 
-        return Stack(
-          children: [
-            mediaWidget,
-            if (index == 3 && extraCount > 0)
-              Container(
-                color: Colors.black54,
-                child: Center(
-                  child: Text(
-                    '+$extraCount',
-                    style: TextStyle(color: Colors.white, fontSize: 24),
+          return Stack(
+            children: [
+              mediaWidget,
+              if (index == 3 && extraCount > 0)
+                Container(
+                  color: Colors.black54,
+                  child: Center(
+                    child: Text(
+                      '+$extraCount',
+                      style: TextStyle(color: Colors.white, fontSize: 24),
+                    ),
                   ),
                 ),
-              ),
-          ],
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -208,10 +208,10 @@ class _MessageBubbleState extends State<MessageBubble> {
         ),
       );
     } else {
-      return AspectRatio(
-        aspectRatio: 1.0, // Square aspect ratio
-        child: GestureDetector(
-          onTap: () => _openFullScreenImage(imageUrl),
+      return GestureDetector(
+        onTap: () => _openFullScreenGallery(widget.mediaItems, widget.mediaItems.indexWhere((item) => item.mediaUrl == imageUrl)),
+        child: AspectRatio(
+          aspectRatio: 1.0, // Square aspect ratio
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: CachedNetworkImage(
@@ -238,10 +238,10 @@ class _MessageBubbleState extends State<MessageBubble> {
         ),
       );
     } else {
-      return AspectRatio(
-        aspectRatio: 1.0, // Square aspect ratio
-        child: GestureDetector(
-          onTap: () => _openFullScreenVideo(videoUrl),
+      return GestureDetector(
+        onTap: () => _openFullScreenGallery(widget.mediaItems, widget.mediaItems.indexWhere((item) => item.mediaUrl == videoUrl)),
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
           child: Stack(
             alignment: Alignment.center,
             children: [
@@ -257,43 +257,15 @@ class _MessageBubbleState extends State<MessageBubble> {
     }
   }
 
-  void _openFullScreenVideo(String videoUrl) async {
-    final cachedFile = await DefaultCacheManager().getSingleFile(videoUrl);
-    _videoPlayerController = VideoPlayerController.file(cachedFile);
-
-    await _videoPlayerController!.initialize();
-    final chewieController = ChewieController(
-      videoPlayerController: _videoPlayerController!,
-      autoPlay: true,
-      looping: false,
-      aspectRatio: _videoPlayerController!.value.aspectRatio,
-    );
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.black,
-          insetPadding: EdgeInsets.zero,
-          child: Stack(
-            children: [
-              Chewie(controller: chewieController),
-              Positioned(
-                top: 40,
-                right: 20,
-                child: IconButton(
-                  icon: Icon(Icons.close, color: Colors.white, size: 30),
-                  onPressed: () {
-                    chewieController.dispose();
-                    _videoPlayerController?.dispose();
-                    Navigator.pop(context);
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+  void _openFullScreenGallery(List<MediaItem> mediaItems, int initialIndex) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FullScreenGallery(
+          mediaItems: mediaItems,
+          initialIndex: initialIndex,
+        ),
+      ),
     );
   }
 
@@ -476,47 +448,130 @@ class _MessageBubbleState extends State<MessageBubble> {
     );
   }
 
-  void _openFullScreenImage(String imageUrl) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.black,
-          insetPadding: EdgeInsets.zero,
-          child: GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Stack(
-              children: [
-                InteractiveViewer(
-                  child: Center(
-                    child: CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      fit: BoxFit.contain,
-                      placeholder: (context, url) => Center(child: CircularProgressIndicator()),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 40,
-                  right: 20,
-                  child: IconButton(
-                    icon: Icon(Icons.close, color: Colors.white, size: 30),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   String _formatTimestamp(DateTime timestamp) {
     return '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
   }
 
   String _formatFullTimestamp(DateTime timestamp) {
     return '${timestamp.day}/${timestamp.month}/${timestamp.year}, ${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+// FullScreenGallery widget to display media items with swiping
+
+class FullScreenGallery extends StatefulWidget {
+  final List<MediaItem> mediaItems;
+  final int initialIndex;
+
+  FullScreenGallery({required this.mediaItems, required this.initialIndex});
+
+  @override
+  _FullScreenGalleryState createState() => _FullScreenGalleryState();
+}
+
+class _FullScreenGalleryState extends State<FullScreenGallery> {
+  late PageController _pageController;
+  VideoPlayerController? _videoPlayerController;
+  ChewieController? _chewieController;
+  int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: _currentIndex);
+    _initializeMedia();
+  }
+
+  void _initializeMedia() {
+    final currentMedia = widget.mediaItems[_currentIndex];
+    if (currentMedia.mediaType == 'video') {
+      _initializeVideo(currentMedia.mediaUrl);
+    }
+  }
+
+  Future<void> _initializeVideo(String videoUrl) async {
+    final cachedFile = await DefaultCacheManager().getSingleFile(videoUrl);
+    _videoPlayerController = VideoPlayerController.file(cachedFile);
+
+    await _videoPlayerController!.initialize();
+    _chewieController = ChewieController(
+      videoPlayerController: _videoPlayerController!,
+      autoPlay: true,
+      looping: false,
+      aspectRatio: _videoPlayerController!.value.aspectRatio,
+    );
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _videoPlayerController?.dispose();
+    _chewieController?.dispose();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _onPageChanged(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+    _videoPlayerController?.pause();
+    _videoPlayerController?.dispose();
+    _chewieController?.dispose();
+    _videoPlayerController = null;
+    _chewieController = null;
+
+    final currentMedia = widget.mediaItems[_currentIndex];
+    if (currentMedia.mediaType == 'video') {
+      _initializeVideo(currentMedia.mediaUrl);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentMedia = widget.mediaItems[_currentIndex];
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        leading: IconButton(
+          icon: Icon(Icons.close, size: 30),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        onPageChanged: _onPageChanged,
+        itemCount: widget.mediaItems.length,
+        itemBuilder: (context, index) {
+          final mediaItem = widget.mediaItems[index];
+          if (mediaItem.mediaType == 'photo') {
+            return InteractiveViewer(
+              child: Center(
+                child: CachedNetworkImage(
+                  imageUrl: mediaItem.mediaUrl,
+                  fit: BoxFit.contain,
+                  placeholder: (context, url) => Center(child: CircularProgressIndicator()),
+                ),
+              ),
+            );
+          } else if (mediaItem.mediaType == 'video') {
+            if (index == _currentIndex && _chewieController != null) {
+              return Center(
+                child: Chewie(controller: _chewieController!),
+              );
+            } else {
+              return Center(child: CircularProgressIndicator());
+            }
+          } else {
+            return Center(child: Text('Unsupported media type', style: TextStyle(color: Colors.white)));
+          }
+        },
+      ),
+    );
   }
 }
