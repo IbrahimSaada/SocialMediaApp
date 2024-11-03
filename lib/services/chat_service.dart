@@ -28,9 +28,10 @@ class ChatService {
     }
   }
 
-  // Fetch messages for a specific chat
-  Future<List<Message>> fetchMessages(int chatId) async {
-    final url = Uri.parse('$messageBaseUrl/get-messages/$chatId'); // Corrected path
+  // Fetch messages for a specific chat with pagination
+  Future<List<Message>> fetchMessages(int chatId, int pageNumber, int pageSize) async {
+    final url = Uri.parse(
+        '$messageBaseUrl/get-messages/$chatId?pageNumber=$pageNumber&pageSize=$pageSize');
 
     try {
       final response = await http.get(url);

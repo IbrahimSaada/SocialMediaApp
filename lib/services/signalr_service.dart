@@ -1,4 +1,4 @@
-// services/signalr_service.dart
+// signalr_service.dart
 
 import 'package:signalr_core/signalr_core.dart';
 import 'package:cook/services/loginservice.dart';
@@ -65,7 +65,17 @@ class SignalRService {
     }
   }
 
-  // Existing methods...
+  // Method to fetch messages via SignalR
+  Future<List<dynamic>> fetchMessages(int chatId, int pageNumber, int pageSize) async {
+    try {
+      var result = await _hubConnection.invoke('FetchMessages', args: [chatId, pageNumber, pageSize]);
+      return result as List<dynamic>;
+    } catch (e) {
+      print('Error fetching messages via SignalR: $e');
+      return [];
+    }
+  }
+
   Future<void> editMessage(int messageId, String newContent) async {
     try {
       await _hubConnection.invoke('EditMessage', args: [messageId, newContent]);
@@ -75,7 +85,7 @@ class SignalRService {
     }
   }
 
-    Future<void> unsendMessage(int messageId) async {
+  Future<void> unsendMessage(int messageId) async {
     try {
       await _hubConnection.invoke('UnsendMessage', args: [messageId]);
       print('UnsendMessage invoked successfully');
@@ -84,7 +94,7 @@ class SignalRService {
     }
   }
 
-    // Method to mark messages as read
+  // Method to mark messages as read
   Future<void> markMessagesAsRead(int chatId) async {
     try {
       await _hubConnection.invoke('MarkMessagesAsRead', args: [chatId]);
@@ -93,7 +103,6 @@ class SignalRService {
       print('Error invoking MarkMessagesAsRead: $e');
     }
   }
-
 
   HubConnection get hubConnection => _hubConnection;
 }

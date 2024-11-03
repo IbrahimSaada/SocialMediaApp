@@ -49,11 +49,26 @@ class _ChatPageState extends State<ChatPage> {
   double _uploadProgress = 0.0;
   List<MediaItem> _uploadingMediaItems = [];
 
+  int _currentPage = 1;
+  final int _pageSize = 20;
+  bool _isFetchingMore = false;
+  bool _hasMoreMessages = true;
+
   @override
   void initState() {
     super.initState();
     _status = widget.isOnline ? 'Online' : 'Offline';
     _initSignalR();
+
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels <=
+              _scrollController.position.minScrollExtent + 100 &&
+          !_isLoading &&
+          _hasMoreMessages &&
+          !_isFetchingMore) {
+        _fetchMessages(loadMore: true);
+      }
+    });
   }
 
   Future<void> _initSignalR() async {
@@ -78,10 +93,19 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  Future<void> _fetchMessages() async {
+  Future<void> _fetchMessages({bool loadMore = false}) async {
+    if (_isFetchingMore) return;
+    _isFetchingMore = true;
+
     try {
+      if (!loadMore) {
+        _currentPage = 1;
+        _hasMoreMessages = true;
+      }
+
       print('Invoking FetchMessages for chat ${widget.chatId}');
-      var result = await _signalRService.hubConnection.invoke('FetchMessages', args: [widget.chatId]);
+      var result = await _signalRService.hubConnection.invoke('FetchMessages',
+          args: [widget.chatId, _currentPage, _pageSize]);
 
       print('FetchMessages result: $result');
 
@@ -100,20 +124,48 @@ class _ChatPageState extends State<ChatPage> {
 
       print('Fetched ${fetchedMessages.length} messages');
 
-      setState(() {
-        messages = fetchedMessages;
-        _isLoading = false;
-      });
+      // Since the backend returns messages in chronological order (oldest first),
+      // we reverse the list to have the latest messages at the bottom
+      fetchedMessages = fetchedMessages.reversed.toList();
 
-      // Scroll to the latest message after a slight delay to ensure the UI has built
-      Future.delayed(Duration(milliseconds: 100), () {
-        _scrollToBottom();
-      });
+      if (loadMore) {
+        // Save the scroll position
+        double prevScrollOffset = _scrollController.offset;
+        double prevMaxScrollExtent = _scrollController.position.maxScrollExtent;
+
+        setState(() {
+          messages.insertAll(0, fetchedMessages);
+          _currentPage++;
+          if (fetchedMessages.length < _pageSize) {
+            _hasMoreMessages = false;
+          }
+        });
+
+        // After the new messages are rendered, restore the scroll offset
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          double newMaxScrollExtent = _scrollController.position.maxScrollExtent;
+          double scrollOffsetDelta = newMaxScrollExtent - prevMaxScrollExtent;
+          _scrollController.jumpTo(prevScrollOffset + scrollOffsetDelta);
+        });
+      } else {
+        setState(() {
+          messages = fetchedMessages;
+          _isLoading = false;
+          _currentPage++;
+        });
+
+        // Scroll to the latest message after a slight delay to ensure the UI has built
+        Future.delayed(Duration(milliseconds: 100), () {
+          _scrollToBottom();
+        });
+      }
     } catch (e) {
       print('Error fetching messages via SignalR: $e');
       setState(() {
         _isLoading = false;
       });
+    } finally {
+      _isFetchingMore = false;
     }
   }
 
@@ -230,7 +282,6 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-  // Handle 'MessageEdited' event from backend
   void _handleMessageEdited(List<Object?>? arguments) {
     print('MessageEdited event received: $arguments');
     if (arguments != null && arguments.isNotEmpty) {
@@ -275,7 +326,6 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  // Handle 'MessageUnsent' event from backend
   void _handleMessageUnsent(List<Object?>? arguments) {
     print('MessageUnsent event received: $arguments');
     if (arguments != null && arguments.isNotEmpty) {
@@ -315,7 +365,6 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  // Handle sending a text message
   void _handleSendMessage(String messageContent) async {
     try {
       await _signalRService.hubConnection.invoke('SendMessage', args: [
@@ -330,7 +379,6 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  // Handle sending media messages
   Future<void> _handleSendMediaMessage(List<XFile> mediaFiles, String mediaType) async {
     setState(() {
       _isUploadingMedia = true;
@@ -517,7 +565,6 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  // Handle editing a message
   void _handleEditMessage(int messageId, String newContent) async {
     try {
       await _signalRService.editMessage(messageId, newContent);
@@ -538,7 +585,6 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  // Handle deleting a message for all
   void _handleDeleteForAll(int messageId) async {
     try {
       await _signalRService.unsendMessage(messageId);
@@ -548,7 +594,6 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  // Handle typing event
   void _handleTyping() {
     _signalRService.sendTypingNotification(widget.recipientUserId);
   }
@@ -606,6 +651,7 @@ class _ChatPageState extends State<ChatPage> {
                 ? Center(child: CircularProgressIndicator())
                 : ListView.builder(
                     controller: _scrollController,
+                    reverse: false,
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
                       final message = messages[index];
@@ -646,9 +692,6 @@ class _ChatPageState extends State<ChatPage> {
                               },
                               onDeleteForAll: () {
                                 _handleDeleteForAll(message.messageId);
-                              },
-                              onDeleteForMe: () {
-                                // Implement 'Delete for Me' if needed
                               },
                             ),
                           ),
