@@ -1,10 +1,12 @@
 // new_chat_page.dart
 
 import 'package:flutter/material.dart';
-import 'contact_tile.dart';
+// Import your contact tile if needed
 import '../chat/chat_page.dart';
 import 'package:cook/services/contact_service.dart';
 import 'package:cook/models/usercontact_model.dart';
+import 'package:cook/services/signalr_service.dart';
+import 'package:collection/collection.dart'; // Import the collection package
 
 class NewChatPage extends StatefulWidget {
   final int userId;
@@ -17,6 +19,7 @@ class NewChatPage extends StatefulWidget {
 
 class _NewChatPageState extends State<NewChatPage> {
   final ContactService _contactService = ContactService();
+  final SignalRService _signalRService = SignalRService();
   List<UserContact> _contacts = [];
   List<UserContact> _filteredContacts = [];
   String _searchQuery = '';
@@ -30,8 +33,58 @@ class _NewChatPageState extends State<NewChatPage> {
   @override
   void initState() {
     super.initState();
+    _initSignalR();
     _fetchContacts();
     _scrollController.addListener(_onScroll);
+  }
+
+  Future<void> _initSignalR() async {
+    await _signalRService.initSignalR();
+    _signalRService.setupListeners(
+      onChatCreated: _onChatCreated,
+      onNewChatNotification: _onNewChatNotification,
+      onError: _onError,
+    );
+  }
+
+  void _onChatCreated(dynamic chatDto) {
+    print('ChatCreated event received: $chatDto');
+
+    if (chatDto != null && chatDto is Map<String, dynamic>) {
+      int recipientUserId = chatDto['recipientUserId'];
+      int chatId = chatDto['chatId'];
+
+      // Use firstWhereOrNull from the collection package
+      UserContact? contact = _contacts.firstWhereOrNull((c) => c.userId == recipientUserId);
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatPage(
+            chatId: chatId,
+            currentUserId: widget.userId,
+            recipientUserId: recipientUserId,
+            contactName: contact?.fullname ?? 'Unknown',
+            profileImageUrl: contact?.profilePicUrl ?? '',
+            isOnline: true, // Placeholder
+            lastSeen: '', // Placeholder
+          ),
+        ),
+      );
+    } else {
+      print('Invalid chatDto received in ChatCreated event.');
+    }
+  }
+
+  void _onNewChatNotification(dynamic chatDto) {
+    print('NewChatNotification event received: $chatDto');
+    // Optionally handle incoming chat notifications
+  }
+
+  void _onError(String errorMessage) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(errorMessage)),
+    );
   }
 
   Future<void> _fetchContacts({bool isInitialLoad = true}) async {
@@ -84,24 +137,8 @@ class _NewChatPageState extends State<NewChatPage> {
   }
 
   void _navigateToChat(BuildContext context, UserContact contact) async {
-    // Optionally, create a new chat in the backend if needed
-    // For now, we assume a chat is created and navigate to the chat page
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ChatPage(
-          chatId: 0, // Replace with actual chatId after creating chat
-          currentUserId: widget.userId,
-          recipientUserId: contact.userId,
-          contactName: contact.fullname,
-          profileImageUrl: contact.profilePicUrl,
-          isOnline: true, // Placeholder, replace with actual status if available
-          lastSeen: '', // Placeholder, replace with actual last seen time if available
-        ),
-      ),
-    ).then((_) {
-      // After returning from chat, you might want to do something
-    });
+    await _signalRService.createChat(contact.userId);
+    // The response will be handled in the _onChatCreated method
   }
 
   void _onScroll() {
@@ -115,6 +152,7 @@ class _NewChatPageState extends State<NewChatPage> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _signalRService.hubConnection.stop();
     super.dispose();
   }
 
@@ -145,7 +183,6 @@ class _NewChatPageState extends State<NewChatPage> {
             child: TextField(
               onChanged: (value) {
                 _filterContacts(value);
-                // Optionally, fetch contacts from API with search query
                 setState(() {
                   _pageNumber = 1;
                   _hasMoreContacts = true;

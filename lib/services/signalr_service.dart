@@ -25,9 +25,9 @@ class SignalRService {
 
     _hubConnection = HubConnectionBuilder()
         .withUrl(
-          'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/chatHub',
+          'https://4a7b-185-89-86-29.ngrok-free.app/chatHub',
           HttpConnectionOptions(
-            accessTokenFactory: () async => accessToken!,
+            accessTokenFactory: () async => accessToken,
           ),
         )
         .withAutomaticReconnect()
@@ -101,6 +101,70 @@ class SignalRService {
       print('MarkMessagesAsRead invoked successfully');
     } catch (e) {
       print('Error invoking MarkMessagesAsRead: $e');
+    }
+  }
+
+  // Method to create a new chat
+  Future<void> createChat(int recipientUserId) async {
+    try {
+      await _hubConnection.invoke('CreateChat', args: [recipientUserId]);
+      print('CreateChat invoked successfully');
+    } catch (e) {
+      print('Error invoking CreateChat: $e');
+    }
+  }
+
+  // Method to listen for real-time events
+  void setupListeners({
+    Function(dynamic chatDto)? onChatCreated,
+    Function(dynamic chatDto)? onNewChatNotification,
+    Function(String errorMessage)? onError,
+  }) {
+    if (onChatCreated != null) {
+      _hubConnection.on('ChatCreated', (args) {
+        if (args != null && args.isNotEmpty) {
+          var chatDto = args[0];
+          if (chatDto != null) {
+            onChatCreated(chatDto);
+          } else {
+            print('ChatCreated event received with null chatDto.');
+          }
+        } else {
+          print('ChatCreated event received with null or empty args.');
+        }
+      });
+    }
+
+    if (onNewChatNotification != null) {
+      _hubConnection.on('NewChatNotification', (args) {
+        if (args != null && args.isNotEmpty) {
+          var chatDto = args[0];
+          if (chatDto != null) {
+            onNewChatNotification(chatDto);
+          } else {
+            print('NewChatNotification event received with null chatDto.');
+          }
+        } else {
+          print('NewChatNotification event received with null or empty args.');
+        }
+      });
+    }
+
+    // Handle Error messages from the server
+    if (onError != null) {
+      _hubConnection.on('Error', (args) {
+        if (args != null && args.isNotEmpty) {
+          var errorMessage = args[0];
+          if (errorMessage != null) {
+            print('Server Error: $errorMessage');
+            onError(errorMessage);
+          } else {
+            print('Error event received with null errorMessage.');
+          }
+        } else {
+          print('Error event received with null or empty args.');
+        }
+      });
     }
   }
 

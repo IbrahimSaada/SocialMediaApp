@@ -6,11 +6,11 @@ import '../chat/chat_page.dart';
 import 'package:cook/services/chat_service.dart';
 import 'package:cook/models/contact_model.dart';
 import 'pluscontact.dart';
+import 'package:cook/services/signalr_service.dart';
 
 class ContactsPage extends StatefulWidget {
   final String username;
   final int userId;
-
   ContactsPage({required this.username, required this.userId});
 
   @override
@@ -19,6 +19,7 @@ class ContactsPage extends StatefulWidget {
 
 class _ContactsPageState extends State<ContactsPage> {
   final ChatService _chatService = ChatService();
+  final SignalRService _signalRService = SignalRService();
   List<Contact> _chats = [];
   List<Contact> _filteredChats = [];
   Map<int, bool> muteStatus = {};
@@ -28,7 +29,33 @@ class _ContactsPageState extends State<ContactsPage> {
   @override
   void initState() {
     super.initState();
+    _initSignalR();
     _fetchChats();
+  }
+
+  Future<void> _initSignalR() async {
+    await _signalRService.initSignalR();
+    _signalRService.setupListeners(
+      onChatCreated: _onChatCreated,
+      onNewChatNotification: _onNewChatNotification,
+      onError: _onError,
+    );
+  }
+
+  void _onChatCreated(dynamic chatDto) {
+    print('ChatCreated event received: $chatDto');
+    _fetchChats();
+  }
+
+  void _onNewChatNotification(dynamic chatDto) {
+    print('NewChatNotification event received: $chatDto');
+    _fetchChats();
+  }
+
+  void _onError(String errorMessage) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(errorMessage)),
+    );
   }
 
   Future<void> _fetchChats() async {
@@ -59,14 +86,12 @@ class _ContactsPageState extends State<ContactsPage> {
   }
 
   String _getDisplayName(Contact chat) {
-    // Show recipient's name if user is the initiator, otherwise show initiator's name
     return chat.initiatorUserId == widget.userId
         ? chat.recipientUsername
         : chat.initiatorUsername;
   }
 
   String _getDisplayProfileImage(Contact chat) {
-    // Show recipient's profile pic if user is the initiator, otherwise show initiator's profile pic
     return chat.initiatorUserId == widget.userId
         ? chat.recipientProfilePic
         : chat.initiatorProfilePic;
@@ -119,6 +144,12 @@ class _ContactsPageState extends State<ContactsPage> {
       // Refresh chats when returning from NewChatPage
       _fetchChats();
     });
+  }
+
+  @override
+  void dispose() {
+    _signalRService.hubConnection.stop();
+    super.dispose();
   }
 
   @override
