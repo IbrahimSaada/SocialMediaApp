@@ -5,7 +5,7 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-import '/models/media_item.dart'; // Import MediaItem
+import '../models/media_model.dart'; // Import MediaItem
 
 class MessageBubble extends StatefulWidget {
   final bool isSender;
@@ -63,12 +63,15 @@ class _MessageBubbleState extends State<MessageBubble> {
     final bool isDeleted = widget.isUnsent;
 
     return Column(
-      crossAxisAlignment: widget.isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment:
+          widget.isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
         GestureDetector(
-          onLongPress: isDeleted || !widget.isSender ? null : () => _showMessageOptions(context),
+          onLongPress:
+              isDeleted || !widget.isSender ? null : () => _showMessageOptions(context),
           child: Container(
-            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+            constraints:
+                BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
             margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
@@ -283,46 +286,46 @@ class _MessageBubbleState extends State<MessageBubble> {
     );
   }
 
-Widget _buildEditField() {
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    decoration: BoxDecoration(
-      color: widget.isSender ? Color(0xFFF45F67) : Colors.grey[300], // Keeping the original color theme
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: TextField(
-      controller: _editingController,
-      autofocus: true,
-      cursorColor: Colors.white, // Set cursor color to white for better visibility
-      style: TextStyle(
-        fontSize: 16,
-        color: widget.isSender ? Colors.white : Colors.black, // Keep text color consistent
+  Widget _buildEditField() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: widget.isSender ? Color(0xFFF45F67) : Colors.grey[300], // Keeping the original color theme
+        borderRadius: BorderRadius.circular(12),
       ),
-      decoration: InputDecoration(
-        hintText: 'Edit message...',
-        border: InputBorder.none,
+      child: TextField(
+        controller: _editingController,
+        autofocus: true,
+        cursorColor: Colors.white, // Set cursor color to white for better visibility
+        style: TextStyle(
+          fontSize: 16,
+          color: widget.isSender ? Colors.white : Colors.black, // Keep text color consistent
+        ),
+        decoration: InputDecoration(
+          hintText: 'Edit message...',
+          border: InputBorder.none,
+        ),
+        maxLines: null, // Allow multi-line editing if needed
+        textInputAction: TextInputAction.done, // Set the keyboard action to 'done'
+        onEditingComplete: () {
+          String newText = _editingController.text.trim();
+          if (newText.isNotEmpty) {
+            widget.onEdit(newText);
+            setState(() {
+              _isEditing = false; // Exit edit mode after submission
+            });
+          }
+        },
       ),
-      maxLines: null, // Allow multi-line editing if needed
-      textInputAction: TextInputAction.done, // Set the keyboard action to 'done'
-      onEditingComplete: () {
-        String newText = _editingController.text.trim();
-        if (newText.isNotEmpty) {
-          widget.onEdit(newText);
-          setState(() {
-            _isEditing = false; // Exit edit mode after submission
-          });
-        }
-      },
-    ),
-  );
-}
-
+    );
+  }
 
   Widget _buildTimestampAndEditedLabel() {
     return Padding(
       padding: const EdgeInsets.only(top: 2.0, left: 16.0, right: 16.0),
       child: Row(
-        mainAxisAlignment: widget.isSender ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            widget.isSender ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           Text(
             _formatTimestamp(widget.timestamp),
@@ -431,11 +434,20 @@ Widget _buildEditField() {
   }
 
   String _formatTimestamp(DateTime timestamp) {
-    return '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    String hour = twoDigits(timestamp.hour);
+    String minute = twoDigits(timestamp.minute);
+    return '$hour:$minute';
   }
 
   String _formatFullTimestamp(DateTime timestamp) {
-    return '${timestamp.day}/${timestamp.month}/${timestamp.year}, ${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    String day = twoDigits(timestamp.day);
+    String month = twoDigits(timestamp.month);
+    String year = timestamp.year.toString();
+    String hour = twoDigits(timestamp.hour);
+    String minute = twoDigits(timestamp.minute);
+    return '$day/$month/$year, $hour:$minute';
   }
 }
 
@@ -550,7 +562,11 @@ class _FullScreenGalleryState extends State<FullScreenGallery> {
               return Center(child: CircularProgressIndicator());
             }
           } else {
-            return Center(child: Text('Unsupported media type', style: TextStyle(color: Colors.white)));
+            return Center(
+                child: Text(
+              'Unsupported media type',
+              style: TextStyle(color: Colors.white),
+            ));
           }
         },
       ),

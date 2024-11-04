@@ -1,6 +1,6 @@
 // models/message_model.dart
 
-import 'media_item.dart';
+import 'media_model.dart';
 
 class Message {
   final int messageId;
@@ -33,7 +33,7 @@ class Message {
     this.isLoadingMessage = false, // Default to false
   });
 
-    // New factory constructor for loading indicator
+  // Factory constructor for loading indicator
   factory Message.loadingMessage() {
     return Message(
       messageId: -1,
@@ -113,6 +113,7 @@ class Message {
     bool? isEdited,
     bool? isUnsent,
     List<MediaItem>? mediaItems,
+    bool? isLoadingMessage,
   }) {
     final updatedMessage = Message(
       messageId: messageId ?? this.messageId,
@@ -127,6 +128,7 @@ class Message {
       isEdited: isEdited ?? this.isEdited,
       isUnsent: isUnsent ?? this.isUnsent,
       mediaItems: mediaItems ?? this.mediaItems,
+      isLoadingMessage: isLoadingMessage ?? this.isLoadingMessage,
     );
 
     print('Updated Message with copyWith: $updatedMessage'); // Print the updated Message object

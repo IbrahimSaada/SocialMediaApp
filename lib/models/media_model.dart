@@ -1,4 +1,4 @@
-// models/media_item.dart
+// models/media_model.dart
 
 class MediaItem {
   final String mediaUrl;
@@ -32,5 +32,10 @@ class MediaItem {
       mediaUrl: mediaUrl ?? this.mediaUrl,
       mediaType: mediaType ?? this.mediaType,
     );
+  }
+
+  @override
+  String toString() {
+    return 'MediaItem(mediaUrl: $mediaUrl, mediaType: $mediaType)';
   }
 }
