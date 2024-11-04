@@ -15,6 +15,7 @@ class Message {
   final bool isEdited;
   final bool isUnsent;
   final List<MediaItem> mediaItems;
+  final bool isLoadingMessage; // New field to mark loading messages
 
   Message({
     required this.messageId,
@@ -29,7 +30,24 @@ class Message {
     required this.isEdited,
     required this.isUnsent,
     required this.mediaItems,
+    this.isLoadingMessage = false, // Default to false
   });
+
+    // New factory constructor for loading indicator
+  factory Message.loadingMessage() {
+    return Message(
+      messageId: -1,
+      chatId: 0,
+      senderId: 0,
+      messageType: 'loading',
+      messageContent: '',
+      createdAt: DateTime.now(),
+      isEdited: false,
+      isUnsent: false,
+      mediaItems: [],
+      isLoadingMessage: true,
+    );
+  }
 
   factory Message.fromJson(Map<String, dynamic> json) {
     print('Parsing Message from JSON: $json'); // Print the initial JSON data

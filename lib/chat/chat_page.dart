@@ -54,22 +54,24 @@ class _ChatPageState extends State<ChatPage> {
   bool _isFetchingMore = false;
   bool _hasMoreMessages = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _status = widget.isOnline ? 'Online' : 'Offline';
-    _initSignalR();
+@override
+void initState() {
+  super.initState();
+  _status = widget.isOnline ? 'Online' : 'Offline';
+  _initSignalR();
 
-    _scrollController.addListener(() {
-      if (_scrollController.position.pixels <=
-              _scrollController.position.minScrollExtent + 100 &&
-          !_isLoading &&
-          _hasMoreMessages &&
-          !_isFetchingMore) {
-        _fetchMessages(loadMore: true);
-      }
-    });
-  }
+  _scrollController.addListener(() {
+    if (_scrollController.position.pixels <=
+            _scrollController.position.minScrollExtent + 100 &&
+        !_isLoading &&
+        _hasMoreMessages &&
+        !_isFetchingMore) {
+      _fetchMessages(loadMore: true);
+    }
+  });
+}
+
+
 
   Future<void> _initSignalR() async {
     try {
@@ -93,81 +95,86 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  Future<void> _fetchMessages({bool loadMore = false}) async {
-    if (_isFetchingMore) return;
-    _isFetchingMore = true;
+Future<void> _fetchMessages({bool loadMore = false}) async {
+  if (_isFetchingMore) return; // Prevent overlapping fetches
+  _isFetchingMore = true;
 
-    try {
-      if (!loadMore) {
-        _currentPage = 1;
-        _hasMoreMessages = true;
-      }
+  // Temporarily add a loading indicator message at the top if loading more messages
+  if (loadMore) {
+    setState(() {
+      messages.insert(0, Message.loadingMessage()); // Insert loading indicator
+    });
+  }
 
-      print('Invoking FetchMessages for chat ${widget.chatId}');
-      var result = await _signalRService.hubConnection.invoke('FetchMessages',
-          args: [widget.chatId, _currentPage, _pageSize]);
+  try {
+    if (!loadMore) {
+      // Reset for initial load
+      _currentPage = 1;
+      _hasMoreMessages = true;
+    }
 
-      print('FetchMessages result: $result');
+    // Save the current scroll offset and max scroll extent before loading
+    double prevScrollOffset = _scrollController.hasClients ? _scrollController.offset : 0;
+    double prevMaxScrollExtent = _scrollController.hasClients ? _scrollController.position.maxScrollExtent : 0;
 
-      List<dynamic> messagesData = result as List<dynamic>;
-      List<Message> fetchedMessages = [];
-      for (var messageData in messagesData) {
-        try {
-          Map<String, dynamic> messageMap = Map<String, dynamic>.from(messageData);
-          Message message = Message.fromJson(messageMap);
-          fetchedMessages.add(message);
-        } catch (e) {
-          print('Error parsing message: $e');
-          print('Message data: $messageData');
-        }
-      }
+    print("Fetching messages for page $_currentPage");
 
-      print('Fetched ${fetchedMessages.length} messages');
+    // Fetch messages from the backend
+    var result = await _signalRService.fetchMessages(widget.chatId, _currentPage, _pageSize);
 
-      // Since the backend returns messages in chronological order (oldest first),
-      // we reverse the list to have the latest messages at the bottom
-      fetchedMessages = fetchedMessages.reversed.toList();
-
-      if (loadMore) {
-        // Save the scroll position
-        double prevScrollOffset = _scrollController.offset;
-        double prevMaxScrollExtent = _scrollController.position.maxScrollExtent;
-
-        setState(() {
-          messages.insertAll(0, fetchedMessages);
-          _currentPage++;
-          if (fetchedMessages.length < _pageSize) {
-            _hasMoreMessages = false;
-          }
-        });
-
-        // After the new messages are rendered, restore the scroll offset
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          double newMaxScrollExtent = _scrollController.position.maxScrollExtent;
-          double scrollOffsetDelta = newMaxScrollExtent - prevMaxScrollExtent;
-          _scrollController.jumpTo(prevScrollOffset + scrollOffsetDelta);
-        });
-      } else {
-        setState(() {
-          messages = fetchedMessages;
-          _isLoading = false;
-          _currentPage++;
-        });
-
-        // Scroll to the latest message after a slight delay to ensure the UI has built
-        Future.delayed(Duration(milliseconds: 100), () {
-          _scrollToBottom();
-        });
-      }
-    } catch (e) {
-      print('Error fetching messages via SignalR: $e');
+    if (result == null) {
+      print("Error: No data returned from fetchMessages.");
       setState(() {
         _isLoading = false;
       });
-    } finally {
-      _isFetchingMore = false;
+      return;
     }
+
+    // Convert the fetched data into a list of Message objects
+    List<Message> fetchedMessages = result.map((data) => Message.fromJson(data)).toList();
+    print("Fetched ${fetchedMessages.length} messages");
+
+    setState(() {
+      if (loadMore) {
+        messages.removeAt(0); // Remove loading indicator
+        messages.insertAll(0, fetchedMessages); // Add new messages at the top
+      } else {
+        messages = fetchedMessages; // Initial load replaces messages
+      }
+
+      _isLoading = false; // Hide any initial loading spinner
+      _currentPage++;
+      _hasMoreMessages = fetchedMessages.length >= _pageSize; // Check if there are more messages to load
+    });
+
+    // Preserve scroll position after loading older messages
+    if (loadMore && _scrollController.hasClients) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Calculate the new max scroll extent and determine the delta change
+        double newMaxScrollExtent = _scrollController.position.maxScrollExtent;
+        double scrollOffsetDelta = newMaxScrollExtent - prevMaxScrollExtent;
+
+        // Adjust the scroll position by the exact difference to avoid jumps
+        _scrollController.jumpTo(prevScrollOffset + scrollOffsetDelta);
+      });
+    } else if (!loadMore) {
+      // Scroll to the bottom only on initial load
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        }
+      });
+    }
+  } catch (e) {
+    print('Error fetching messages: $e');
+    setState(() {
+      _isLoading = false;
+    });
+  } finally {
+    _isFetchingMore = false; // Allow further fetching when ready
   }
+}
+
 
   void _handleReceiveMessage(List<Object?>? arguments) {
     print('ReceiveMessage event received: $arguments');
@@ -405,12 +412,64 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  Future<void> _sendSingleMediaMessage(XFile mediaFile) async {
+Future<void> _sendSingleMediaMessage(XFile mediaFile) async {
+  // Placeholder message to show uploading status
+  setState(() {
+    messages.add(
+      Message(
+        messageId: -1, // Temporary ID
+        chatId: widget.chatId,
+        senderId: widget.currentUserId,
+        messageType: 'media',
+        messageContent: '',
+        createdAt: DateTime.now(),
+        isEdited: false,
+        isUnsent: false,
+        mediaItems: [
+          MediaItem(
+            mediaUrl: '', // Placeholder URL until upload completes
+            mediaType: _getMediaType(mediaFile.path),
+          ),
+        ],
+      ),
+    );
+  });
+  _scrollToBottom();
+
+  try {
+    // Presigned URL logic for uploading to S3
+    final fileName = mediaFile.path.split('/').last;
+    final presignedUrls = await _s3UploadService.getPresignedUrls([fileName]);
+
+    final mediaUrl = await _s3UploadService.uploadFile(
+      presignedUrls.first,
+      mediaFile,
+      onProgress: (progress) {
+        setState(() {
+          _uploadProgress = progress;
+        });
+      },
+    );
+
+    // Update the message with the actual media URL
+    await _signalRService.hubConnection.invoke('SendMessage', args: [
+      widget.recipientUserId,
+      '', // Empty content for media
+      'media', 
+      [
+        {
+          'mediaUrl': mediaUrl,
+          'mediaType': _getMediaType(mediaFile.path),
+        }
+      ],
+    ]);
+
     setState(() {
-      // Add placeholder message
+      // Remove placeholder and add the actual message with media URL
+      messages.removeWhere((msg) => msg.messageId == -1);
       messages.add(
         Message(
-          messageId: -1, // Temporary ID
+          messageId: DateTime.now().millisecondsSinceEpoch, // Temp ID, replace with server ID if available
           chatId: widget.chatId,
           senderId: widget.currentUserId,
           messageType: 'media',
@@ -419,70 +478,67 @@ class _ChatPageState extends State<ChatPage> {
           isEdited: false,
           isUnsent: false,
           mediaItems: [
-            MediaItem(
-              mediaUrl: '', // Placeholder URL
-              mediaType: _getMediaType(mediaFile.path),
-            ),
+            MediaItem(mediaUrl: mediaUrl, mediaType: _getMediaType(mediaFile.path)),
           ],
         ),
       );
     });
-    _scrollToBottom();
-
-    try {
-      final fileName = mediaFile.path.split('/').last;
-
-      // Get presigned URL
-      final presignedUrls = await _s3UploadService.getPresignedUrls([fileName]);
-
-      // Upload file
-      final mediaUrl = await _s3UploadService.uploadFile(
-        presignedUrls.first,
-        mediaFile,
-        onProgress: (progress) {
-          setState(() {
-            _uploadProgress = progress;
-          });
-        },
-      );
-
-      // Send message via SignalR
-      await _signalRService.hubConnection.invoke('SendMessage', args: [
-        widget.recipientUserId,
-        '', // Empty messageContent for media messages
-        'media', // Message type
-        [
-          {
-            'mediaUrl': mediaUrl,
-            'mediaType': _getMediaType(mediaFile.path),
-          }
-        ], // Single media item
-      ]);
-
-      print('Single media message sent successfully with URL: $mediaUrl');
-    } catch (e) {
-      print('Error sending single media message: $e');
-      // Remove the placeholder message bubble in case of error
-      setState(() {
-        messages.removeWhere((msg) => msg.messageId == -1);
-      });
-    }
-  }
-
-  Future<void> _sendMultipleMediaMessage(List<XFile> mediaFiles) async {
+  } catch (e) {
+    print('Error sending single media message: $e');
     setState(() {
-      // Prepare uploading media items
-      _uploadingMediaItems = mediaFiles.map((file) {
-        return MediaItem(
-          mediaUrl: '', // Placeholder URL
-          mediaType: _getMediaType(file.path),
-        );
-      }).toList();
+      messages.removeWhere((msg) => msg.messageId == -1);
+    });
+  }
+}
 
-      // Show a placeholder message bubble for uploading
+
+Future<void> _sendMultipleMediaMessage(List<XFile> mediaFiles) async {
+  // Temporary placeholder for multiple media items
+  setState(() {
+    _uploadingMediaItems = mediaFiles.map((file) => MediaItem(mediaUrl: '', mediaType: _getMediaType(file.path))).toList();
+    messages.add(
+      Message(
+        messageId: -1,
+        chatId: widget.chatId,
+        senderId: widget.currentUserId,
+        messageType: 'media',
+        messageContent: '',
+        createdAt: DateTime.now(),
+        isEdited: false,
+        isUnsent: false,
+        mediaItems: _uploadingMediaItems,
+      ),
+    );
+  });
+  _scrollToBottom();
+
+  try {
+    final fileNames = mediaFiles.map((file) => file.path.split('/').last).toList();
+    final presignedUrls = await _s3UploadService.getPresignedUrls(fileNames);
+
+    List<String> mediaUrls = [];
+    for (int i = 0; i < mediaFiles.length; i++) {
+      final file = mediaFiles[i];
+      final url = await _s3UploadService.uploadFile(
+        presignedUrls[i],
+        file,
+        onProgress: (progress) => setState(() => _uploadProgress = progress),
+      );
+      mediaUrls.add(url);
+    }
+
+    await _signalRService.hubConnection.invoke('SendMessage', args: [
+      widget.recipientUserId,
+      '',
+      'media',
+      mediaUrls.map((url) => {'mediaUrl': url, 'mediaType': _getMediaType(mediaFiles.first.path)}).toList(),
+    ]);
+
+    setState(() {
+      messages.removeWhere((msg) => msg.messageId == -1);
       messages.add(
         Message(
-          messageId: -1, // Temporary ID
+          messageId: DateTime.now().millisecondsSinceEpoch,
           chatId: widget.chatId,
           senderId: widget.currentUserId,
           messageType: 'media',
@@ -490,69 +546,20 @@ class _ChatPageState extends State<ChatPage> {
           createdAt: DateTime.now(),
           isEdited: false,
           isUnsent: false,
-          mediaItems: _uploadingMediaItems,
+          mediaItems: mediaUrls
+              .map((url) => MediaItem(mediaUrl: url, mediaType: _getMediaType(mediaFiles.first.path)))
+              .toList(),
         ),
       );
     });
-    _scrollToBottom();
-
-    try {
-      // Prepare file names
-      final fileNames = mediaFiles.map((file) => file.path.split('/').last).toList();
-
-      // Get presigned URLs
-      final presignedUrls = await _s3UploadService.getPresignedUrls(fileNames);
-
-      List<Future<String>> uploadFutures = [];
-      for (int i = 0; i < mediaFiles.length; i++) {
-        final file = mediaFiles[i];
-        final presignedUrl = presignedUrls[i];
-
-        uploadFutures.add(_s3UploadService.uploadFile(
-          presignedUrl,
-          file,
-          onProgress: (progress) {
-            setState(() {
-              _uploadProgress = progress;
-            });
-          },
-        ));
-      }
-
-      // Wait for all uploads to complete
-      final mediaUrls = await Future.wait(uploadFutures);
-
-      // Update the placeholder media items with actual URLs
-      for (int i = 0; i < _uploadingMediaItems.length; i++) {
-        _uploadingMediaItems[i] = _uploadingMediaItems[i].copyWith(
-          mediaUrl: mediaUrls[i],
-        );
-      }
-
-      // Create a list of media items to send
-      List<Map<String, dynamic>> mediaItems = _uploadingMediaItems.map((item) {
-        return {
-          'mediaUrl': item.mediaUrl,
-          'mediaType': item.mediaType,
-        };
-      }).toList();
-
-      await _signalRService.hubConnection.invoke('SendMessage', args: [
-        widget.recipientUserId,
-        '', // Empty messageContent for media messages
-        'media', // Message type
-        mediaItems, // Pass the list of media items
-      ]);
-
-      print('Multiple media message sent successfully with URLs: $mediaUrls');
-    } catch (e) {
-      print('Error sending multiple media message: $e');
-      // Remove the placeholder message bubble in case of error
-      setState(() {
-        messages.removeWhere((msg) => msg.messageId == -1);
-      });
-    }
+  } catch (e) {
+    print('Error sending multiple media message: $e');
+    setState(() {
+      messages.removeWhere((msg) => msg.messageId == -1);
+    });
   }
+}
+
 
   String _getMediaType(String filePath) {
     final extension = filePath.split('.').last.toLowerCase();
@@ -636,78 +643,83 @@ class _ChatPageState extends State<ChatPage> {
     return currentMessageDate.day != previousMessageDate.day;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: ChatAppBar(
-        username: widget.contactName,
-        profileImageUrl: widget.profileImageUrl,
-        status: _isRecipientTyping ? 'Typing...' : _status,
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _isLoading
-                ? Center(child: CircularProgressIndicator())
-                : ListView.builder(
-                    controller: _scrollController,
-                    reverse: false,
-                    itemCount: messages.length,
-                    itemBuilder: (context, index) {
-                      final message = messages[index];
-                      final isSender = message.senderId == widget.currentUserId;
-                      final showDate = _isNewDay(index);
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: ChatAppBar(
+      username: widget.contactName,
+      profileImageUrl: widget.profileImageUrl,
+      status: _isRecipientTyping ? 'Typing...' : _status,  // Display online/offline status
+    ),
+    body: Column(
+      children: [
+       Expanded(
+  child: _isLoading
+      ? Center(child: CircularProgressIndicator()) // Initial loading spinner
+      : ListView.builder(
+          controller: _scrollController,
+          reverse: false, // Ensures the list is displayed in backend-provided order
+          itemCount: messages.length,
+          itemBuilder: (context, index) {
+            final message = messages[index];
 
-                      print('Building message at index $index: ${message.messageContent}');
+            if (message.isLoadingMessage) {
+              return Center(child: CircularProgressIndicator()); // Show loading indicator at the top
+            }
 
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (showDate)
-                            Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Center(
-                                child: Text(
-                                  _formatDate(message.createdAt),
-                                  style: TextStyle(color: Colors.grey),
-                                ),
-                              ),
-                            ),
-                          Align(
-                            alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
-                            child: MessageBubble(
-                              isSender: isSender,
-                              readAt: message.readAt,
-                              message: message.isUnsent
-                                  ? 'This message was deleted'
-                                  : message.messageContent,
-                              timestamp: message.createdAt,
-                              isSeen: message.readAt != null,
-                              isEdited: message.isEdited,
-                              isUnsent: message.isUnsent,
-                              messageType: message.messageType,
-                              mediaItems: message.mediaItems,
-                              onEdit: (newText) {
-                                _handleEditMessage(message.messageId, newText);
-                              },
-                              onDeleteForAll: () {
-                                _handleDeleteForAll(message.messageId);
-                              },
-                            ),
-                          ),
-                        ],
-                      );
+            final isSender = message.senderId == widget.currentUserId;
+            final showDate = _isNewDay(index);
+
+            print('Building message at index $index: ${message.messageContent}');
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (showDate)
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Center(
+                      child: Text(
+                        _formatDate(message.createdAt),
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                Align(
+                  alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
+                  child: MessageBubble(
+                    isSender: isSender,
+                    readAt: message.readAt,
+                    message: message.isUnsent
+                        ? 'This message was deleted'
+                        : message.messageContent,
+                    timestamp: message.createdAt,
+                    isSeen: message.readAt != null,
+                    isEdited: message.isEdited,
+                    isUnsent: message.isUnsent,
+                    messageType: message.messageType,
+                    mediaItems: message.mediaItems,
+                    onEdit: (newText) {
+                      _handleEditMessage(message.messageId, newText);
+                    },
+                    onDeleteForAll: () {
+                      _handleDeleteForAll(message.messageId);
                     },
                   ),
-          ),
-          MessageInput(
-            onSendMessage: _handleSendMessage,
-            onTyping: () => _signalRService.sendTypingNotification(widget.recipientUserId),
-            onTypingStopped: () {}, // Optional typing stopped handler
-            onSendMediaMessage: _handleSendMediaMessage,
-          ),
-        ],
-      ),
-    );
-  }
+                ),
+              ],
+            );
+          },
+        ),
+),
+        MessageInput(
+          onSendMessage: _handleSendMessage,
+          onTyping: () => _signalRService.sendTypingNotification(widget.recipientUserId),
+          onTypingStopped: () {}, // Optional typing stopped handler
+          onSendMediaMessage: _handleSendMediaMessage,
+        ),
+      ],
+    ),
+  );
+}
 }
