@@ -71,51 +71,55 @@ class ChatController extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchMessages({bool loadMore = false}) async {
-    if (_isFetchingMore) return; // Prevent overlapping fetches
-    _isFetchingMore = true;
+Future<void> fetchMessages({bool loadMore = false}) async {
+  if (_isFetchingMore) return; // Prevent overlapping fetches
+  _isFetchingMore = true;
 
-    try {
-      if (!loadMore) {
-        // Reset for initial load
-        _currentPage = 1;
-        _hasMoreMessages = true;
-      }
+  try {
+    if (!loadMore) {
+      // Reset for initial load
+      _currentPage = 1;
+      _hasMoreMessages = true;
+    }
 
-      print("Fetching messages for page $_currentPage");
+    print("Fetching messages for page $_currentPage");
 
-      // Fetch messages from the backend
-      var result = await _signalRService.fetchMessages(chatId, _currentPage, _pageSize);
+    // Fetch messages from the backend
+    var result = await _signalRService.fetchMessages(chatId, _currentPage, _pageSize);
 
-      if (result == null) {
-        print("Error: No data returned from fetchMessages.");
-        isLoading = false;
-        notifyListeners();
-        return;
-      }
-
-      // Convert the fetched data into a list of Message objects
-      List<Message> fetchedMessages = result.map((data) => Message.fromJson(data)).toList();
-      print("Fetched ${fetchedMessages.length} messages");
-
-      if (loadMore) {
-        messages.insertAll(0, fetchedMessages); // Add new messages at the top
-      } else {
-        messages = fetchedMessages; // Initial load replaces messages
-      }
-
-      isLoading = false; // Hide any initial loading spinner
-      _currentPage++;
-      _hasMoreMessages = fetchedMessages.length >= _pageSize; // Check if there are more messages to load
-      notifyListeners();
-    } catch (e) {
-      print('Error fetching messages: $e');
+    if (result == null) {
+      print("Error: No data returned from fetchMessages.");
       isLoading = false;
       notifyListeners();
-    } finally {
-      _isFetchingMore = false; // Allow further fetching when ready
+      return;
     }
+
+    // Convert the fetched data into a list of Message objects
+    List<Message> fetchedMessages = result.map((data) => Message.fromJson(data)).toList();
+    print("Fetched ${fetchedMessages.length} messages");
+
+    // Reverse the fetched messages to have oldest messages first
+    fetchedMessages = fetchedMessages.reversed.toList();
+
+    if (loadMore) {
+      messages.insertAll(0, fetchedMessages); // Add new messages at the top
+    } else {
+      messages = fetchedMessages; // Initial load replaces messages
+    }
+
+    isLoading = false; // Hide any initial loading spinner
+    _currentPage++;
+    _hasMoreMessages = fetchedMessages.length >= _pageSize; // Check if there are more messages to load
+    notifyListeners();
+  } catch (e) {
+    print('Error fetching messages: $e');
+    isLoading = false;
+    notifyListeners();
+  } finally {
+    _isFetchingMore = false; // Allow further fetching when ready
   }
+}
+
 
   void _handleReceiveMessage(List<Object?>? arguments) {
     print('ReceiveMessage event received: $arguments');

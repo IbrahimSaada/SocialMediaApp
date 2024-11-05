@@ -6,6 +6,7 @@ import 'package:cook/services/loginservice.dart';
 class SignalRService {
   late HubConnection _hubConnection;
   final LoginService _loginService = LoginService();
+  
 
   Future<void> initSignalR() async {
     // Get the access token from LoginService
@@ -25,7 +26,7 @@ class SignalRService {
 
     _hubConnection = HubConnectionBuilder()
         .withUrl(
-          'https://4a7b-185-89-86-29.ngrok-free.app/chatHub',
+          'https://1d3a-185-89-86-29.ngrok-free.app/chatHub',
           HttpConnectionOptions(
             accessTokenFactory: () async => accessToken,
           ),

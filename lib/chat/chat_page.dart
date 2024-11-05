@@ -54,6 +54,14 @@ class _ChatPageState extends State<ChatPage> {
       }
     });
 
+      // Listen for changes in isLoading
+  _chatController.addListener(() {
+    if (!_chatController.isLoading) {
+      _scrollToBottom();
+    }
+  });
+
+
     // Scroll to bottom after the first frame is rendered
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
@@ -99,12 +107,17 @@ class _ChatPageState extends State<ChatPage> {
           children: [
             Expanded(
               child: Consumer<ChatController>(
-                builder: (context, controller, child) {
-                  if (controller.isLoading && controller.messages.isEmpty) {
-                    return Center(child: CircularProgressIndicator());
-                  } else {
-                    return NotificationListener<ScrollNotification>(
-                      onNotification: (ScrollNotification scrollInfo) {
+                  builder: (context, controller, child) {
+                    if (controller.isLoading && controller.messages.isEmpty) {
+                      return Center(child: CircularProgressIndicator());
+                    } else {
+                      // Scroll to bottom when a new message is added
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _scrollToBottom();
+                      });
+
+                      return NotificationListener<ScrollNotification>(
+                        onNotification: (ScrollNotification scrollInfo) {
                         if (scrollInfo.metrics.pixels ==
                             scrollInfo.metrics.maxScrollExtent) {
                           // Scrolled to the bottom
