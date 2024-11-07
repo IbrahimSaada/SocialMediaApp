@@ -26,7 +26,7 @@ class SignalRService {
 
     _hubConnection = HubConnectionBuilder()
         .withUrl(
-          'https://1d3a-185-89-86-29.ngrok-free.app/chatHub',
+          'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/chatHub',
           HttpConnectionOptions(
             accessTokenFactory: () async => accessToken,
           ),
