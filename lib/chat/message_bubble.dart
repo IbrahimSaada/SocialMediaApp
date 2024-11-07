@@ -1,11 +1,6 @@
 // message_bubble.dart
 
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
-import 'package:chewie/chewie.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-import '../models/media_model.dart'; // Import MediaItem
 
 class MessageBubble extends StatefulWidget {
   final bool isSender;
@@ -18,7 +13,6 @@ class MessageBubble extends StatefulWidget {
   final Function(String newText) onEdit;
   final Function onDeleteForAll;
   final String messageType;
-  final List<MediaItem> mediaItems;
 
   const MessageBubble({
     required this.isSender,
@@ -31,7 +25,6 @@ class MessageBubble extends StatefulWidget {
     required this.onEdit,
     required this.onDeleteForAll,
     required this.messageType,
-    required this.mediaItems,
   });
 
   @override
@@ -41,8 +34,6 @@ class MessageBubble extends StatefulWidget {
 class _MessageBubbleState extends State<MessageBubble> {
   bool _isEditing = false;
   late TextEditingController _editingController;
-  VideoPlayerController? _videoPlayerController;
-  ChewieController? _chewieController;
 
   @override
   void initState() {
@@ -53,8 +44,6 @@ class _MessageBubbleState extends State<MessageBubble> {
   @override
   void dispose() {
     _editingController.dispose();
-    _videoPlayerController?.dispose();
-    _chewieController?.dispose();
     super.dispose();
   }
 
@@ -96,179 +85,11 @@ class _MessageBubbleState extends State<MessageBubble> {
             ),
             child: _isEditing
                 ? _buildEditField()
-                : widget.messageType == 'media'
-                    ? _buildMediaContent()
-                    : _buildMessageContent(isDeleted),
+                : _buildMessageContent(isDeleted),
           ),
         ),
         if (!isDeleted) _buildTimestampAndEditedLabel(),
       ],
-    );
-  }
-
-  Widget _buildMediaContent() {
-    if (widget.isUnsent || widget.mediaItems.isEmpty) {
-      return _buildMessageContent(true);
-    }
-
-    if (widget.mediaItems.length == 1) {
-      return _buildSingleMedia(widget.mediaItems.first);
-    } else if (widget.mediaItems.length >= 4) {
-      return _buildMediaGrid(widget.mediaItems);
-    } else {
-      return _buildMediaCarousel(widget.mediaItems);
-    }
-  }
-
-  Widget _buildSingleMedia(MediaItem mediaItem) {
-    if (mediaItem.mediaType == 'photo') {
-      return _buildImageBubble(mediaItem.mediaUrl);
-    } else if (mediaItem.mediaType == 'video') {
-      return _buildVideoBubble(mediaItem.mediaUrl);
-    } else {
-      return Text('Unsupported media type');
-    }
-  }
-
-  Widget _buildMediaCarousel(List<MediaItem> mediaItems) {
-    return GestureDetector(
-      onTap: () => _openFullScreenGallery(mediaItems, 0),
-      child: Container(
-        height: 250, // Adjust height as needed
-        child: PageView.builder(
-          itemCount: mediaItems.length,
-          itemBuilder: (context, index) {
-            MediaItem mediaItem = mediaItems[index];
-            if (mediaItem.mediaType == 'photo') {
-              return _buildImageBubble(mediaItem.mediaUrl);
-            } else if (mediaItem.mediaType == 'video') {
-              return _buildVideoBubble(mediaItem.mediaUrl);
-            } else {
-              return Center(child: Text('Unsupported media type'));
-            }
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMediaGrid(List<MediaItem> mediaItems) {
-    int extraCount = mediaItems.length > 4 ? mediaItems.length - 4 : 0;
-    List<MediaItem> displayMedia = mediaItems.take(4).toList();
-
-    return GestureDetector(
-      onTap: () => _openFullScreenGallery(mediaItems, 0),
-      child: GridView.builder(
-        physics: NeverScrollableScrollPhysics(),
-        shrinkWrap: true,
-        itemCount: displayMedia.length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2, // Display 2 items per row
-          mainAxisSpacing: 2,
-          crossAxisSpacing: 2,
-        ),
-        itemBuilder: (context, index) {
-          MediaItem mediaItem = displayMedia[index];
-          Widget mediaWidget;
-
-          if (mediaItem.mediaType == 'photo') {
-            mediaWidget = _buildImageBubble(mediaItem.mediaUrl);
-          } else if (mediaItem.mediaType == 'video') {
-            mediaWidget = _buildVideoBubble(mediaItem.mediaUrl);
-          } else {
-            mediaWidget = Text('Unsupported media type');
-          }
-
-          return Stack(
-            children: [
-              mediaWidget,
-              if (index == 3 && extraCount > 0)
-                Container(
-                  color: Colors.black54,
-                  child: Center(
-                    child: Text(
-                      '+$extraCount',
-                      style: TextStyle(color: Colors.white, fontSize: 24),
-                    ),
-                  ),
-                ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildImageBubble(String imageUrl) {
-    if (imageUrl.isEmpty) {
-      // Return a placeholder or uploading animation
-      return Container(
-        color: Colors.grey[200],
-        child: Center(
-          child: CircularProgressIndicator(), // Uploading animation
-        ),
-      );
-    } else {
-      return GestureDetector(
-        onTap: () => _openFullScreenGallery(widget.mediaItems,
-            widget.mediaItems.indexWhere((item) => item.mediaUrl == imageUrl)),
-        child: AspectRatio(
-          aspectRatio: 1.0, // Square aspect ratio
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: CachedNetworkImage(
-              imageUrl: imageUrl,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(
-                color: Colors.grey[200],
-                child: Center(child: CircularProgressIndicator()),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-  }
-
-  Widget _buildVideoBubble(String videoUrl) {
-    if (videoUrl.isEmpty) {
-      // Return a placeholder or uploading animation
-      return Container(
-        color: Colors.grey[200],
-        child: Center(
-          child: CircularProgressIndicator(), // Uploading animation
-        ),
-      );
-    } else {
-      return GestureDetector(
-        onTap: () => _openFullScreenGallery(widget.mediaItems,
-            widget.mediaItems.indexWhere((item) => item.mediaUrl == videoUrl)),
-        child: AspectRatio(
-          aspectRatio: 16 / 9,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                color: Colors.black12,
-                child: Icon(Icons.videocam, color: Colors.grey, size: 50),
-              ),
-              Icon(Icons.play_circle_outline, color: Colors.white, size: 50),
-            ],
-          ),
-        ),
-      );
-    }
-  }
-
-  void _openFullScreenGallery(List<MediaItem> mediaItems, int initialIndex) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => FullScreenGallery(
-          mediaItems: mediaItems,
-          initialIndex: initialIndex,
-        ),
-      ),
     );
   }
 
@@ -290,29 +111,29 @@ class _MessageBubbleState extends State<MessageBubble> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: widget.isSender ? Color(0xFFF45F67) : Colors.grey[300], // Keeping the original color theme
+        color: widget.isSender ? Color(0xFFF45F67) : Colors.grey[300],
         borderRadius: BorderRadius.circular(12),
       ),
       child: TextField(
         controller: _editingController,
         autofocus: true,
-        cursorColor: Colors.white, // Set cursor color to white for better visibility
+        cursorColor: Colors.white,
         style: TextStyle(
           fontSize: 16,
-          color: widget.isSender ? Colors.white : Colors.black, // Keep text color consistent
+          color: widget.isSender ? Colors.white : Colors.black,
         ),
         decoration: InputDecoration(
           hintText: 'Edit message...',
           border: InputBorder.none,
         ),
-        maxLines: null, // Allow multi-line editing if needed
-        textInputAction: TextInputAction.done, // Set the keyboard action to 'done'
+        maxLines: null,
+        textInputAction: TextInputAction.done,
         onEditingComplete: () {
           String newText = _editingController.text.trim();
           if (newText.isNotEmpty) {
             widget.onEdit(newText);
             setState(() {
-              _isEditing = false; // Exit edit mode after submission
+              _isEditing = false;
             });
           }
         },
@@ -365,7 +186,7 @@ class _MessageBubbleState extends State<MessageBubble> {
   }
 
   void _showMessageOptions(BuildContext context) {
-    if (!widget.isSender) return; // Do nothing if the message is not from the sender
+    if (!widget.isSender) return;
 
     showModalBottomSheet(
       context: context,
@@ -448,128 +269,5 @@ class _MessageBubbleState extends State<MessageBubble> {
     String hour = twoDigits(timestamp.hour);
     String minute = twoDigits(timestamp.minute);
     return '$day/$month/$year, $hour:$minute';
-  }
-}
-
-// FullScreenGallery widget to display media items with swiping
-
-class FullScreenGallery extends StatefulWidget {
-  final List<MediaItem> mediaItems;
-  final int initialIndex;
-
-  FullScreenGallery({required this.mediaItems, required this.initialIndex});
-
-  @override
-  _FullScreenGalleryState createState() => _FullScreenGalleryState();
-}
-
-class _FullScreenGalleryState extends State<FullScreenGallery> {
-  late PageController _pageController;
-  VideoPlayerController? _videoPlayerController;
-  ChewieController? _chewieController;
-  int _currentIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentIndex = widget.initialIndex;
-    _pageController = PageController(initialPage: _currentIndex);
-    _initializeMedia();
-  }
-
-  void _initializeMedia() {
-    final currentMedia = widget.mediaItems[_currentIndex];
-    if (currentMedia.mediaType == 'video') {
-      _initializeVideo(currentMedia.mediaUrl);
-    }
-  }
-
-  Future<void> _initializeVideo(String videoUrl) async {
-    final cachedFile = await DefaultCacheManager().getSingleFile(videoUrl);
-    _videoPlayerController = VideoPlayerController.file(cachedFile);
-
-    await _videoPlayerController!.initialize();
-    _chewieController = ChewieController(
-      videoPlayerController: _videoPlayerController!,
-      autoPlay: true,
-      looping: false,
-      aspectRatio: _videoPlayerController!.value.aspectRatio,
-    );
-    setState(() {});
-  }
-
-  @override
-  void dispose() {
-    _videoPlayerController?.dispose();
-    _chewieController?.dispose();
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  void _onPageChanged(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
-    _videoPlayerController?.pause();
-    _videoPlayerController?.dispose();
-    _chewieController?.dispose();
-    _videoPlayerController = null;
-    _chewieController = null;
-
-    final currentMedia = widget.mediaItems[_currentIndex];
-    if (currentMedia.mediaType == 'video') {
-      _initializeVideo(currentMedia.mediaUrl);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final currentMedia = widget.mediaItems[_currentIndex];
-
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        leading: IconButton(
-          icon: Icon(Icons.close, size: 30),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-      ),
-      body: PageView.builder(
-        controller: _pageController,
-        onPageChanged: _onPageChanged,
-        itemCount: widget.mediaItems.length,
-        itemBuilder: (context, index) {
-          final mediaItem = widget.mediaItems[index];
-          if (mediaItem.mediaType == 'photo') {
-            return InteractiveViewer(
-              child: Center(
-                child: CachedNetworkImage(
-                  imageUrl: mediaItem.mediaUrl,
-                  fit: BoxFit.contain,
-                  placeholder: (context, url) => Center(child: CircularProgressIndicator()),
-                ),
-              ),
-            );
-          } else if (mediaItem.mediaType == 'video') {
-            if (index == _currentIndex && _chewieController != null) {
-              return Center(
-                child: Chewie(controller: _chewieController!),
-              );
-            } else {
-              return Center(child: CircularProgressIndicator());
-            }
-          } else {
-            return Center(
-                child: Text(
-              'Unsupported media type',
-              style: TextStyle(color: Colors.white),
-            ));
-          }
-        },
-      ),
-    );
   }
 }

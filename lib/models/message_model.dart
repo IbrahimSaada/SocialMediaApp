@@ -41,7 +41,7 @@ class Message {
       senderId: 0,
       messageType: 'loading',
       messageContent: '',
-      createdAt: DateTime.now(),
+      createdAt: DateTime.now().toLocal(),
       isEdited: false,
       isUnsent: false,
       mediaItems: [],
@@ -54,8 +54,8 @@ class Message {
 
     // Handle 'createdAt'
     DateTime createdAt;
-    if (json['createdAt'] is String) {
-      createdAt = DateTime.parse(json['createdAt']);
+if (json['createdAt'] is String) {
+  createdAt = DateTime.parse(json['createdAt']).toLocal();
     } else if (json['createdAt'] is DateTime) {
       createdAt = json['createdAt'];
     } else {
@@ -66,7 +66,7 @@ class Message {
     DateTime? readAt;
     if (json['readAt'] != null) {
       if (json['readAt'] is String) {
-        readAt = DateTime.parse(json['readAt']);
+        readAt = DateTime.parse(json['readAt']).toLocal();
       } else if (json['readAt'] is DateTime) {
         readAt = json['readAt'];
       }
