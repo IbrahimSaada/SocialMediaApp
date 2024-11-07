@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cook/models/contact_model.dart';
 import 'package:cook/models/message_model.dart';
+import 'package:cook/models/deleteuserchat.dart';
 
 class ChatService {
   final String chatBaseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Chat';
@@ -25,6 +26,26 @@ class ChatService {
     } catch (e) {
       print('Error in fetchUserChats: $e');
       throw Exception('Error fetching chats: $e');
+    }
+  }
+
+    // Delete a chat (soft delete)
+  Future<void> deleteChat(DeleteUserChat deleteUserChat) async {
+    final url = Uri.parse('$chatBaseUrl/delete-chat');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(deleteUserChat.toJson()),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to delete chat. Status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error in deleteChat: $e');
+      throw Exception('Error deleting chat: $e');
     }
   }
 
