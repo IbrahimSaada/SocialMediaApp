@@ -21,4 +21,6 @@ class UserInfo {
       profilePictureUrl: json['profilePictureUrl'] ?? '',
     );
   }
+
+  static defaultUser() {}
 }
