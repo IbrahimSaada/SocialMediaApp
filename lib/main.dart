@@ -5,10 +5,19 @@ import 'package:cook/home/home.dart';
 import 'package:cook/login/login_page.dart';
 import 'package:cook/profile/otheruserprofilepage.dart';
 import 'dart:async'; // Import this for StreamSubscription
+import 'package:firebase_core/firebase_core.dart';
+
+import 'services/pushnotificationservice';
 
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
+  // Initialize the PushNotificationService
+  await PushNotificationService().init();
+
+  runApp(MyApp());
 }
 
 class MyApp extends StatefulWidget {
