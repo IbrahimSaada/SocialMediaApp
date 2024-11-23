@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '***REMOVED***/home/add_friends_page.dart';
-import '***REMOVED***/home/notification_page.dart';
+import '***REMOVED***/notification/notification_page.dart';
 import '***REMOVED***/home/search.dart';
 import '***REMOVED***/askquestion/qna_page.dart';
 import '***REMOVED***/chat/contacts_page.dart';

@@ -9,7 +9,7 @@ import 'SignatureService.dart';
 import '../models/bookmarkrequest_model.dart';
 
 class PostService {
-  static const String apiUrl = 'https://f5c5-185-97-92-72.ngrok-free.app/api/Posts';
+  static const String apiUrl = 'https://3470-185-97-92-72.ngrok-free.app/api/Posts';
   static final LoginService _loginService = LoginService();  // Static service
   static final SignatureService _signatureService = SignatureService();  // Static service
 
