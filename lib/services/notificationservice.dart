@@ -6,7 +6,7 @@ import 'package:cook/services/LoginService.dart';
 
 class NotificationService {
   final String apiUrl =
-      'https://3470-185-97-92-72.ngrok-free.app/api/Notification';
+      'https://8a93-185-97-92-72.ngrok-free.app/api/Notification';
 
   Future<List<NotificationModel>> getUserNotifications() async {
     final int? userId = await LoginService().getUserId();

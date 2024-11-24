@@ -1,6 +1,7 @@
 // notification_page.dart
 import 'package:flutter/material.dart';
 import '../models/notification_model.dart';
+import '../page/post_details_page.dart';
 import '../services/notificationservice.dart';
 
 class NotificationPage extends StatefulWidget {
@@ -182,6 +183,25 @@ class _NotificationPageState extends State<NotificationPage> {
             onTap: () {
               // Handle notification tap
               print('Tapped on: ${notification.type}');
+              if (notification.type == 'Like' ||
+                  notification.type == 'Comment' ||
+                  notification.type == 'Share') {
+                if (notification.relatedEntityId != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          PostDetailsPage(postId: notification.relatedEntityId!),
+                    ),
+                  );
+                } else {
+                  // Handle case where related_entity_id is null
+                  print('No related entity id for this notification');
+                }
+              } else {
+                // Handle other notification types
+                print('Unhandled notification type: ${notification.type}');
+              }
             },
           ),
         ),
