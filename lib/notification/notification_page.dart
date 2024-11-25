@@ -1,8 +1,10 @@
-// notification_page.dart
+// pages/notification_page.dart
+
 import 'package:flutter/material.dart';
 import '../models/notification_model.dart';
-import '../page/post_details_page.dart';
 import '../services/notificationservice.dart';
+import '../page/post_details_page.dart';
+import '../page/comment_details_page.dart';
 
 class NotificationPage extends StatefulWidget {
   @override
@@ -54,8 +56,7 @@ class _NotificationPageState extends State<NotificationPage> {
                 // Fixed Header
                 Container(
                   color: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0, vertical: 10.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -67,8 +68,7 @@ class _NotificationPageState extends State<NotificationPage> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.filter_list,
-                            color: Color(0xFFF45F67)),
+                        icon: const Icon(Icons.filter_list, color: Color(0xFFF45F67)),
                         onPressed: () {
                           // Handle filter action
                           print('Filter icon pressed');
@@ -185,15 +185,30 @@ class _NotificationPageState extends State<NotificationPage> {
               print('Tapped on: ${notification.type}');
               if (notification.type == 'Like' ||
                   notification.type == 'Comment' ||
-                  notification.type == 'Share') {
+                  notification.type == 'Share' ||
+                  notification.type == 'Reply') {
                 if (notification.relatedEntityId != null) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          PostDetailsPage(postId: notification.relatedEntityId!),
-                    ),
-                  );
+                  if (notification.type == 'Reply' && notification.commentId != null) {
+                    // Navigate to CommentDetailsPage
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CommentDetailsPage(
+                          postId: notification.relatedEntityId!,
+                          commentId: notification.commentId!,
+                        ),
+                      ),
+                    );
+                  } else {
+                    // Navigate to PostDetailsPage
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            PostDetailsPage(postId: notification.relatedEntityId!),
+                      ),
+                    );
+                  }
                 } else {
                   // Handle case where related_entity_id is null
                   print('No related entity id for this notification');
@@ -215,6 +230,8 @@ class _NotificationPageState extends State<NotificationPage> {
         return Icons.thumb_up;
       case 'Comment':
         return Icons.comment;
+      case 'Reply':
+        return Icons.reply;
       case 'Share':
         return Icons.share;
       case 'Follow':
