@@ -6,7 +6,7 @@ import '../models/repost_details_model.dart';
 import 'LoginService.dart';
 
 class RepostDetailsService {
-  static const String baseUrl = 'https://8a93-185-97-92-72.ngrok-free.app/api/Feed/SharedPost';
+  static const String baseUrl = '***REMOVED***/api/Feed/SharedPost';
 
   final LoginService _loginService = LoginService();
 

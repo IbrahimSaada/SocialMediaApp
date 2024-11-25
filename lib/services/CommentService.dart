@@ -9,7 +9,7 @@ import 'LoginService.dart';
 import 'SignatureService.dart';
 
 class CommentService {
-  static const String apiUrl = 'https://8a93-185-97-92-72.ngrok-free.app/api/Posts';
+  static const String apiUrl = '***REMOVED***/api/Posts';
   static final LoginService _loginService = LoginService();  // Static service for token management
   static final SignatureService _signatureService = SignatureService();  // Static service for HMAC signatures
 
