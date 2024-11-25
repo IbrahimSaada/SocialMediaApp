@@ -6,7 +6,7 @@ import '../models/post_details_model.dart';
 import 'LoginService.dart';
 
 class PostDetailsService {
-  static const String baseUrl = 'https://8a93-185-97-92-72.ngrok-free.app/api/Feed/Post';
+  static const String baseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Feed/Post';
 
   final LoginService _loginService = LoginService();
 

@@ -2,10 +2,11 @@
 
 import 'package:flutter/material.dart';
 import '../models/notification_model.dart';
-import '../page/repost_details_page.dart';
 import '../services/notificationservice.dart';
 import '../page/post_details_page.dart';
 import '../page/comment_details_page.dart';
+import '../page/repost_details_page.dart';
+import '../profile/otheruserprofilepage.dart'; // Import the OtherUserProfilePage
 
 class NotificationPage extends StatefulWidget {
   @override
@@ -181,53 +182,68 @@ class _NotificationPageState extends State<NotificationPage> {
                 fontSize: 12,
               ),
             ),
-              onTap: () {
-                // Handle notification tap
-                print('Tapped on: ${notification.type}');
-                if (notification.type == 'Like' ||
+            onTap: () {
+              // Handle notification tap
+              print('Tapped on: ${notification.type}');
+              if (notification.relatedEntityId != null) {
+                // Notifications that navigate to user profiles
+                if (notification.type == 'Follow' ||
+                    notification.type == 'Accept' ||
+                    notification.type == 'FollowedBack') {
+                  // Navigate to OtherUserProfilePage
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => OtherUserProfilePage(
+                        otherUserId: notification.relatedEntityId!,
+                      ),
+                    ),
+                  );
+                }
+                // Notifications that navigate to posts
+                else if (notification.type == 'Like' ||
                     notification.type == 'Comment' ||
                     notification.type == 'Share' ||
                     notification.type == 'Reply') {
-                  if (notification.relatedEntityId != null) {
-                    if (notification.type == 'Reply' && notification.commentId != null) {
-                      // Navigate to CommentDetailsPage
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => CommentDetailsPage(
-                            postId: notification.relatedEntityId!,
-                            commentId: notification.commentId!,
-                          ),
+                  if (notification.type == 'Reply' && notification.commentId != null) {
+                    // Navigate to CommentDetailsPage
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CommentDetailsPage(
+                          postId: notification.relatedEntityId!,
+                          commentId: notification.commentId!,
                         ),
-                      );
-                    } else if (notification.type == 'Share') {
-                      // Navigate to RepostDetailsPage
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              RepostDetailsPage(sharePostId: notification.relatedEntityId!),
-                        ),
-                      );
-                    } else {
-                      // Navigate to PostDetailsPage
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              PostDetailsPage(postId: notification.relatedEntityId!),
-                        ),
-                      );
-                    }
+                      ),
+                    );
+                  } else if (notification.type == 'Share') {
+                    // Navigate to RepostDetailsPage
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            RepostDetailsPage(sharePostId: notification.relatedEntityId!),
+                      ),
+                    );
                   } else {
-                    // Handle case where related_entity_id is null
-                    print('No related entity id for this notification');
+                    // Navigate to PostDetailsPage
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            PostDetailsPage(postId: notification.relatedEntityId!),
+                      ),
+                    );
                   }
                 } else {
                   // Handle other notification types
                   print('Unhandled notification type: ${notification.type}');
                 }
-              },
+              } else {
+                // Handle case where related_entity_id is null
+                print('No related entity id for this notification');
+              }
+            },
           ),
         ),
       ),
@@ -254,6 +270,8 @@ class _NotificationPageState extends State<NotificationPage> {
         return Icons.close;
       case 'Accept':
         return Icons.check_circle;
+      case 'FollowedBack':
+        return Icons.person; // You can choose a different icon if desired
       default:
         return Icons.notifications;
     }
