@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../models/notification_model.dart';
+import '../page/repost_details_page.dart';
 import '../services/notificationservice.dart';
 import '../page/post_details_page.dart';
 import '../page/comment_details_page.dart';
@@ -180,44 +181,53 @@ class _NotificationPageState extends State<NotificationPage> {
                 fontSize: 12,
               ),
             ),
-            onTap: () {
-              // Handle notification tap
-              print('Tapped on: ${notification.type}');
-              if (notification.type == 'Like' ||
-                  notification.type == 'Comment' ||
-                  notification.type == 'Share' ||
-                  notification.type == 'Reply') {
-                if (notification.relatedEntityId != null) {
-                  if (notification.type == 'Reply' && notification.commentId != null) {
-                    // Navigate to CommentDetailsPage
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => CommentDetailsPage(
-                          postId: notification.relatedEntityId!,
-                          commentId: notification.commentId!,
+              onTap: () {
+                // Handle notification tap
+                print('Tapped on: ${notification.type}');
+                if (notification.type == 'Like' ||
+                    notification.type == 'Comment' ||
+                    notification.type == 'Share' ||
+                    notification.type == 'Reply') {
+                  if (notification.relatedEntityId != null) {
+                    if (notification.type == 'Reply' && notification.commentId != null) {
+                      // Navigate to CommentDetailsPage
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CommentDetailsPage(
+                            postId: notification.relatedEntityId!,
+                            commentId: notification.commentId!,
+                          ),
                         ),
-                      ),
-                    );
+                      );
+                    } else if (notification.type == 'Share') {
+                      // Navigate to RepostDetailsPage
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              RepostDetailsPage(sharePostId: notification.relatedEntityId!),
+                        ),
+                      );
+                    } else {
+                      // Navigate to PostDetailsPage
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              PostDetailsPage(postId: notification.relatedEntityId!),
+                        ),
+                      );
+                    }
                   } else {
-                    // Navigate to PostDetailsPage
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            PostDetailsPage(postId: notification.relatedEntityId!),
-                      ),
-                    );
+                    // Handle case where related_entity_id is null
+                    print('No related entity id for this notification');
                   }
                 } else {
-                  // Handle case where related_entity_id is null
-                  print('No related entity id for this notification');
+                  // Handle other notification types
+                  print('Unhandled notification type: ${notification.type}');
                 }
-              } else {
-                // Handle other notification types
-                print('Unhandled notification type: ${notification.type}');
-              }
-            },
+              },
           ),
         ),
       ),
