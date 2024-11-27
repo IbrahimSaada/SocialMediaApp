@@ -8,7 +8,7 @@ import '../page/post_details_page.dart';
 import '../page/comment_details_page.dart';
 import '../page/repost_details_page.dart';
 import '../profile/otheruserprofilepage.dart';
-
+import '../page/answer_details_page.dart';
 
 class NotificationPage extends StatefulWidget {
   @override
@@ -30,7 +30,8 @@ class _NotificationPageState extends State<NotificationPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notifications', style: TextStyle(color: Colors.black)),
+        title:
+            const Text('Notifications', style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Color(0xFFF45F67)),
         elevation: 0,
@@ -60,7 +61,8 @@ class _NotificationPageState extends State<NotificationPage> {
                 // Fixed Header
                 Container(
                   color: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 10.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -72,7 +74,8 @@ class _NotificationPageState extends State<NotificationPage> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.filter_list, color: Color(0xFFF45F67)),
+                        icon: const Icon(Icons.filter_list,
+                            color: Color(0xFFF45F67)),
                         onPressed: () {
                           // Handle filter action
                           print('Filter icon pressed');
@@ -187,9 +190,28 @@ class _NotificationPageState extends State<NotificationPage> {
             onTap: () {
               // Handle notification tap
               print('Tapped on: ${notification.type}');
+              print('Notification details:');
+              print('Type: ${notification.type}');
+              print('relatedEntityId: ${notification.relatedEntityId}');
+              print('commentId: ${notification.commentId}');
+
               if (notification.relatedEntityId != null) {
-                // Notifications that navigate to user profiles
-                if (notification.type == 'Follow' ||
+                if (notification.type == 'Answer' ||
+                    notification.type == 'AnswerVerified') {
+                  // For 'Answer' and 'AnswerVerified' notifications
+                  int answerId = notification.commentId!;
+                  int questionId = notification.relatedEntityId!;
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AnswerDetailsPage(
+                        answerId: answerId,
+                        questionId: questionId,
+                      ),
+                    ),
+                  );
+                } else if (notification.type == 'Follow' ||
                     notification.type == 'Accept' ||
                     notification.type == 'FollowedBack') {
                   // Navigate to OtherUserProfilePage
@@ -197,17 +219,18 @@ class _NotificationPageState extends State<NotificationPage> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => OtherUserProfilePage(
-                        otherUserId: notification.relatedEntityId!,
+                        otherUserId: notification.senderUserId!,
                       ),
                     ),
                   );
                 }
-                // Notifications that navigate to posts
+                // Handle other notification types...
                 else if (notification.type == 'Like' ||
                     notification.type == 'Comment' ||
                     notification.type == 'Share' ||
                     notification.type == 'Reply') {
-                  if (notification.type == 'Reply' && notification.commentId != null) {
+                  if (notification.type == 'Reply' &&
+                      notification.commentId != null) {
                     // Navigate to CommentDetailsPage
                     Navigator.push(
                       context,
@@ -223,8 +246,8 @@ class _NotificationPageState extends State<NotificationPage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            RepostDetailsPage(sharePostId: notification.relatedEntityId!),
+                        builder: (context) => RepostDetailsPage(
+                            sharePostId: notification.relatedEntityId!),
                       ),
                     );
                   } else {
@@ -232,14 +255,12 @@ class _NotificationPageState extends State<NotificationPage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            PostDetailsPage(postId: notification.relatedEntityId!),
+                        builder: (context) => PostDetailsPage(
+                            postId: notification.relatedEntityId!),
                       ),
                     );
                   }
-                }
-                // Notifications for question likes
-                else if (notification.type == 'QuestionLike') {
+                } else if (notification.type == 'QuestionLike') {
                   // Navigate to QuestionDetailsPage
                   Navigator.push(
                     context,
@@ -278,16 +299,18 @@ class _NotificationPageState extends State<NotificationPage> {
         return Icons.person_add;
       case 'FriendRequest':
         return Icons.person_add_alt_1;
-      case 'Verified':
+      case 'AnswerVerified':
         return Icons.verified;
       case 'Decline':
         return Icons.close;
       case 'Accept':
         return Icons.check_circle;
       case 'FollowedBack':
-        return Icons.person; // You can choose a different icon if desired
+        return Icons.person;
       case 'QuestionLike':
-        return Icons.thumb_up_alt; // Icon for question likes
+        return Icons.thumb_up_alt;
+      case 'Answer':
+        return Icons.question_answer;
       default:
         return Icons.notifications;
     }
@@ -309,7 +332,6 @@ class _NotificationPageState extends State<NotificationPage> {
   }
 
   double _getResponsiveFontSize(double screenWidth) {
-    // Adjust font size based on screen width
     if (screenWidth < 360) {
       return 12; // Small phones
     } else if (screenWidth < 720) {
