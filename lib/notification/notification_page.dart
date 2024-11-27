@@ -1,14 +1,16 @@
-// pages/notification_page.dart
+// notification_page.dart
 
 import 'package:flutter/material.dart';
 import '../models/notification_model.dart';
 import '../page/question_details_page.dart';
+import '../page/user_private_question_details_page.dart';
 import '../services/notificationservice.dart';
 import '../page/post_details_page.dart';
 import '../page/comment_details_page.dart';
 import '../page/repost_details_page.dart';
 import '../profile/otheruserprofilepage.dart';
 import '../page/answer_details_page.dart';
+import '../page/private_question_details_page.dart'; // Import the new page
 
 class NotificationPage extends StatefulWidget {
   @override
@@ -270,7 +272,30 @@ class _NotificationPageState extends State<NotificationPage> {
                       ),
                     ),
                   );
-                } else {
+                } else if (notification.type == 'PrivateQuestion') {
+                  // Navigate to PrivateQuestionDetailsPage
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PrivateQuestionDetailsPage(
+                        userId: notification.recipientUserId,
+                        questionId: notification.relatedEntityId!,
+                      ),
+                    ),
+                  );
+                }   else if (notification.type == 'PrivateQuestionAnswered') {
+          // Navigate to AcceptedPrivateQuestionDetailsPage
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AcceptedPrivateQuestionDetailsPage(
+                questionId: notification.relatedEntityId!,
+              ),
+            ),
+          );
+        }
+
+                 else {
                   // Handle other notification types
                   print('Unhandled notification type: ${notification.type}');
                 }
@@ -311,6 +336,8 @@ class _NotificationPageState extends State<NotificationPage> {
         return Icons.thumb_up_alt;
       case 'Answer':
         return Icons.question_answer;
+      case 'PrivateQuestion':
+        return Icons.question_answer; // Add this line
       default:
         return Icons.notifications;
     }
