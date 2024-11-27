@@ -2,11 +2,13 @@
 
 import 'package:flutter/material.dart';
 import '../models/notification_model.dart';
+import '../page/question_details_page.dart';
 import '../services/notificationservice.dart';
 import '../page/post_details_page.dart';
 import '../page/comment_details_page.dart';
 import '../page/repost_details_page.dart';
-import '../profile/otheruserprofilepage.dart'; // Import the OtherUserProfilePage
+import '../profile/otheruserprofilepage.dart';
+
 
 class NotificationPage extends StatefulWidget {
   @override
@@ -235,6 +237,18 @@ class _NotificationPageState extends State<NotificationPage> {
                       ),
                     );
                   }
+                }
+                // Notifications for question likes
+                else if (notification.type == 'QuestionLike') {
+                  // Navigate to QuestionDetailsPage
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => QuestionDetailsPage(
+                        questionId: notification.relatedEntityId!,
+                      ),
+                    ),
+                  );
                 } else {
                   // Handle other notification types
                   print('Unhandled notification type: ${notification.type}');
@@ -272,6 +286,8 @@ class _NotificationPageState extends State<NotificationPage> {
         return Icons.check_circle;
       case 'FollowedBack':
         return Icons.person; // You can choose a different icon if desired
+      case 'QuestionLike':
+        return Icons.thumb_up_alt; // Icon for question likes
       default:
         return Icons.notifications;
     }
