@@ -8,9 +8,9 @@ import '../services/notificationservice.dart';
 import '../page/post_details_page.dart';
 import '../page/comment_details_page.dart';
 import '../page/repost_details_page.dart';
-import '../profile/otheruserprofilepage.dart';
 import '../page/answer_details_page.dart';
 import '../page/private_question_details_page.dart';
+import '../home/add_friends_page.dart'; // Import AddFriendsPage
 
 class NotificationPage extends StatefulWidget {
   @override
@@ -197,7 +197,10 @@ class _NotificationPageState extends State<NotificationPage> {
               print('relatedEntityId: ${notification.relatedEntityId}');
               print('commentId: ${notification.commentId}');
 
-              if (notification.relatedEntityId != null) {
+              if (notification.relatedEntityId != null ||
+                  notification.type == 'Follow' ||
+                  notification.type == 'Accept' ||
+                  notification.type == 'FollowedBack') {
                 if (notification.type == 'Answer' ||
                     notification.type == 'AnswerVerified') {
                   // For 'Answer' and 'AnswerVerified' notifications
@@ -216,13 +219,11 @@ class _NotificationPageState extends State<NotificationPage> {
                 } else if (notification.type == 'Follow' ||
                     notification.type == 'Accept' ||
                     notification.type == 'FollowedBack') {
-                  // Navigate to OtherUserProfilePage
+                  // Navigate to AddFriendsPage
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => OtherUserProfilePage(
-                        otherUserId: notification.senderUserId!,
-                      ),
+                      builder: (context) => AddFriendsPage(),
                     ),
                   );
                 }
@@ -260,8 +261,8 @@ class _NotificationPageState extends State<NotificationPage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => PostDetailsPage(
-                            postId: notification.relatedEntityId!),
+                        builder: (context) =>
+                            PostDetailsPage(postId: notification.relatedEntityId!),
                       ),
                     );
                   }
