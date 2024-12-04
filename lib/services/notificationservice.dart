@@ -1,4 +1,4 @@
-// notification_service.dart
+// notificationservice.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/notification_model.dart';
@@ -6,7 +6,7 @@ import 'package:cook/services/LoginService.dart';
 
 class NotificationService {
   final String apiUrl =
-      'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Notification';
+      'https://edd7-185-97-92-121.ngrok-free.app/api/Notification';
 
   Future<List<NotificationModel>> getUserNotifications() async {
     final int? userId = await LoginService().getUserId();
