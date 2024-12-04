@@ -10,7 +10,7 @@ import '../page/comment_details_page.dart';
 import '../page/repost_details_page.dart';
 import '../profile/otheruserprofilepage.dart';
 import '../page/answer_details_page.dart';
-import '../page/private_question_details_page.dart'; // Import the new page
+import '../page/private_question_details_page.dart';
 
 class NotificationPage extends StatefulWidget {
   @override
@@ -249,7 +249,10 @@ class _NotificationPageState extends State<NotificationPage> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => RepostDetailsPage(
-                            sharePostId: notification.relatedEntityId!),
+                          postId: notification.relatedEntityId!,
+                          isMultipleShares:
+                              notification.message.contains('others'),
+                        ),
                       ),
                     );
                   } else {
@@ -283,19 +286,17 @@ class _NotificationPageState extends State<NotificationPage> {
                       ),
                     ),
                   );
-                }   else if (notification.type == 'PrivateQuestionAnswered') {
-          // Navigate to AcceptedPrivateQuestionDetailsPage
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AcceptedPrivateQuestionDetailsPage(
-                questionId: notification.relatedEntityId!,
-              ),
-            ),
-          );
-        }
-
-                 else {
+                } else if (notification.type == 'PrivateQuestionAnswered') {
+                  // Navigate to AcceptedPrivateQuestionDetailsPage
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AcceptedPrivateQuestionDetailsPage(
+                        questionId: notification.relatedEntityId!,
+                      ),
+                    ),
+                  );
+                } else {
                   // Handle other notification types
                   print('Unhandled notification type: ${notification.type}');
                 }
@@ -337,7 +338,7 @@ class _NotificationPageState extends State<NotificationPage> {
       case 'Answer':
         return Icons.question_answer;
       case 'PrivateQuestion':
-        return Icons.question_answer; // Add this line
+        return Icons.question_answer;
       default:
         return Icons.notifications;
     }
