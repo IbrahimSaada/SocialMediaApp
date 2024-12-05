@@ -6,7 +6,7 @@ import 'package:cook/services/LoginService.dart';
 
 class NotificationService {
   final String apiUrl =
-      'https://edd7-185-97-92-121.ngrok-free.app/api/Notification';
+      'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Notification';
 
   Future<List<NotificationModel>> getUserNotifications() async {
     final int? userId = await LoginService().getUserId();
