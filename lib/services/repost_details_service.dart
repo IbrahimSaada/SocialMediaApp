@@ -7,7 +7,7 @@ import 'LoginService.dart';
 
 class RepostDetailsService {
   static const String baseUrl =
-      'https://edd7-185-97-92-121.ngrok-free.app/api/Feed';
+      '***REMOVED***/api/Feed';
 
   final LoginService _loginService = LoginService();
 
