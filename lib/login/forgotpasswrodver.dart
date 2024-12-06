@@ -55,8 +55,11 @@ class _ForgotpasswrodverPageState extends State<ForgotpasswrodverPage> {
       if (isValid) {
         Navigator.of(context).push(
           MaterialPageRoute(
-              builder: (context) => NewpasswordPage(
-                  emailOrPhone: widget.emailOrPhone, verificationCode: code)),
+            builder: (context) => NewpasswordPage(
+              emailOrPhone: widget.emailOrPhone,
+              verificationCode: code,
+            ),
+          ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -88,40 +91,35 @@ class _ForgotpasswrodverPageState extends State<ForgotpasswrodverPage> {
     final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            colors: [
-              primaryColor.withOpacity(0.9),
-              primaryColor.withOpacity(0.8),
-              primaryColor.withOpacity(0.4),
-            ],
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            const SizedBox(height: 80),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  FadeInUp(
-                    duration: const Duration(milliseconds: 1000),
-                    child: const Text(
-                      "Verify Your Account",
-                      style: TextStyle(color: Colors.white, fontSize: 40),
-                    ),
-                  ),
-                ],
-              ),
+      body: SingleChildScrollView(
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              colors: [
+                primaryColor.withOpacity(0.9),
+                primaryColor.withOpacity(0.8),
+                primaryColor.withOpacity(0.4),
+              ],
             ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: Container(
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const SizedBox(height: 80),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: FadeInUp(
+                  duration: const Duration(milliseconds: 1000),
+                  child: const Text(
+                    "Verify Your Account",
+                    style: TextStyle(color: Colors.white, fontSize: 40),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.only(
@@ -161,7 +159,7 @@ class _ForgotpasswrodverPageState extends State<ForgotpasswrodverPage> {
                                 focusNode: _focusNodes[index],
                                 textAlign: TextAlign.center,
                                 decoration: const InputDecoration(
-                                  counterText: "", // Hide the counter text
+                                  counterText: "",
                                   hintText: "",
                                   border: InputBorder.none,
                                 ),
@@ -220,8 +218,8 @@ class _ForgotpasswrodverPageState extends State<ForgotpasswrodverPage> {
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
