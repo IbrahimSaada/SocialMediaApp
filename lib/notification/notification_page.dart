@@ -1,5 +1,3 @@
-// notification_page.dart
-
 import 'package:flutter/material.dart';
 import '../models/notification_model.dart';
 import '../page/question_details_page.dart';
@@ -10,7 +8,7 @@ import '../page/comment_details_page.dart';
 import '../page/repost_details_page.dart';
 import '../page/answer_details_page.dart';
 import '../page/private_question_details_page.dart';
-import '../home/add_friends_page.dart'; // Import AddFriendsPage
+import '../home/add_friends_page.dart';
 
 class NotificationPage extends StatefulWidget {
   @override
@@ -32,8 +30,7 @@ class _NotificationPageState extends State<NotificationPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title:
-            const Text('Notifications', style: TextStyle(color: Colors.black)),
+        title: const Text('Notifications', style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Color(0xFFF45F67)),
         elevation: 0,
@@ -44,7 +41,6 @@ class _NotificationPageState extends State<NotificationPage> {
           if (snapshot.hasData) {
             List<NotificationModel> notifications = snapshot.data!;
 
-            // Separate notifications into groups: Today and Earlier This Week
             final todayNotifications = notifications.where((notification) {
               final now = DateTime.now();
               return notification.createdAt.day == now.day &&
@@ -60,7 +56,6 @@ class _NotificationPageState extends State<NotificationPage> {
 
             return Column(
               children: [
-                // Fixed Header
                 Container(
                   color: Colors.white,
                   padding: const EdgeInsets.symmetric(
@@ -79,19 +74,16 @@ class _NotificationPageState extends State<NotificationPage> {
                         icon: const Icon(Icons.filter_list,
                             color: Color(0xFFF45F67)),
                         onPressed: () {
-                          // Handle filter action
                           print('Filter icon pressed');
                         },
                       ),
                     ],
                   ),
                 ),
-                // Scrollable Notifications
                 Expanded(
                   child: ListView(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     children: [
-                      // Today Notifications Section
                       if (todayNotifications.isNotEmpty)
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 8.0),
@@ -105,7 +97,6 @@ class _NotificationPageState extends State<NotificationPage> {
                         ),
                       ...todayNotifications.map((notification) =>
                           buildNotificationCard(notification, screenWidth)),
-                      // Earlier This Week Notifications Section
                       if (earlierNotifications.isNotEmpty)
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 8.0),
@@ -154,7 +145,6 @@ class _NotificationPageState extends State<NotificationPage> {
           ),
         ),
         onDismissed: (direction) {
-          // Handle delete action
           print('Notification dismissed: ${notification.message}');
         },
         child: Card(
@@ -190,12 +180,12 @@ class _NotificationPageState extends State<NotificationPage> {
               ),
             ),
             onTap: () {
-              // Handle notification tap
               print('Tapped on: ${notification.type}');
               print('Notification details:');
               print('Type: ${notification.type}');
               print('relatedEntityId: ${notification.relatedEntityId}');
               print('commentId: ${notification.commentId}');
+              print('aggregated_answer_ids: ${notification.aggregated_answer_ids}');
 
               if (notification.relatedEntityId != null ||
                   notification.type == 'Follow' ||
@@ -204,14 +194,27 @@ class _NotificationPageState extends State<NotificationPage> {
                 if (notification.type == 'Answer' ||
                     notification.type == 'AnswerVerified') {
                   // For 'Answer' and 'AnswerVerified' notifications
-                  int answerId = notification.commentId!;
                   int questionId = notification.relatedEntityId!;
+                  // If we have aggregated_answer_ids, parse them
+                  List<int> answerIds = [];
+                  if (notification.aggregated_answer_ids != null &&
+                      notification.aggregated_answer_ids!.isNotEmpty) {
+                    answerIds = notification.aggregated_answer_ids!
+                        .split(',')
+                        .map((id) => int.parse(id.trim()))
+                        .toList();
+                  } else {
+                    // fallback to single commentId as answerId
+                    if (notification.commentId != null) {
+                      answerIds = [notification.commentId!];
+                    }
+                  }
 
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => AnswerDetailsPage(
-                        answerId: answerId,
+                        answerIds: answerIds,
                         questionId: questionId,
                       ),
                     ),
@@ -226,15 +229,12 @@ class _NotificationPageState extends State<NotificationPage> {
                       builder: (context) => AddFriendsPage(),
                     ),
                   );
-                }
-                // Handle other notification types...
-                else if (notification.type == 'Like' ||
+                } else if (notification.type == 'Like' ||
                     notification.type == 'Comment' ||
                     notification.type == 'Share' ||
                     notification.type == 'Reply') {
                   if (notification.type == 'Reply' &&
                       notification.commentId != null) {
-                    // Navigate to CommentDetailsPage
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -245,7 +245,6 @@ class _NotificationPageState extends State<NotificationPage> {
                       ),
                     );
                   } else if (notification.type == 'Share') {
-                    // Navigate to RepostDetailsPage
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -257,7 +256,6 @@ class _NotificationPageState extends State<NotificationPage> {
                       ),
                     );
                   } else {
-                    // Navigate to PostDetailsPage
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -267,7 +265,6 @@ class _NotificationPageState extends State<NotificationPage> {
                     );
                   }
                 } else if (notification.type == 'QuestionLike') {
-                  // Navigate to QuestionDetailsPage
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -277,7 +274,6 @@ class _NotificationPageState extends State<NotificationPage> {
                     ),
                   );
                 } else if (notification.type == 'PrivateQuestion') {
-                  // Navigate to PrivateQuestionDetailsPage
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -288,7 +284,6 @@ class _NotificationPageState extends State<NotificationPage> {
                     ),
                   );
                 } else if (notification.type == 'PrivateQuestionAnswered') {
-                  // Navigate to AcceptedPrivateQuestionDetailsPage
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -298,11 +293,9 @@ class _NotificationPageState extends State<NotificationPage> {
                     ),
                   );
                 } else {
-                  // Handle other notification types
                   print('Unhandled notification type: ${notification.type}');
                 }
               } else {
-                // Handle case where related_entity_id is null
                 print('No related entity id for this notification');
               }
             },
@@ -362,11 +355,11 @@ class _NotificationPageState extends State<NotificationPage> {
 
   double _getResponsiveFontSize(double screenWidth) {
     if (screenWidth < 360) {
-      return 12; // Small phones
+      return 12;
     } else if (screenWidth < 720) {
-      return 14; // Medium devices
+      return 14;
     } else {
-      return 16; // Larger screens
+      return 16;
     }
   }
 }
