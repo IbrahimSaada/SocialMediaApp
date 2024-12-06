@@ -9,7 +9,8 @@ class NotificationModel {
   final String message;
   final DateTime createdAt;
   final bool isRead;
-  final int? commentId; // For comment and reply notifications
+  final int? commentId; 
+  final String? aggregated_answer_ids; // New attribute
 
   NotificationModel({
     required this.notificationId,
@@ -21,6 +22,7 @@ class NotificationModel {
     required this.createdAt,
     required this.isRead,
     this.commentId,
+    this.aggregated_answer_ids,
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
@@ -34,6 +36,7 @@ class NotificationModel {
       createdAt: DateTime.parse(json['createdAt'] ?? json['created_at']),
       isRead: json['isRead'] ?? json['is_read'] ?? false,
       commentId: json['commentId'] ?? json['comment_id'],
+      aggregated_answer_ids: json['aggregated_answer_ids'],
     );
   }
 }
