@@ -6,7 +6,7 @@ import 'SessionExpiredException.dart';
 
 class LoginService {
   final String baseUrl =
-      'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api'; // Base URL for API
+      'https://fe3c-185-97-92-121.ngrok-free.app/api'; // Base URL for API
   final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
   final SignatureService _signatureService = SignatureService();  // Using SignatureService for HMAC
 
@@ -37,9 +37,11 @@ class LoginService {
       var token = data['token']; // Access token
       var refreshToken = data['refreshToken']; // Refresh token
       var userId = data['userId']; // Get user ID from the response
+      var fullname = data['fullname']; // Fullname from response
       var profilePic = data['profilePic'];
       var expiration = DateTime.now().add(Duration(minutes: 2)); // Set token expiration time
       await _storeTokenAndUserId(token, refreshToken, userId, expiration, profilePic);
+      await _secureStorage.write(key: 'fullname', value: fullname); // Save fullname
     } else {
       throw Exception('Failed to login: ${response.body}');
     }
@@ -171,6 +173,15 @@ Future<void> refreshAccessToken() async {
       return int.parse(userIdString);
     }
     return null;
+  }
+
+  // Retrieve fullname from secure storage
+  Future<String> getFullname() async {
+    String? fullname = await _secureStorage.read(key: 'fullname');
+    if (fullname != null) {
+      return fullname;
+    }
+    return "User"; // Default if fullname is not found
   }
 
   // Get the token expiration time from secure storage

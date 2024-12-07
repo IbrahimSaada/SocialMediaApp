@@ -10,9 +10,9 @@ import 'package:cook/services/signalr_service.dart';
 import 'package:intl/intl.dart';
 
 class ContactsPage extends StatefulWidget {
-  final String username;
+  final String fullname;
   final int userId;
-  ContactsPage({required this.username, required this.userId});
+  ContactsPage({required this.fullname, required this.userId});
 
   @override
   _ContactsPageState createState() => _ContactsPageState();
@@ -235,7 +235,7 @@ class _ContactsPageState extends State<ContactsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.username,
+          widget.fullname,
           style: TextStyle(
               color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
         ),
