@@ -62,7 +62,7 @@ class _MessageBubbleState extends State<MessageBubble> {
             constraints:
                 BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
             margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: isDeleted
                   ? Colors.grey[300]
@@ -84,7 +84,7 @@ class _MessageBubbleState extends State<MessageBubble> {
               ],
             ),
             child: _isEditing
-                ? _buildEditField()
+                ? _buildEditField(context)
                 : _buildMessageContent(isDeleted),
           ),
         ),
@@ -107,38 +107,51 @@ class _MessageBubbleState extends State<MessageBubble> {
     );
   }
 
-  Widget _buildEditField() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: widget.isSender ? Color(0xFFF45F67) : Colors.grey[300],
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: TextField(
-        controller: _editingController,
-        autofocus: true,
-        cursorColor: Colors.white,
-        style: TextStyle(
-          fontSize: 16,
-          color: widget.isSender ? Colors.white : Colors.black,
+  Widget _buildEditField(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _editingController,
+            autofocus: true,
+            cursorColor: widget.isSender ? Colors.white : Colors.black,
+            style: TextStyle(
+              fontSize: 16,
+              color: widget.isSender ? Colors.white : Colors.black,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Edit message...',
+              hintStyle: TextStyle(
+                color: widget.isSender ? Colors.white70 : Colors.black54,
+              ),
+              border: InputBorder.none,
+            ),
+            maxLines: null,
+            textInputAction: TextInputAction.done,
+            onEditingComplete: () {
+              _finishEditing();
+            },
+          ),
         ),
-        decoration: InputDecoration(
-          hintText: 'Edit message...',
-          border: InputBorder.none,
+        IconButton(
+          icon: Icon(Icons.check, color: widget.isSender ? Colors.white : Colors.black),
+          onPressed: () {
+            _finishEditing();
+          },
         ),
-        maxLines: null,
-        textInputAction: TextInputAction.done,
-        onEditingComplete: () {
-          String newText = _editingController.text.trim();
-          if (newText.isNotEmpty) {
-            widget.onEdit(newText);
-            setState(() {
-              _isEditing = false;
-            });
-          }
-        },
-      ),
+      ],
     );
+  }
+
+  void _finishEditing() {
+    String newText = _editingController.text.trim();
+    if (newText.isNotEmpty && newText != widget.message) {
+      widget.onEdit(newText);
+    }
+    setState(() {
+      _isEditing = false;
+    });
+    FocusScope.of(context).unfocus();
   }
 
   Widget _buildTimestampAndEditedLabel() {
@@ -212,6 +225,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                     onTap: () {
                       Navigator.pop(context);
                       widget.onDeleteForAll();
+                      FocusScope.of(context).unfocus();
                     },
                   ),
               ],

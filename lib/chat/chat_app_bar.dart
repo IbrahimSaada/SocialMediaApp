@@ -1,16 +1,16 @@
-// chat_app_bar.dart
-
 import 'package:flutter/material.dart';
 
 class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String username;
   final String profileImageUrl;
   final String status;
+  final VoidCallback onProfileTap;
 
   ChatAppBar({
     required this.username,
     required this.profileImageUrl,
     required this.status,
+    required this.onProfileTap,
   });
 
   @override
@@ -36,39 +36,42 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           Navigator.pop(context);
         },
       ),
-      title: Row(
-        children: [
-          Stack(
-            children: [
-              CircleAvatar(
-                backgroundImage: NetworkImage(profileImageUrl),
-                radius: 18,
-              ),
-            ],
-          ),
-          SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                username,
-                style: TextStyle(
-                  color: Color(0xFFF45F67),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
+      title: GestureDetector(
+        onTap: onProfileTap,
+        child: Row(
+          children: [
+            Stack(
+              children: [
+                CircleAvatar(
+                  backgroundImage: NetworkImage(profileImageUrl),
+                  radius: 18,
                 ),
-              ),
-              SizedBox(height: 2),
-              Text(
-                status, // Display "Typing..." or "Online"
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 12,
+              ],
+            ),
+            SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  username,
+                  style: TextStyle(
+                    color: Color(0xFFF45F67),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+                SizedBox(height: 2),
+                Text(
+                  status,
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
       centerTitle: false,
     );

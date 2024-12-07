@@ -50,6 +50,7 @@ class _MessageInputState extends State<MessageInput> {
         _isTyping = false;
       });
       widget.onTypingStopped();
+      FocusScope.of(context).unfocus();
     }
   }
 
