@@ -256,4 +256,62 @@ class CommentService {
       rethrow;
     }
   }
+ // Fetch a specific comment thread (requires JWT)
+  static Future<Comment> fetchCommentThread(int postId, int commentId) async {
+    try {
+      if (!await _loginService.isLoggedIn()) {
+        throw Exception("User not logged in.");
+      }
+
+      String? token = await _loginService.getToken();
+
+      final response = await http.get(
+        Uri.parse('$apiUrl/$postId/Comments/$commentId/Thread'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+          'Authorization': 'Bearer $token', // JWT token
+        },
+      );
+
+      if (response.statusCode == 401) {
+        print('JWT token is invalid or expired. Attempting to refresh token.');
+        try {
+          await _loginService.refreshAccessToken();
+          token = await _loginService.getToken();
+          print('Token refreshed successfully.');
+
+          // Retry the request with the refreshed token
+          final retryResponse = await http.get(
+            Uri.parse('$apiUrl/$postId/Comments/$commentId/Thread'),
+            headers: <String, String>{
+              'Content-Type': 'application/json; charset=UTF-8',
+              'Authorization': 'Bearer $token', // JWT token
+            },
+          );
+
+          if (retryResponse.statusCode == 401) {
+            throw Exception('Session expired or refresh token invalid.');
+          } else if (retryResponse.statusCode == 200) {
+            Map<String, dynamic> data = jsonDecode(retryResponse.body);
+            return Comment.fromJson(data);
+          } else {
+            throw Exception('Failed to load comment thread after token refresh.');
+          }
+        } catch (e) {
+          print('Caught exception during token refresh: $e');
+          throw Exception('Failed to refresh token: Invalid or expired refresh token.');
+        }
+      }
+
+      if (response.statusCode == 200) {
+        Map<String, dynamic> data = jsonDecode(response.body);
+        return Comment.fromJson(data);
+      } else {
+        throw Exception('Failed to load comment thread.');
+      }
+    } catch (e) {
+      print('Error in fetchCommentThread: $e');
+      rethrow;
+    }
+  }
 }
