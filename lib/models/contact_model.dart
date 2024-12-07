@@ -9,6 +9,9 @@ class Contact {
   final String recipientUsername;
   final String recipientProfilePic;
   final DateTime createdAt;
+  final String lastMessage;
+  final DateTime lastMessageTime;
+  final int unreadCount;
 
   Contact({
     required this.chatId,
@@ -19,6 +22,9 @@ class Contact {
     required this.recipientUsername,
     required this.recipientProfilePic,
     required this.createdAt,
+    required this.lastMessage,
+    required this.lastMessageTime,
+    required this.unreadCount,
   });
 
   factory Contact.fromJson(Map<String, dynamic> json) {
@@ -31,6 +37,11 @@ class Contact {
       recipientUsername: json['recipientUsername'],
       recipientProfilePic: json['recipientProfilePic'],
       createdAt: DateTime.parse(json['createdAt']),
+      lastMessage: json['lastMessage'] ?? '',
+      lastMessageTime: json['lastMessageTime'] != null
+          ? DateTime.parse(json['lastMessageTime'])
+          : DateTime.now(),
+      unreadCount: json['unreadCount'] ?? 0,
     );
   }
 }

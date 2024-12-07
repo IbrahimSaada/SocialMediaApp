@@ -7,18 +7,19 @@ import 'package:cook/models/message_model.dart';
 import 'package:cook/models/deleteuserchat.dart';
 
 class ChatService {
-  final String chatBaseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Chat';
-  final String messageBaseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Message';
+  final String chatBaseUrl = 'https://fe3c-185-97-92-121.ngrok-free.app/api/Chat';
+  final String messageBaseUrl = 'https://fe3c-185-97-92-121.ngrok-free.app/api/Message';
 
   // Fetch user chats
   Future<List<Contact>> fetchUserChats(int userId) async {
-    final url = Uri.parse('$chatBaseUrl/get-chats/$userId'); // Corrected path
+    final url = Uri.parse('$chatBaseUrl/get-chats/$userId');
 
     try {
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
         List<dynamic> data = json.decode(response.body);
+        // Data now includes lastMessage, lastMessageTime, unreadCount
         return data.map((json) => Contact.fromJson(json)).toList();
       } else {
         throw Exception('Failed to load chats');
@@ -29,7 +30,7 @@ class ChatService {
     }
   }
 
-    // Delete a chat (soft delete)
+  // Delete a chat (soft delete)
   Future<void> deleteChat(DeleteUserChat deleteUserChat) async {
     final url = Uri.parse('$chatBaseUrl/delete-chat');
 

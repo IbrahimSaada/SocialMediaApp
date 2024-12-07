@@ -1,4 +1,4 @@
-import 'dart:async'; // Import for Timer
+import 'dart:async';
 import 'package:cook/models/deleteuserchat.dart';
 import 'package:flutter/material.dart';
 import 'contact_tile.dart';
@@ -7,6 +7,7 @@ import 'package:cook/services/chat_service.dart';
 import 'package:cook/models/contact_model.dart';
 import 'pluscontact.dart';
 import 'package:cook/services/signalr_service.dart';
+import 'package:intl/intl.dart';
 
 class ContactsPage extends StatefulWidget {
   final String username;
@@ -39,6 +40,12 @@ class _ContactsPageState extends State<ContactsPage> {
       onChatCreated: _onChatCreated,
       onNewChatNotification: _onNewChatNotification,
       onError: _onError,
+      // Real-time updates for the contacts page
+      onReceiveMessage: _onChatUpdate,
+      onMessageSent: _onChatUpdate,
+      onMessageEdited: _onChatUpdate,
+      onMessageUnsent: _onChatUpdate,
+      onMessagesRead: _onChatUpdate,
     );
   }
 
@@ -58,12 +65,22 @@ class _ContactsPageState extends State<ContactsPage> {
     );
   }
 
+  void _onChatUpdate() {
+    // When a message is received/sent/edited/unsent/read,
+    // refresh the chat list to update lastMessage/unreadCounts
+    _fetchChats();
+  }
+
   Future<void> _fetchChats() async {
     try {
       final chats = await _chatService.fetchUserChats(widget.userId);
       setState(() {
         _chats = chats;
-        _filteredChats = chats;
+        _filteredChats = chats
+            .where((chat) => _getDisplayName(chat)
+                .toLowerCase()
+                .contains(_searchQuery.toLowerCase()))
+            .toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -97,75 +114,74 @@ class _ContactsPageState extends State<ContactsPage> {
         : chat.initiatorProfilePic;
   }
 
+  String _formatLastMessageTime(DateTime time) {
+    final now = DateTime.now();
+    if (time.year == now.year && time.month == now.month && time.day == now.day) {
+      return DateFormat('h:mm a').format(time);
+    } else {
+      return DateFormat('dd/MM/yyyy').format(time);
+    }
+  }
+
   void _toggleMute(int index) {
     setState(() {
       muteStatus[index] = !(muteStatus[index] ?? false);
     });
   }
 
-Future<void> _deleteChatWithUndo(Contact chat) async {
-  // Temporarily remove the chat from the displayed list
-  setState(() {
-    _chats.removeWhere((c) => c.chatId == chat.chatId);
-    _filteredChats.removeWhere((c) => c.chatId == chat.chatId);
-  });
+  Future<void> _deleteChatWithUndo(Contact chat) async {
+    setState(() {
+      _chats.removeWhere((c) => c.chatId == chat.chatId);
+      _filteredChats.removeWhere((c) => c.chatId == chat.chatId);
+    });
 
-  // Flag to track whether to delete or not
-  bool shouldDelete = true;
+    bool shouldDelete = true;
 
-  // Show Snackbar with "Undo" action
-  final snackBar = ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text('Chat deleted'),
-      action: SnackBarAction(
-        label: 'Undo',
-        onPressed: () {
-          setState(() {
-            // Check if the chat is not already in the lists before adding
-            if (!_chats.any((c) => c.chatId == chat.chatId)) {
-              _chats.add(chat);
-            }
-            if (!_filteredChats.any((c) => c.chatId == chat.chatId)) {
-              _filteredChats.add(chat);
-            }
-          });
-          shouldDelete = false; // Cancel the delete
-        },
+    final snackBar = ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Chat deleted'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () {
+            setState(() {
+              if (!_chats.any((c) => c.chatId == chat.chatId)) {
+                _chats.add(chat);
+              }
+              if (!_filteredChats.any((c) => c.chatId == chat.chatId)) {
+                _filteredChats.add(chat);
+              }
+            });
+            shouldDelete = false; 
+          },
+        ),
+        duration: Duration(seconds: 3),
       ),
-      duration: Duration(seconds: 3), // Snackbar duration
-    ),
-  );
+    );
 
-  // Wait for the Snackbar to disappear before finalizing deletion
-  await snackBar.closed;
+    await snackBar.closed;
 
-  // Perform deletion only if "Undo" was not pressed
-  if (shouldDelete) {
-    try {
-      await _chatService.deleteChat(DeleteUserChat(
-        chatId: chat.chatId,
-        userId: widget.userId,
-      ));
-    } catch (e) {
-      print('Error deleting chat: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete chat')),
-      );
-
-      // If deletion fails, add the chat back to the list if it's not already there
-      setState(() {
-        if (!_chats.any((c) => c.chatId == chat.chatId)) {
-          _chats.add(chat);
-        }
-        if (!_filteredChats.any((c) => c.chatId == chat.chatId)) {
-          _filteredChats.add(chat);
-        }
-      });
+    if (shouldDelete) {
+      try {
+        await _chatService.deleteChat(DeleteUserChat(
+          chatId: chat.chatId,
+          userId: widget.userId,
+        ));
+      } catch (e) {
+        print('Error deleting chat: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete chat')),
+        );
+        setState(() {
+          if (!_chats.any((c) => c.chatId == chat.chatId)) {
+            _chats.add(chat);
+          }
+          if (!_filteredChats.any((c) => c.chatId == chat.chatId)) {
+            _filteredChats.add(chat);
+          }
+        });
+      }
     }
   }
-}
-
-
 
   void _navigateToChat(BuildContext context, Contact chat) {
     int recipientUserId;
@@ -184,11 +200,15 @@ Future<void> _deleteChatWithUndo(Contact chat) async {
           recipientUserId: recipientUserId,
           contactName: _getDisplayName(chat),
           profileImageUrl: _getDisplayProfileImage(chat),
-          isOnline: true, // Placeholder, replace with actual status if available
+          isOnline: true,
           lastSeen: chat.createdAt.toString(),
         ),
       ),
-    );
+    ).then((_) {
+      // Now that we have real-time updates, we may not need to refresh here,
+      // but let's keep it in case something wasn't caught by SignalR.
+      _fetchChats();
+    });
   }
 
   void _navigateToNewChatPage() {
@@ -200,7 +220,6 @@ Future<void> _deleteChatWithUndo(Contact chat) async {
         ),
       ),
     ).then((_) {
-      // Refresh chats when returning from NewChatPage
       _fetchChats();
     });
   }
@@ -262,27 +281,28 @@ Future<void> _deleteChatWithUndo(Contact chat) async {
                         ),
                       )
                     : ListView.builder(
-                      itemCount: _filteredChats.length,
-                      itemBuilder: (context, index) {
-                        final chat = _filteredChats[index];
-                        return GestureDetector(
-                          onTap: () => _navigateToChat(context, chat),
-                          child: ContactTile(
-                            contactName: _getDisplayName(chat),
-                            lastMessage: 'Hey, how’s it going?', // Placeholder message
-                            profileImage: _getDisplayProfileImage(chat),
-                            isOnline: true, // Placeholder for online status
-                            lastActive: '5 mins ago', // Placeholder for last active status
-                            isMuted: muteStatus[index] ?? false,
-                            unreadMessages: 0, // Placeholder, replace with actual unread count if available
-                            isTyping: false, // Placeholder for typing status
-                            onMuteToggle: () => _toggleMute(index),
-                            onDelete: () => _deleteChatWithUndo(chat), // Calls the updated delete method
-                          ),
-                        );
-                      },
-                    )
-
+                        itemCount: _filteredChats.length,
+                        itemBuilder: (context, index) {
+                          final chat = _filteredChats[index];
+                          return GestureDetector(
+                            onTap: () => _navigateToChat(context, chat),
+                            child: ContactTile(
+                              contactName: _getDisplayName(chat),
+                              lastMessage: chat.lastMessage.isNotEmpty
+                                  ? chat.lastMessage
+                                  : 'No messages yet',
+                              profileImage: _getDisplayProfileImage(chat),
+                              isOnline: true, // Placeholder if needed
+                              lastActive: _formatLastMessageTime(chat.lastMessageTime),
+                              isMuted: muteStatus[index] ?? false,
+                              unreadMessages: chat.unreadCount,
+                              isTyping: false,
+                              onMuteToggle: () => _toggleMute(index),
+                              onDelete: () => _deleteChatWithUndo(chat),
+                            ),
+                          );
+                        },
+                      ),
           ),
         ],
       ),

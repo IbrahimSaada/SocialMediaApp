@@ -29,6 +29,12 @@ class ContactTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // If there are unread messages, make lastMessage text bold
+    final TextStyle lastMessageStyle = TextStyle(
+      fontWeight: unreadMessages > 0 ? FontWeight.bold : FontWeight.normal,
+      color: Colors.grey[800],
+    );
+
     return Dismissible(
       key: UniqueKey(),
       background: Container(
@@ -117,14 +123,18 @@ class ContactTile extends StatelessWidget {
             if (isMuted) Icon(Icons.volume_off, color: Colors.grey),
           ],
         ),
-        subtitle: Text(
-          isTyping
-              ? 'typing...'
-              : isOnline
-                  ? 'Active now'
-                  : 'Active $lastActive',
-          style: TextStyle(color: Colors.grey),
-        ),
+        subtitle: isTyping
+            ? Text('typing...', style: TextStyle(color: Colors.grey))
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(lastMessage, style: lastMessageStyle),
+                  Text(
+                    isOnline ? 'Active now' : 'Active $lastActive',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                ],
+              ),
         trailing: unreadMessages > 0
             ? CircleAvatar(
                 backgroundColor: Colors.red,

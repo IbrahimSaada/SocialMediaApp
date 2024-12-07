@@ -5,7 +5,7 @@ import 'dart:convert';
 import 'package:cook/models/usercontact_model.dart';
 
 class ContactService {
-  final String baseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Chat';
+  final String baseUrl = 'https://fe3c-185-97-92-121.ngrok-free.app/api/Chat';
 
   // Fetch contacts with pagination and optional search
   Future<List<UserContact>> fetchContacts(
