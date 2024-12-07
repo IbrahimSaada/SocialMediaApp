@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:cook/home/add_friends_page.dart';
-import 'package:cook/home/notification_page.dart';
+import 'package:cook/notification/notification_page.dart';
 import 'package:cook/home/search.dart';
 import 'package:cook/askquestion/qna_page.dart';
 import 'package:cook/chat/contacts_page.dart';
