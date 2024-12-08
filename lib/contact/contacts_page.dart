@@ -27,6 +27,10 @@ class _ContactsPageState extends State<ContactsPage> {
   String _searchQuery = '';
   bool _isLoading = true;
 
+  // Map to track typing status by chatId
+  Map<int, bool> _isTypingMap = {};
+  Map<int, Timer?> _typingTimers = {};
+
   @override
   void initState() {
     super.initState();
@@ -46,7 +50,46 @@ class _ContactsPageState extends State<ContactsPage> {
       onMessageEdited: _onChatUpdate,
       onMessageUnsent: _onChatUpdate,
       onMessagesRead: _onChatUpdate,
+      onUserTyping: _onUserTyping, // New callback for typing
     );
+  }
+
+  void _onUserTyping(int senderId) {
+    if (senderId != widget.userId) {
+      // Find the chat associated with this senderId
+      final chat = _chats.firstWhere(
+          (c) =>
+              (c.initiatorUserId == senderId && c.recipientUserId == widget.userId) ||
+              (c.recipientUserId == senderId && c.initiatorUserId == widget.userId),
+          orElse: () => Contact(
+              chatId: 0,
+              initiatorUserId: 0,
+              initiatorUsername: '',
+              recipientUserId: 0,
+              recipientUsername: '',
+              initiatorProfilePic: '',
+              recipientProfilePic: '',
+              lastMessage: '',
+              lastMessageTime: DateTime.now(),
+              unreadCount: 0,
+              createdAt: DateTime.now()));
+
+      if (chat.chatId != 0) {
+        setState(() {
+          _isTypingMap[chat.chatId] = true;
+        });
+
+        // Reset any existing timer
+        _typingTimers[chat.chatId]?.cancel();
+
+        // Typing status should disappear after 3 seconds if no further typing events
+        _typingTimers[chat.chatId] = Timer(Duration(seconds: 3), () {
+          setState(() {
+            _isTypingMap[chat.chatId] = false;
+          });
+        });
+      }
+    }
   }
 
   void _onChatCreated(dynamic chatDto) {
@@ -66,8 +109,6 @@ class _ContactsPageState extends State<ContactsPage> {
   }
 
   void _onChatUpdate() {
-    // When a message is received/sent/edited/unsent/read,
-    // refresh the chat list to update lastMessage/unreadCounts
     _fetchChats();
   }
 
@@ -205,8 +246,6 @@ class _ContactsPageState extends State<ContactsPage> {
         ),
       ),
     ).then((_) {
-      // Now that we have real-time updates, we may not need to refresh here,
-      // but let's keep it in case something wasn't caught by SignalR.
       _fetchChats();
     });
   }
@@ -227,6 +266,9 @@ class _ContactsPageState extends State<ContactsPage> {
   @override
   void dispose() {
     _signalRService.hubConnection.stop();
+    for (var timer in _typingTimers.values) {
+      timer?.cancel();
+    }
     super.dispose();
   }
 
@@ -284,6 +326,9 @@ class _ContactsPageState extends State<ContactsPage> {
                         itemCount: _filteredChats.length,
                         itemBuilder: (context, index) {
                           final chat = _filteredChats[index];
+                          final chatId = chat.chatId;
+                          final isTyping = _isTypingMap[chatId] ?? false;
+
                           return GestureDetector(
                             onTap: () => _navigateToChat(context, chat),
                             child: ContactTile(
@@ -292,11 +337,11 @@ class _ContactsPageState extends State<ContactsPage> {
                                   ? chat.lastMessage
                                   : 'No messages yet',
                               profileImage: _getDisplayProfileImage(chat),
-                              isOnline: true, // Placeholder if needed
+                              isOnline: true,
                               lastActive: _formatLastMessageTime(chat.lastMessageTime),
                               isMuted: muteStatus[index] ?? false,
                               unreadMessages: chat.unreadCount,
-                              isTyping: false,
+                              isTyping: isTyping,
                               onMuteToggle: () => _toggleMute(index),
                               onDelete: () => _deleteChatWithUndo(chat),
                             ),

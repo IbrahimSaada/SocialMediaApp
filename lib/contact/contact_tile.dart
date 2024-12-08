@@ -1,5 +1,3 @@
-// widgets/contact_tile.dart
-
 import 'package:flutter/material.dart';
 
 class ContactTile extends StatelessWidget {

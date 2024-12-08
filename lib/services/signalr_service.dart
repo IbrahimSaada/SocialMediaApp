@@ -112,12 +112,13 @@ class SignalRService {
     Function(dynamic chatDto)? onNewChatNotification,
     Function(String errorMessage)? onError,
 
-    // New callbacks to handle real-time updates to chat list
+    // Real-time updates for chat
     Function()? onReceiveMessage,
     Function()? onMessageSent,
     Function()? onMessageEdited,
     Function()? onMessageUnsent,
     Function()? onMessagesRead,
+    Function(int senderId)? onUserTyping, // Added parameter for typing events
   }) {
     if (onChatCreated != null) {
       _hubConnection.on('ChatCreated', (args) {
@@ -165,8 +166,6 @@ class SignalRService {
       });
     }
 
-    // New event listeners for real-time chat updates
-    // These don't necessarily provide chatDto, but we know any of these events may affect the last message/unread counts.
     if (onReceiveMessage != null) {
       _hubConnection.on('ReceiveMessage', (args) {
         onReceiveMessage();
@@ -194,6 +193,15 @@ class SignalRService {
     if (onMessagesRead != null) {
       _hubConnection.on('MessagesRead', (args) {
         onMessagesRead();
+      });
+    }
+
+    if (onUserTyping != null) {
+      _hubConnection.on('UserTyping', (args) {
+        if (args != null && args.isNotEmpty) {
+          int senderId = args[0] as int;
+          onUserTyping(senderId);
+        }
       });
     }
   }
