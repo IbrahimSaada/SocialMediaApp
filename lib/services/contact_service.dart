@@ -1,11 +1,10 @@
-// services/contact_service.dart
-
-import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cook/models/usercontact_model.dart';
+import 'package:cook/services/apiService.dart';
 
 class ContactService {
-  final String baseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Chat';
+  final String baseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Chat'; 
+  final ApiService _apiService = ApiService();
 
   // Fetch contacts with pagination and optional search
   Future<List<UserContact>> fetchContacts(
@@ -14,7 +13,7 @@ class ContactService {
     int pageNumber = 1,
     int pageSize = 10,
   }) async {
-    final Uri url = Uri.parse('$baseUrl/$userId/contacts').replace(
+    final Uri uri = Uri.parse('$baseUrl/$userId/contacts').replace(
       queryParameters: {
         if (search.isNotEmpty) 'search': search,
         'pageNumber': pageNumber.toString(),
@@ -22,23 +21,23 @@ class ContactService {
       },
     );
 
-    try {
-      final response = await http.get(url);
+    // dataToSign = "userId:search:pageNumber:pageSize"
+    String dataToSign = "$userId:$search:$pageNumber:$pageSize";
 
-      if (response.statusCode == 200) {
-        Map<String, dynamic> data = json.decode(response.body);
-        List<dynamic> contactsJson = data['contacts'];
+    final response = await _apiService.makeRequestWithToken(
+      uri,
+      dataToSign,
+      'GET',
+    );
 
-        return contactsJson
-            .map((json) => UserContact.fromJson(json))
-            .toList();
-      } else {
-        throw Exception(
-            'Failed to load contacts. Status code: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error in fetchContacts: $e');
-      throw Exception('Error fetching contacts: $e');
+    if (response.statusCode == 200) {
+      Map<String, dynamic> data = json.decode(response.body);
+      List<dynamic> contactsJson = data['contacts'];
+      return contactsJson
+          .map((json) => UserContact.fromJson(json))
+          .toList();
+    } else {
+      throw Exception('Failed to load contacts: ${response.body}');
     }
   }
 }

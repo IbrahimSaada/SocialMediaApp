@@ -1,9 +1,11 @@
 import 'package:signalr_core/signalr_core.dart';
 import 'package:cook/services/loginservice.dart';
+import 'package:cook/services/signatureservice.dart';
 
 class SignalRService {
   late HubConnection _hubConnection;
   final LoginService _loginService = LoginService();
+  final SignatureService _signatureService = SignatureService();
 
   Future<void> initSignalR() async {
     String? accessToken = await _loginService.getToken();
@@ -20,7 +22,7 @@ class SignalRService {
 
     _hubConnection = HubConnectionBuilder()
         .withUrl(
-          'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/chatHub',
+          'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/chatHub', // Replace with your actual URL
           HttpConnectionOptions(
             accessTokenFactory: () async => accessToken,
           ),
@@ -51,9 +53,19 @@ class SignalRService {
     print('SignalR connection stopped.');
   }
 
+  // Helper method to generate signature and invoke a hub method with it
+  Future<dynamic> _invokeWithSignature(String methodName, List<Object?> args, String dataToSign) async {
+    String signature = await _signatureService.generateHMAC(dataToSign);
+    args.add(signature);
+    return await _hubConnection.invoke(methodName, args: args);
+  }
+
   Future<void> sendTypingNotification(int recipientUserId) async {
     try {
-      await _hubConnection.invoke('Typing', args: [recipientUserId]);
+      int senderId = await _loginService.getUserId() ?? 0;
+      String dataToSign = "$senderId:$recipientUserId";
+
+      await _invokeWithSignature('Typing', [recipientUserId], dataToSign);
       print('Typing notification sent successfully');
     } catch (e) {
       print('Error sending typing notification: $e');
@@ -72,7 +84,10 @@ class SignalRService {
 
   Future<void> editMessage(int messageId, String newContent) async {
     try {
-      await _hubConnection.invoke('EditMessage', args: [messageId, newContent]);
+      int userId = await _loginService.getUserId() ?? 0;
+      String dataToSign = "$userId:$messageId:$newContent";
+
+      await _invokeWithSignature('EditMessage', [messageId, newContent], dataToSign);
       print('EditMessage invoked successfully');
     } catch (e) {
       print('Error invoking EditMessage: $e');
@@ -81,7 +96,10 @@ class SignalRService {
 
   Future<void> unsendMessage(int messageId) async {
     try {
-      await _hubConnection.invoke('UnsendMessage', args: [messageId]);
+      int userId = await _loginService.getUserId() ?? 0;
+      String dataToSign = "$userId:$messageId";
+
+      await _invokeWithSignature('UnsendMessage', [messageId], dataToSign);
       print('UnsendMessage invoked successfully');
     } catch (e) {
       print('Error invoking UnsendMessage: $e');
@@ -90,7 +108,10 @@ class SignalRService {
 
   Future<void> markMessagesAsRead(int chatId) async {
     try {
-      await _hubConnection.invoke('MarkMessagesAsRead', args: [chatId]);
+      int userId = await _loginService.getUserId() ?? 0;
+      String dataToSign = "$userId:$chatId";
+
+      await _invokeWithSignature('MarkMessagesAsRead', [chatId], dataToSign);
       print('MarkMessagesAsRead invoked successfully');
     } catch (e) {
       print('Error invoking MarkMessagesAsRead: $e');
@@ -99,26 +120,41 @@ class SignalRService {
 
   Future<void> createChat(int recipientUserId) async {
     try {
-      await _hubConnection.invoke('CreateChat', args: [recipientUserId]);
+      int initiatorUserId = await _loginService.getUserId() ?? 0;
+      String dataToSign = "$initiatorUserId:$recipientUserId";
+
+      await _invokeWithSignature('CreateChat', [recipientUserId], dataToSign);
       print('CreateChat invoked successfully');
     } catch (e) {
       print('Error invoking CreateChat: $e');
     }
   }
 
-  // We add callbacks for the events that can affect the chat list (like last message and unread count)
+  // New method for sending a message with signature
+  // Server method signature: SendMessage(int recipientUserId, string messageContent, string messageType, List<MediaItemDto> mediaItems, string signature)
+  Future<void> sendMessage(int recipientUserId, String messageContent, String messageType, List<dynamic>? mediaItems) async {
+    try {
+      int senderId = await _loginService.getUserId() ?? 0;
+      String dataToSign = "$senderId:$recipientUserId:$messageContent";
+
+      await _invokeWithSignature('SendMessage', [recipientUserId, messageContent, messageType, mediaItems], dataToSign);
+      print('SendMessage invoked successfully');
+    } catch (e) {
+      print('Error invoking SendMessage: $e');
+      rethrow;
+    }
+  }
+
   void setupListeners({
     Function(dynamic chatDto)? onChatCreated,
     Function(dynamic chatDto)? onNewChatNotification,
     Function(String errorMessage)? onError,
-
-    // Real-time updates for chat
     Function()? onReceiveMessage,
     Function()? onMessageSent,
     Function()? onMessageEdited,
     Function()? onMessageUnsent,
     Function()? onMessagesRead,
-    Function(int senderId)? onUserTyping, // Added parameter for typing events
+    Function(int senderId)? onUserTyping,
   }) {
     if (onChatCreated != null) {
       _hubConnection.on('ChatCreated', (args) {

@@ -1,5 +1,3 @@
-// chat_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:cook/services/chat_service.dart';
 import 'package:cook/models/message_model.dart';
@@ -330,12 +328,13 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
   void _handleSendMessage(String messageContent) async {
     try {
-      await _signalRService.hubConnection.invoke('SendMessage', args: [
+      // Use the SignalRService's sendMessage method with signature
+      await _signalRService.sendMessage(
         widget.recipientUserId,
         messageContent,
         'text',
-        null,
-      ]);
+        null, // no media items in this example
+      );
 
       setState(() {
         _shouldScrollToBottom = true;
@@ -457,7 +456,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                         itemCount: messages.length + (_hasMoreMessages ? 1 : 0),
                         itemBuilder: (context, index) {
                           if (_hasMoreMessages && index == 0) {
-                            // Show loading spinner at the top when more messages are available
                             return Padding(
                               padding: const EdgeInsets.all(8.0),
                               child: Center(child: CircularProgressIndicator()),
