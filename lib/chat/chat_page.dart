@@ -142,6 +142,14 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     }
   }
 
+  String _forceUtc(String dateStr) {
+    // If it doesn't end with Z, append Z to indicate UTC
+    if (!dateStr.endsWith('Z')) {
+      dateStr = dateStr + 'Z';
+    }
+    return dateStr;
+  }
+
   Future<void> _fetchMessages({bool loadMore = false}) async {
     if (_isFetchingMore) return;
     _isFetchingMore = true;
@@ -161,6 +169,15 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       for (var messageData in messagesData) {
         try {
           Map<String, dynamic> messageMap = Map<String, dynamic>.from(messageData);
+
+          // Force UTC then toLocal() in fromJson
+          if (messageMap['createdAt'] is String) {
+            messageMap['createdAt'] = _forceUtc(messageMap['createdAt']);
+          }
+          if (messageMap['readAt'] != null && messageMap['readAt'] is String) {
+            messageMap['readAt'] = _forceUtc(messageMap['readAt']);
+          }
+
           var message = Message.fromJson(messageMap);
 
           if (_sessionKeys != null && message.messageContent.isNotEmpty) {
@@ -235,10 +252,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       final messageData = Map<String, dynamic>.from(arguments[0] as Map);
 
       if (messageData['createdAt'] is String) {
-        messageData['createdAt'] = DateTime.parse(messageData['createdAt']);
+        messageData['createdAt'] = _forceUtc(messageData['createdAt']);
       }
       if (messageData['readAt'] != null && messageData['readAt'] is String) {
-        messageData['readAt'] = DateTime.parse(messageData['readAt']);
+        messageData['readAt'] = _forceUtc(messageData['readAt']);
       }
 
       var message = Message.fromJson(messageData);
@@ -278,10 +295,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       final Map<String, dynamic> messageData = Map<String, dynamic>.from(arguments[0] as Map);
 
       if (messageData['createdAt'] is String) {
-        messageData['createdAt'] = DateTime.parse(messageData['createdAt']);
+        messageData['createdAt'] = _forceUtc(messageData['createdAt']);
       }
       if (messageData['readAt'] != null && messageData['readAt'] is String) {
-        messageData['readAt'] = DateTime.parse(messageData['readAt']);
+        messageData['readAt'] = _forceUtc(messageData['readAt']);
       }
 
       var message = Message.fromJson(messageData);
@@ -340,10 +357,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       final messageData = Map<String, dynamic>.from(arguments[0] as Map);
 
       if (messageData['createdAt'] is String) {
-        messageData['createdAt'] = DateTime.parse(messageData['createdAt']);
+        messageData['createdAt'] = _forceUtc(messageData['createdAt']);
       }
       if (messageData['readAt'] != null && messageData['readAt'] is String) {
-        messageData['readAt'] = DateTime.parse(messageData['readAt']);
+        messageData['readAt'] = _forceUtc(messageData['readAt']);
       }
 
       var editedMessage = Message.fromJson(messageData);
@@ -402,7 +419,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         setState(() {
           messages = messages.map((message) {
             if (message.senderId == widget.currentUserId && message.readAt == null) {
-              return message.copyWith(readAt: DateTime.now());
+              return message.copyWith(readAt: DateTime.now().toLocal());
             }
             return message;
           }).toList();
@@ -444,7 +461,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     }
   }
 
-  // Updated to encrypt edited messages before sending
   void _handleEditMessage(int messageId, String newContent) async {
     try {
       if (_sessionKeys == null) {
@@ -452,7 +468,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         return;
       }
 
-      // Encrypt the edited message
       final encryptionService = EncryptionService();
       final plaintext = utf8.encode(newContent);
       final ciphertext = await encryptionService.encryptMessage(
@@ -466,8 +481,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       setState(() {
         int index = messages.indexWhere((msg) => msg.messageId == messageId);
         if (index != -1) {
-          // Local update: message is now edited but encrypted on server.
-          // The actual decrypted version will come from the 'MessageEdited' event.
           messages[index] = messages[index].copyWith(
             messageContent: newContent,
             isEdited: true,
@@ -488,14 +501,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     } catch (e) {
       print('Error deleting message: $e');
     }
-  }
-
-  void _handleTyping() {
-    _signalRService.sendTypingNotification(widget.recipientUserId);
-  }
-
-  void _handleTypingStopped() {
-    // Optional
   }
 
   void _scrollToBottom() {
@@ -527,7 +532,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   }
 
   String _formatDate(DateTime date) {
-    final now = DateTime.now();
+    final now = DateTime.now().toLocal();
     if (date.year == now.year && date.month == now.month && date.day == now.day) {
       return 'Today';
     } else if (date.year == now.year &&

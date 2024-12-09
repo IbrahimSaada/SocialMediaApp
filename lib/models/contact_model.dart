@@ -27,7 +27,6 @@ class Contact {
     required this.unreadCount,
   });
 
-  // Add the copyWith method
   Contact copyWith({
     int? chatId,
     int? initiatorUserId,
@@ -56,6 +55,13 @@ class Contact {
     );
   }
 
+  static DateTime _parseUtcThenLocal(String dateStr) {
+    if (!dateStr.endsWith('Z')) {
+      dateStr = dateStr + 'Z';
+    }
+    return DateTime.parse(dateStr).toLocal();
+  }
+
   factory Contact.fromJson(Map<String, dynamic> json) {
     return Contact(
       chatId: json['chatId'],
@@ -65,11 +71,11 @@ class Contact {
       recipientUserId: json['recipientUserId'],
       recipientUsername: json['recipientUsername'],
       recipientProfilePic: json['recipientProfilePic'],
-      createdAt: DateTime.parse(json['createdAt']),
+      createdAt: _parseUtcThenLocal(json['createdAt']),
       lastMessage: json['lastMessage'] ?? '',
       lastMessageTime: json['lastMessageTime'] != null
-          ? DateTime.parse(json['lastMessageTime'])
-          : DateTime.now(),
+          ? _parseUtcThenLocal(json['lastMessageTime'])
+          : DateTime.now().toLocal(),
       unreadCount: json['unreadCount'] ?? 0,
     );
   }

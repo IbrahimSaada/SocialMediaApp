@@ -30,10 +30,9 @@ class Message {
     required this.isEdited,
     required this.isUnsent,
     required this.mediaItems,
-    this.isLoadingMessage = false, // Default to false
+    this.isLoadingMessage = false,
   });
 
-  // Factory constructor for loading indicator
   factory Message.loadingMessage() {
     return Message(
       messageId: -1,
@@ -49,30 +48,34 @@ class Message {
     );
   }
 
-  factory Message.fromJson(Map<String, dynamic> json) {
-    print('Parsing Message from JSON: $json'); // Print the initial JSON data
+  static DateTime _parseUtcThenLocal(String dateStr) {
+    if (!dateStr.endsWith('Z')) {
+      dateStr = dateStr + 'Z';
+    }
+    return DateTime.parse(dateStr).toLocal();
+  }
 
-    // Handle 'createdAt'
+  factory Message.fromJson(Map<String, dynamic> json) {
+    print('Parsing Message from JSON: $json');
+
     DateTime createdAt;
     if (json['createdAt'] is String) {
-      createdAt = DateTime.parse(json['createdAt']).toLocal();
+      createdAt = _parseUtcThenLocal(json['createdAt']);
     } else if (json['createdAt'] is DateTime) {
-      createdAt = json['createdAt'].toLocal();
+      createdAt = (json['createdAt']).toLocal();
     } else {
       throw Exception('Invalid format for createdAt');
     }
 
-    // Handle 'readAt'
     DateTime? readAt;
     if (json['readAt'] != null) {
       if (json['readAt'] is String) {
-        readAt = DateTime.parse(json['readAt']).toLocal();
+        readAt = _parseUtcThenLocal(json['readAt']);
       } else if (json['readAt'] is DateTime) {
-        readAt = json['readAt'].toLocal();
+        readAt = (json['readAt']).toLocal();
       }
     }
 
-    // Parse media items
     List<MediaItem> mediaItems = [];
     if (json['mediaItems'] != null) {
       mediaItems = (json['mediaItems'] as List)
@@ -95,11 +98,10 @@ class Message {
       mediaItems: mediaItems,
     );
 
-    print('Parsed Message: $message'); // Print the parsed Message object
+    print('Parsed Message: $message');
     return message;
   }
 
-  // Add a copyWith method for easy updates
   Message copyWith({
     int? messageId,
     int? chatId,
@@ -131,7 +133,7 @@ class Message {
       isLoadingMessage: isLoadingMessage ?? this.isLoadingMessage,
     );
 
-    print('Updated Message with copyWith: $updatedMessage'); // Print the updated Message object
+    print('Updated Message with copyWith: $updatedMessage');
     return updatedMessage;
   }
 
