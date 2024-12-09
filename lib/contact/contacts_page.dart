@@ -1,13 +1,18 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:cook/models/deleteuserchat.dart';
+import 'package:cook/models/contact_model.dart';
+import 'package:cook/services/chat_service.dart';
+import 'package:cook/services/signalr_service.dart';
+import 'package:cook/services/crypto/key_exchange_service.dart';
+import 'package:cook/services/crypto/encryption_service.dart';
+import 'package:cook/services/crypto/key_manager.dart' show UserKeyPair;
 import 'package:flutter/material.dart';
 import 'contact_tile.dart';
 import '../chat/chat_page.dart';
-import 'package:cook/services/chat_service.dart';
-import 'package:cook/models/contact_model.dart';
 import 'pluscontact.dart';
-import 'package:cook/services/signalr_service.dart';
 import 'package:intl/intl.dart';
+import 'package:cryptography/cryptography.dart';
 
 class ContactsPage extends StatefulWidget {
   final String fullname;
@@ -31,11 +36,16 @@ class _ContactsPageState extends State<ContactsPage> {
   Map<int, bool> _isTypingMap = {};
   Map<int, Timer?> _typingTimers = {};
 
+  SessionKeys? _sessionKeys;
+
   @override
   void initState() {
     super.initState();
-    _initSignalR();
-    _fetchChats();
+    _initE2EE().then((_) {
+      _initSignalR().then((_) {
+        _fetchChats();
+      });
+    });
   }
 
   Future<void> _initSignalR() async {
@@ -50,7 +60,7 @@ class _ContactsPageState extends State<ContactsPage> {
       onMessageEdited: _onChatUpdate,
       onMessageUnsent: _onChatUpdate,
       onMessagesRead: _onChatUpdate,
-      onUserTyping: _onUserTyping, // New callback for typing
+      onUserTyping: _onUserTyping,
     );
   }
 
@@ -115,6 +125,30 @@ class _ContactsPageState extends State<ContactsPage> {
   Future<void> _fetchChats() async {
     try {
       final chats = await _chatService.fetchUserChats(widget.userId);
+
+      // Decrypt last messages if session keys are available
+      if (_sessionKeys != null) {
+        final encryptionService = EncryptionService();
+        for (int i = 0; i < chats.length; i++) {
+          final chat = chats[i];
+          if (chat.lastMessage.isNotEmpty) {
+            try {
+              // Attempt to decode and decrypt
+              final ciphertext = base64Decode(chat.lastMessage);
+              final decryptedBytes = await encryptionService.decryptMessage(
+                encryptionKey: _sessionKeys!.encryptionKey,
+                ciphertext: ciphertext,
+              );
+              final decryptedText = utf8.decode(decryptedBytes);
+              chats[i] = chat.copyWith(lastMessage: decryptedText);
+            } catch (e) {
+              print('Error decrypting lastMessage for chatId=${chat.chatId}: $e');
+              // If decryption fails, we can leave it as the original ciphertext or show a placeholder
+            }
+          }
+        }
+      }
+
       setState(() {
         _chats = chats;
         _filteredChats = chats
@@ -270,6 +304,59 @@ class _ContactsPageState extends State<ContactsPage> {
       timer?.cancel();
     }
     super.dispose();
+  }
+
+  Future<void> _initE2EE() async {
+    print('Initializing E2EE in ContactsPage...');
+    final myKeyPair = await _loadMyUserKeyPair();
+    print('My private key length: ${myKeyPair.privateKey.length}, public key length: ${myKeyPair.publicKey.length}');
+
+    final recipientPublicKey = await _fetchRecipientPublicKeyFromServer();
+    print('Mock recipient public key length: ${recipientPublicKey.length}');
+
+    final keyExchangeService = KeyExchangeService();
+    final sharedSecret = await keyExchangeService.deriveSharedSecret(
+      ourPrivateKey: myKeyPair.privateKey,
+      theirPublicKey: recipientPublicKey,
+    );
+
+    print('Derived shared secret (ContactsPage): $sharedSecret');
+    print('Derived shared secret length (ContactsPage): ${sharedSecret.length}');
+
+    if (sharedSecret.isEmpty) {
+      print('Shared secret is empty! Cannot derive session keys in ContactsPage.');
+      return;
+    }
+
+    final sessionKeys = await keyExchangeService.deriveSessionKeys(sharedSecret);
+
+    print('Session keys derived in ContactsPage. EncryptionKey length: ${sessionKeys.encryptionKey.length}, macKey length: ${sessionKeys.macKey.length}');
+
+    setState(() {
+      _sessionKeys = sessionKeys;
+    });
+  }
+
+  Future<UserKeyPair> _loadMyUserKeyPair() async {
+    print('Generating user key pair with a fixed seed (ContactsPage) for stable keys...');
+    final seed = List<int>.filled(32, 1);
+    final algo = X25519();
+    final kp = await algo.newKeyPairFromSeed(seed);
+    final privateKey = await kp.extractPrivateKeyBytes();
+    final publicKey = (await kp.extractPublicKey()).bytes;
+    print('Generated user key pair (ContactsPage): privateKey length=${privateKey.length}, publicKey length=${publicKey.length}');
+    return UserKeyPair(privateKey: privateKey, publicKey: publicKey);
+  }
+
+  Future<List<int>> _fetchRecipientPublicKeyFromServer() async {
+    print('Fetching recipient public key (mock, stable) for ContactsPage');
+    // Using the same stable approach as ChatPage for demonstration:
+    final seed = List<int>.filled(32, 2);
+    final algo = X25519();
+    final kp = await algo.newKeyPairFromSeed(seed);
+    final publicKey = (await kp.extractPublicKey()).bytes;
+    print('Mock recipient public key length=${publicKey.length} (ContactsPage)');
+    return publicKey;
   }
 
   @override

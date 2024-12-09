@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:cook/services/chat_service.dart';
 import 'package:cook/models/message_model.dart';
 import 'package:cook/services/signalr_service.dart';
-import 'message_input.dart';
-import 'message_bubble.dart';
-import 'chat_app_bar.dart';
+import 'package:cook/chat/message_input.dart';
+import 'package:cook/chat/message_bubble.dart';
+import 'package:cook/chat/chat_app_bar.dart';
 import 'dart:async';
-
+import 'dart:convert';
 import 'package:cook/profile/otheruserprofilepage.dart';
+import 'package:cook/services/crypto/key_exchange_service.dart';
+import 'package:cook/services/crypto/encryption_service.dart';
+import 'package:cook/services/crypto/key_manager.dart' show UserKeyPair;
+import 'package:cryptography/cryptography.dart';
 
 class ChatPage extends StatefulWidget {
   final int chatId;
@@ -41,19 +45,21 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   bool _isRecipientTyping = false;
   Timer? _typingTimer;
   String _status = '';
-
   int _currentPage = 1;
   final int _pageSize = 20;
   bool _isFetchingMore = false;
   bool _hasMoreMessages = true;
   bool _shouldScrollToBottom = false;
+  SessionKeys? _sessionKeys;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _status = widget.isOnline ? 'Online' : 'Offline';
-    _initSignalR();
+    _initE2EE().then((_) {
+      _initSignalR();
+    });
 
     _scrollController.addListener(() {
       if (_scrollController.position.atEdge &&
@@ -86,11 +92,42 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     });
   }
 
+  Future<void> _initE2EE() async {
+    print('Initializing E2EE...');
+    final myKeyPair = await _loadMyUserKeyPair();
+    print('My private key length: ${myKeyPair.privateKey.length}, public key length: ${myKeyPair.publicKey.length}');
+
+    final recipientPublicKey = await _fetchRecipientPublicKeyFromServer(widget.recipientUserId);
+    print('Recipient public key length: ${recipientPublicKey.length}');
+
+    final keyExchangeService = KeyExchangeService();
+    final sharedSecret = await keyExchangeService.deriveSharedSecret(
+      ourPrivateKey: myKeyPair.privateKey,
+      theirPublicKey: recipientPublicKey,
+    );
+
+    print('Derived shared secret: $sharedSecret');
+    print('Derived shared secret length: ${sharedSecret.length}');
+
+    if (sharedSecret.isEmpty) {
+      print('Shared secret is empty! Cannot derive session keys.');
+      return;
+    }
+
+    final sessionKeys = await keyExchangeService.deriveSessionKeys(sharedSecret);
+
+    print('Session keys derived. EncryptionKey length: ${sessionKeys.encryptionKey.length}, macKey length: ${sessionKeys.macKey.length}');
+
+    setState(() {
+      _sessionKeys = sessionKeys;
+    });
+  }
+
   Future<void> _initSignalR() async {
     try {
+      print('Initializing SignalR...');
       await _signalRService.initSignalR();
 
-      // Register event handlers
       _signalRService.hubConnection.on('ReceiveMessage', _handleReceiveMessage);
       _signalRService.hubConnection.on('MessageSent', _handleMessageSent);
       _signalRService.hubConnection.on('MessageEdited', _handleMessageEdited);
@@ -98,10 +135,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       _signalRService.hubConnection.on('UserTyping', _handleUserTyping);
       _signalRService.hubConnection.on('MessagesRead', _handleMessagesRead);
 
-      // Fetch messages via SignalR
       await _fetchMessages();
-
-      // Mark messages as read when the chat is opened
       _signalRService.markMessagesAsRead(widget.chatId);
     } catch (e) {
       print('Error initializing SignalR: $e');
@@ -118,6 +152,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         _hasMoreMessages = true;
       }
 
+      print('Fetching messages, page=$_currentPage, pageSize=$_pageSize');
       var result = await _signalRService.hubConnection.invoke('FetchMessages',
           args: [widget.chatId, _currentPage, _pageSize]);
 
@@ -126,7 +161,23 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       for (var messageData in messagesData) {
         try {
           Map<String, dynamic> messageMap = Map<String, dynamic>.from(messageData);
-          Message message = Message.fromJson(messageMap);
+          var message = Message.fromJson(messageMap);
+
+          if (_sessionKeys != null && message.messageContent.isNotEmpty) {
+            try {
+              final encryptionService = EncryptionService();
+              final ciphertext = base64Decode(message.messageContent);
+              final decrypted = await encryptionService.decryptMessage(
+                encryptionKey: _sessionKeys!.encryptionKey,
+                ciphertext: ciphertext,
+              );
+              final decryptedText = utf8.decode(decrypted);
+              message = message.copyWith(messageContent: decryptedText);
+            } catch (e) {
+              print('Error decrypting fetched message: $e');
+            }
+          }
+
           fetchedMessages.add(message);
         } catch (e) {
           print('Error parsing message: $e');
@@ -134,44 +185,41 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         }
       }
 
-      // Reverse fetched messages if needed
       fetchedMessages = fetchedMessages.reversed.toList();
 
-      if (loadMore) {
-        double prevScrollHeight = _scrollController.position.extentAfter;
-        double prevScrollOffset = _scrollController.offset;
-
-        setState(() {
-          messages.insertAll(0, fetchedMessages); // Insert at the beginning
+      setState(() {
+        if (loadMore) {
+          print('Inserting fetched messages at the beginning...');
+          double prevScrollHeight = _scrollController.position.extentAfter;
+          double prevScrollOffset = _scrollController.offset;
+          messages.insertAll(0, fetchedMessages);
           messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
           _isLoading = false;
           _currentPage++;
           if (fetchedMessages.length < _pageSize) {
             _hasMoreMessages = false;
           }
-        });
 
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          double newScrollHeight = _scrollController.position.extentAfter;
-          double scrollOffsetDelta = newScrollHeight - prevScrollHeight;
-          _scrollController.jumpTo(prevScrollOffset + scrollOffsetDelta);
-        });
-      } else {
-        setState(() {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            double newScrollHeight = _scrollController.position.extentAfter;
+            double scrollOffsetDelta = newScrollHeight - prevScrollHeight;
+            _scrollController.jumpTo(prevScrollOffset + scrollOffsetDelta);
+          });
+        } else {
           messages = fetchedMessages;
+          messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
           _isLoading = false;
           _currentPage++;
           if (fetchedMessages.length < _pageSize) {
             _hasMoreMessages = false;
           }
-        });
 
-        // Scroll to the bottom (latest message) on initial load
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _shouldScrollToBottom = true;
-          _scrollToBottom();
-        });
-      }
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _shouldScrollToBottom = true;
+            _scrollToBottom();
+          });
+        }
+      });
     } catch (e) {
       print('Error fetching messages via SignalR: $e');
       setState(() {
@@ -182,11 +230,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     }
   }
 
-  void _handleReceiveMessage(List<Object?>? arguments) {
+  void _handleReceiveMessage(List<Object?>? arguments) async {
     if (arguments != null && arguments.isNotEmpty) {
       final messageData = Map<String, dynamic>.from(arguments[0] as Map);
 
-      // Convert date strings to DateTime objects
       if (messageData['createdAt'] is String) {
         messageData['createdAt'] = DateTime.parse(messageData['createdAt']);
       }
@@ -194,18 +241,31 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         messageData['readAt'] = DateTime.parse(messageData['readAt']);
       }
 
-      final message = Message.fromJson(messageData);
+      var message = Message.fromJson(messageData);
 
       if (message.chatId == widget.chatId) {
+        if (_sessionKeys != null && message.messageContent.isNotEmpty) {
+          try {
+            // Decrypt message content
+            final ciphertext = base64Decode(message.messageContent);
+            final encryptionService = EncryptionService();
+            final decryptedBytes = await encryptionService.decryptMessage(
+              encryptionKey: _sessionKeys!.encryptionKey,
+              ciphertext: ciphertext,
+            );
+            final decryptedText = utf8.decode(decryptedBytes);
+            message = message.copyWith(messageContent: decryptedText);
+          } catch (e) {
+            print('Error decrypting message: $e');
+            message = message.copyWith(messageContent: 'Could not decrypt this message.');
+          }
+        }
+
         setState(() {
-          messages.add(message); // Add new message
-          // Sort messages by createdAt
+          messages.add(message);
           messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-          _isRecipientTyping = false;
-          _status = widget.isOnline ? 'Online' : 'Offline';
         });
 
-        // Ensure we scroll to bottom after receiving a new message
         _shouldScrollToBottom = true;
         _scrollToBottom();
       }
@@ -213,11 +273,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     _signalRService.markMessagesAsRead(widget.chatId);
   }
 
-  void _handleMessageSent(List<Object?>? arguments) {
+  void _handleMessageSent(List<Object?>? arguments) async {
     if (arguments != null && arguments.isNotEmpty) {
       final Map<String, dynamic> messageData = Map<String, dynamic>.from(arguments[0] as Map);
 
-      // Convert DateTime strings
       if (messageData['createdAt'] is String) {
         messageData['createdAt'] = DateTime.parse(messageData['createdAt']);
       }
@@ -225,11 +284,26 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         messageData['readAt'] = DateTime.parse(messageData['readAt']);
       }
 
-      final message = Message.fromJson(messageData);
+      var message = Message.fromJson(messageData);
 
       if (message.chatId == widget.chatId) {
+        if (_sessionKeys != null && message.messageContent.isNotEmpty) {
+          try {
+            final encryptionService = EncryptionService();
+            final ciphertext = base64Decode(message.messageContent);
+            final decrypted = await encryptionService.decryptMessage(
+              encryptionKey: _sessionKeys!.encryptionKey,
+              ciphertext: ciphertext,
+            );
+            final decryptedText = utf8.decode(decrypted);
+            message = message.copyWith(messageContent: decryptedText);
+          } catch (e) {
+            print('Error decrypting received sent message: $e');
+          }
+        }
+
         setState(() {
-          messages.add(message); 
+          messages.add(message);
           messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
         });
         _shouldScrollToBottom = true;
@@ -261,11 +335,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     });
   }
 
-  void _handleMessageEdited(List<Object?>? arguments) {
+  Future<void> _handleMessageEdited(List<Object?>? arguments) async {
     if (arguments != null && arguments.isNotEmpty) {
       final messageData = Map<String, dynamic>.from(arguments[0] as Map);
 
-      // Convert date strings to DateTime objects
       if (messageData['createdAt'] is String) {
         messageData['createdAt'] = DateTime.parse(messageData['createdAt']);
       }
@@ -273,10 +346,24 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         messageData['readAt'] = DateTime.parse(messageData['readAt']);
       }
 
-      final editedMessage = Message.fromJson(messageData);
+      var editedMessage = Message.fromJson(messageData);
+
+      if (_sessionKeys != null && editedMessage.messageContent.isNotEmpty) {
+        try {
+          final encryptionService = EncryptionService();
+          final ciphertext = base64Decode(editedMessage.messageContent);
+          final decrypted = await encryptionService.decryptMessage(
+            encryptionKey: _sessionKeys!.encryptionKey,
+            ciphertext: ciphertext,
+          );
+          final decryptedText = utf8.decode(decrypted);
+          editedMessage = editedMessage.copyWith(messageContent: decryptedText);
+        } catch (e) {
+          print('Error decrypting edited message: $e');
+        }
+      }
 
       if (editedMessage.chatId == widget.chatId) {
-        // Update the message
         setState(() {
           int index = messages.indexWhere((msg) => msg.messageId == editedMessage.messageId);
           if (index != -1) {
@@ -285,7 +372,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         });
       }
     }
-    // After editing, ensure no keyboard remains open
     FocusScope.of(context).unfocus();
   }
 
@@ -303,7 +389,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         }
       });
 
-      // After deleting message, ensure no keyboard is shown
       FocusScope.of(context).unfocus();
     }
   }
@@ -328,12 +413,26 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
   void _handleSendMessage(String messageContent) async {
     try {
-      // Use the SignalRService's sendMessage method with signature
+      if (_sessionKeys == null) {
+        print('No session keys available. Cannot encrypt message.');
+        return;
+      }
+
+      final encryptionService = EncryptionService();
+      final plaintext = utf8.encode(messageContent);
+      final ciphertext = await encryptionService.encryptMessage(
+        encryptionKey: _sessionKeys!.encryptionKey,
+        plaintext: plaintext,
+      );
+
+      final encodedCiphertext = base64Encode(ciphertext);
+      print('Encrypted message to send (Base64): $encodedCiphertext');
+
       await _signalRService.sendMessage(
         widget.recipientUserId,
-        messageContent,
+        encodedCiphertext,
         'text',
-        null, // no media items in this example
+        null,
       );
 
       setState(() {
@@ -345,14 +444,30 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     }
   }
 
+  // Updated to encrypt edited messages before sending
   void _handleEditMessage(int messageId, String newContent) async {
     try {
-      await _signalRService.editMessage(messageId, newContent);
+      if (_sessionKeys == null) {
+        print('No session keys available. Cannot encrypt edited message.');
+        return;
+      }
 
-      // Update the message locally
+      // Encrypt the edited message
+      final encryptionService = EncryptionService();
+      final plaintext = utf8.encode(newContent);
+      final ciphertext = await encryptionService.encryptMessage(
+        encryptionKey: _sessionKeys!.encryptionKey,
+        plaintext: plaintext,
+      );
+      final encodedCiphertext = base64Encode(ciphertext);
+
+      await _signalRService.editMessage(messageId, encodedCiphertext);
+
       setState(() {
         int index = messages.indexWhere((msg) => msg.messageId == messageId);
         if (index != -1) {
+          // Local update: message is now edited but encrypted on server.
+          // The actual decrypted version will come from the 'MessageEdited' event.
           messages[index] = messages[index].copyWith(
             messageContent: newContent,
             isEdited: true,
@@ -360,7 +475,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         }
       });
 
-      // After editing done, unfocus keyboard
       FocusScope.of(context).unfocus();
     } catch (e) {
       print('Error editing message: $e');
@@ -370,7 +484,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   void _handleDeleteForAll(int messageId) async {
     try {
       await _signalRService.unsendMessage(messageId);
-      // After deleting message, ensure keyboard hidden
       FocusScope.of(context).unfocus();
     } catch (e) {
       print('Error deleting message: $e');
@@ -382,18 +495,22 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   }
 
   void _handleTypingStopped() {
-    // Optional typing stopped handler
+    // Optional
   }
 
   void _scrollToBottom() {
     if (_shouldScrollToBottom) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-          );
+          try {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+            );
+          } catch (e) {
+            print('ScrollToBottom Error: $e');
+          }
         }
         _shouldScrollToBottom = false;
       });
@@ -422,6 +539,27 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     }
   }
 
+  Future<UserKeyPair> _loadMyUserKeyPair() async {
+    print('Generating user key pair with a fixed seed for stable keys...');
+    final seed = List<int>.filled(32, 1);
+    final algo = X25519();
+    final kp = await algo.newKeyPairFromSeed(seed);
+    final privateKey = await kp.extractPrivateKeyBytes();
+    final publicKey = (await kp.extractPublicKey()).bytes;
+    print('Generated user key pair (stable): privateKey length=${privateKey.length}, publicKey length=${publicKey.length}');
+    return UserKeyPair(privateKey: privateKey, publicKey: publicKey);
+  }
+
+  Future<List<int>> _fetchRecipientPublicKeyFromServer(int recipientUserId) async {
+    print('Fetching recipient public key (mock, stable) for userId=$recipientUserId');
+    final seed = List<int>.filled(32, 2);
+    final algo = X25519();
+    final kp = await algo.newKeyPairFromSeed(seed);
+    final publicKey = (await kp.extractPublicKey()).bytes;
+    print('Mock recipient public key length=${publicKey.length}');
+    return publicKey;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -430,7 +568,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         profileImageUrl: widget.profileImageUrl,
         status: _isRecipientTyping ? 'Typing...' : _status,
         onProfileTap: () {
-          // Navigate to other user profile
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -441,7 +578,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       ),
       body: GestureDetector(
         onTap: () {
-          // Dismiss keyboard when tapping outside
           FocusScope.of(context).unfocus();
         },
         child: SafeArea(

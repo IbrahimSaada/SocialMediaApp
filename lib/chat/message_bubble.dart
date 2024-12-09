@@ -1,5 +1,3 @@
-// message_bubble.dart
-
 import 'package:flutter/material.dart';
 
 class MessageBubble extends StatefulWidget {

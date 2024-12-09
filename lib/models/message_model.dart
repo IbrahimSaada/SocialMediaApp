@@ -54,8 +54,8 @@ class Message {
 
     // Handle 'createdAt'
     DateTime createdAt;
-if (json['createdAt'] is String) {
-  createdAt = DateTime.parse(json['createdAt']).toLocal();
+    if (json['createdAt'] is String) {
+      createdAt = DateTime.parse(json['createdAt']).toLocal();
     } else if (json['createdAt'] is DateTime) {
       createdAt = json['createdAt'];
     } else {
@@ -133,5 +133,10 @@ if (json['createdAt'] is String) {
 
     print('Updated Message with copyWith: $updatedMessage'); // Print the updated Message object
     return updatedMessage;
+  }
+
+  @override
+  String toString() {
+    return 'Message(messageId: $messageId, chatId: $chatId, senderId: $senderId, messageType: $messageType, messageContent: "$messageContent", createdAt: $createdAt, readAt: $readAt, isEdited: $isEdited, isUnsent: $isUnsent, mediaItems: ${mediaItems.length}, isLoadingMessage: $isLoadingMessage)';
   }
 }

@@ -59,6 +59,7 @@ dependencies:
   photo_view: ^0.15.0
   file_picker: ^8.0.7
   crypto: ^3.0.5
+  cryptography: ^2.7.0
   firebase_core: ^3.4.0
   firebase_messaging: ^15.0.0
   signalr_core: ^1.1.2
