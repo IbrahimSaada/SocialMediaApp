@@ -57,7 +57,7 @@ class Message {
     if (json['createdAt'] is String) {
       createdAt = DateTime.parse(json['createdAt']).toLocal();
     } else if (json['createdAt'] is DateTime) {
-      createdAt = json['createdAt'];
+      createdAt = json['createdAt'].toLocal();
     } else {
       throw Exception('Invalid format for createdAt');
     }
@@ -68,7 +68,7 @@ class Message {
       if (json['readAt'] is String) {
         readAt = DateTime.parse(json['readAt']).toLocal();
       } else if (json['readAt'] is DateTime) {
-        readAt = json['readAt'];
+        readAt = json['readAt'].toLocal();
       }
     }
 
