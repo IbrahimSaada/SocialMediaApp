@@ -5,18 +5,24 @@ class MessageBubble extends StatefulWidget {
   final String message;
   final DateTime timestamp;
   final bool isSeen;
+  final bool isEdited;
+  final bool isUnsent;
+  final DateTime? readAt;
   final Function(String newText) onEdit;
   final Function onDeleteForAll;
-  final Function onDeleteForMe;
+  final String messageType;
 
   const MessageBubble({
     required this.isSender,
     required this.message,
     required this.timestamp,
     required this.isSeen,
+    required this.isEdited,
+    required this.isUnsent,
+    required this.readAt,
     required this.onEdit,
     required this.onDeleteForAll,
-    required this.onDeleteForMe,
+    required this.messageType,
   });
 
   @override
@@ -41,21 +47,20 @@ class _MessageBubbleState extends State<MessageBubble> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isDeleted = widget.message == 'This message has been deleted.';
+    final bool isDeleted = widget.isUnsent;
 
     return Column(
       crossAxisAlignment:
           widget.isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
         GestureDetector(
-          onLongPress: isDeleted
-              ? null
-              : () {
-                  _showMessageOptions(context);
-                },
+          onLongPress:
+              isDeleted || !widget.isSender ? null : () => _showMessageOptions(context),
           child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-            padding: const EdgeInsets.all(12),
+            constraints:
+                BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: isDeleted
                   ? Colors.grey[300]
@@ -65,133 +70,196 @@ class _MessageBubbleState extends State<MessageBubble> {
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(widget.isSender ? 12 : 0),
                 topRight: Radius.circular(widget.isSender ? 0 : 12),
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
+                bottomLeft: const Radius.circular(12),
+                bottomRight: const Radius.circular(12),
               ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.grey.withOpacity(0.2),
-                  blurRadius: 4,
-                  offset: Offset(2, 2),
+                  blurRadius: 2,
+                  offset: const Offset(1, 1),
                 ),
               ],
             ),
             child: _isEditing
-                ? _buildEditField()
-                : Text(
-                    widget.message,
-                    style: TextStyle(
-                      color: widget.isSender ? Colors.white : Colors.black,
-                      fontStyle: isDeleted ? FontStyle.italic : FontStyle.normal,
-                    ),
-                  ),
+                ? _buildEditField(context)
+                : _buildMessageContent(isDeleted),
           ),
         ),
-        if (!isDeleted)
-          Padding(
-            padding: const EdgeInsets.only(top: 4.0, left: 16.0, right: 16.0),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _formatTimestamp(widget.timestamp),
-                  style: TextStyle(
-                    color: widget.isSender ? Colors.white70 : Colors.black54,
-                    fontSize: 10,
-                  ),
-                ),
-                if (widget.isSender && widget.isSeen)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8.0),
-                    child: Text(
-                      'Seen at ${_formatTimestamp(widget.timestamp)}',
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+        if (!isDeleted) _buildTimestampAndEditedLabel(),
       ],
     );
   }
 
-  // Edit field for inline message editing
-  Widget _buildEditField() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 10.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: TextField(
-        controller: _editingController,
-        autofocus: true,
-        style: const TextStyle(fontSize: 14, color: Colors.black),
-        decoration: InputDecoration(
-          isDense: true,
-          contentPadding:
-              const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Colors.grey, width: 1),
-          ),
-        ),
-        onSubmitted: (newText) {
-          setState(() {
-            _isEditing = false;
-          });
-          widget.onEdit(newText);
-        },
+  Widget _buildMessageContent(bool isDeleted) {
+    return Text(
+      isDeleted ? 'This message was deleted' : widget.message,
+      style: TextStyle(
+        color: isDeleted
+            ? Colors.black54
+            : widget.isSender
+                ? Colors.white
+                : Colors.black,
+        fontSize: 16,
       ),
     );
   }
 
-  // Message options for editing and deleting
+  Widget _buildEditField(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _editingController,
+            autofocus: true,
+            cursorColor: widget.isSender ? Colors.white : Colors.black,
+            style: TextStyle(
+              fontSize: 16,
+              color: widget.isSender ? Colors.white : Colors.black,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Edit message...',
+              hintStyle: TextStyle(
+                color: widget.isSender ? Colors.white70 : Colors.black54,
+              ),
+              border: InputBorder.none,
+            ),
+            maxLines: null,
+            textInputAction: TextInputAction.done,
+            onEditingComplete: () {
+              _finishEditing();
+            },
+          ),
+        ),
+        IconButton(
+          icon: Icon(Icons.check, color: widget.isSender ? Colors.white : Colors.black),
+          onPressed: () {
+            _finishEditing();
+          },
+        ),
+      ],
+    );
+  }
+
+  void _finishEditing() {
+    String newText = _editingController.text.trim();
+    if (newText.isNotEmpty && newText != widget.message) {
+      widget.onEdit(newText);
+    }
+    setState(() {
+      _isEditing = false;
+    });
+    FocusScope.of(context).unfocus();
+  }
+
+  Widget _buildTimestampAndEditedLabel() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 2.0, left: 16.0, right: 16.0),
+      child: Row(
+        mainAxisAlignment:
+            widget.isSender ? MainAxisAlignment.end : MainAxisAlignment.start,
+        children: [
+          Text(
+            _formatTimestamp(widget.timestamp),
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 10,
+            ),
+          ),
+          if (widget.isEdited && !widget.isUnsent)
+            Padding(
+              padding: const EdgeInsets.only(left: 4.0),
+              child: Text(
+                'Edited',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 10,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          if (widget.isSender && widget.isSeen)
+            Padding(
+              padding: const EdgeInsets.only(left: 4.0),
+              child: CircleAvatar(
+                radius: 8,
+                backgroundColor: Color(0xFFF45F67),
+                child: Icon(
+                  Icons.check,
+                  color: Colors.white,
+                  size: 10,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   void _showMessageOptions(BuildContext context) {
+    if (!widget.isSender) return;
+
     showModalBottomSheet(
       context: context,
       builder: (BuildContext bc) {
-        return Wrap(
+        return Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (widget.isSender) ...[
-              ListTile(
-                leading: const Icon(Icons.edit, color: Colors.blue),
-                title: const Text('Edit'),
-                onTap: () {
-                  setState(() {
-                    _isEditing = true;
-                  });
-                  Navigator.pop(context);
-                },
+            Wrap(
+              children: [
+                if (widget.messageType == 'text' && !widget.isUnsent)
+                  ListTile(
+                    leading: const Icon(Icons.edit, color: Colors.blue),
+                    title: const Text('Edit'),
+                    onTap: () {
+                      setState(() => _isEditing = true);
+                      Navigator.pop(context);
+                    },
+                  ),
+                if (!widget.isUnsent)
+                  ListTile(
+                    leading: const Icon(Icons.delete, color: Colors.red),
+                    title: const Text('Delete For Everyone'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      widget.onDeleteForAll();
+                      FocusScope.of(context).unfocus();
+                    },
+                  ),
+              ],
+            ),
+            Divider(),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Message Details',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Sent at: ${_formatFullTimestamp(widget.timestamp)}',
+                    style: TextStyle(
+                      color: Colors.grey[700],
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (widget.readAt != null)
+                    Text(
+                      'Read at: ${_formatFullTimestamp(widget.readAt!)}',
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 14,
+                      ),
+                    ),
+                ],
               ),
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Delete for all'),
-                onTap: () {
-                  Navigator.pop(context);
-                  widget.onDeleteForAll();
-                },
-              ),
-            ],
-            if (!widget.isSender)
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Delete for me'),
-                onTap: () {
-                  Navigator.pop(context);
-                  widget.onDeleteForMe();
-                },
-              ),
+            ),
           ],
         );
       },
@@ -199,6 +267,19 @@ class _MessageBubbleState extends State<MessageBubble> {
   }
 
   String _formatTimestamp(DateTime timestamp) {
-    return '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    String hour = twoDigits(timestamp.hour);
+    String minute = twoDigits(timestamp.minute);
+    return '$hour:$minute';
+  }
+
+  String _formatFullTimestamp(DateTime timestamp) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    String day = twoDigits(timestamp.day);
+    String month = twoDigits(timestamp.month);
+    String year = timestamp.year.toString();
+    String hour = twoDigits(timestamp.hour);
+    String minute = twoDigits(timestamp.minute);
+    return '$day/$month/$year, $hour:$minute';
   }
 }
