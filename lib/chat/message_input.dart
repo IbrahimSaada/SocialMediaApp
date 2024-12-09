@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 class MessageInput extends StatefulWidget {
   final Function(String) onSendMessage;
-  final Function onTyping; // Add typing callback
+  final Function onTyping;
+  final Function onTypingStopped;
 
-  MessageInput({required this.onSendMessage, required this.onTyping});
+  MessageInput({
+    required this.onSendMessage,
+    required this.onTyping,
+    required this.onTypingStopped,
+  });
 
   @override
   _MessageInputState createState() => _MessageInputState();
@@ -13,85 +19,80 @@ class MessageInput extends StatefulWidget {
 class _MessageInputState extends State<MessageInput> {
   final TextEditingController _controller = TextEditingController();
   bool _isTyping = false;
+  Timer? _typingTimer;
 
-  // Listen for changes in the text field
   void _onTextChanged(String value) {
     setState(() {
-      _isTyping = value.isNotEmpty;  // Show send button only if user types something
+      _isTyping = value.isNotEmpty;
     });
     if (_isTyping) {
-      widget.onTyping();  // Notify that the user is typing
+      widget.onTyping();
+      _startTypingTimer();
+    } else {
+      widget.onTypingStopped();
     }
   }
 
-  // Clear the input and send the message
+  void _startTypingTimer() {
+    _typingTimer?.cancel();
+    _typingTimer = Timer(Duration(seconds: 2), () {
+      widget.onTypingStopped();
+    });
+  }
+
   void _sendMessage() {
     if (_isTyping) {
       widget.onSendMessage(_controller.text);
       _controller.clear();
       setState(() {
-        _isTyping = false;  // Reset typing state
+        _isTyping = false;
       });
+      widget.onTypingStopped();
+      FocusScope.of(context).unfocus();
     }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _typingTimer?.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Color(0xFFF45F67), width: 2),  // Primary color border
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.camera_alt, color: Color(0xFFF45F67)),  // Camera icon stays
-                    onPressed: () {
-                      // Handle camera action
-                    },
+      padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Color(0xFFF45F67), width: 2),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: TextField(
+                  controller: _controller,
+                  onChanged: _onTextChanged,
+                  decoration: InputDecoration(
+                    hintText: 'Type a message...',
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16.0),
                   ),
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      onChanged: _onTextChanged,  // Detect typing
-                      decoration: InputDecoration(
-                        hintText: 'Type a message...',
-                        border: InputBorder.none,  // No border since the outer Container has it
-                      ),
-                    ),
-                  ),
-                  AnimatedSwitcher(
-                    duration: Duration(milliseconds: 200),
-                    child: !_isTyping
-                        ? IconButton(
-                            key: ValueKey('gallery'),
-                            icon: Icon(Icons.photo, color: Color(0xFFF45F67)),  // Gallery icon
-                            onPressed: () {
-                              // Handle gallery action
-                            },
-                          )
-                        : SizedBox.shrink(),
-                  ),
-                ],
+                  minLines: 1,
+                  maxLines: null,
+                ),
               ),
             ),
-          ),
-          AnimatedSwitcher(
-            duration: Duration(milliseconds: 200),
-            child: _isTyping
-                ? IconButton(
-                    key: ValueKey('send'),
-                    icon: Icon(Icons.send, color: Color(0xFFF45F67)),  // Send button
-                    onPressed: _sendMessage,
-                  )
-                : SizedBox.shrink(),
-          ),
-        ],
+            IconButton(
+              icon: Icon(Icons.send, color: Color(0xFFF45F67)),
+              onPressed: _sendMessage,
+            ),
+          ],
+        ),
       ),
     );
   }

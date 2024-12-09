@@ -9,6 +9,9 @@ class Contact {
   final String recipientUsername;
   final String recipientProfilePic;
   final DateTime createdAt;
+  final String lastMessage;
+  final DateTime lastMessageTime;
+  final int unreadCount;
 
   Contact({
     required this.chatId,
@@ -19,7 +22,39 @@ class Contact {
     required this.recipientUsername,
     required this.recipientProfilePic,
     required this.createdAt,
+    required this.lastMessage,
+    required this.lastMessageTime,
+    required this.unreadCount,
   });
+
+  // Add the copyWith method
+  Contact copyWith({
+    int? chatId,
+    int? initiatorUserId,
+    String? initiatorUsername,
+    String? initiatorProfilePic,
+    int? recipientUserId,
+    String? recipientUsername,
+    String? recipientProfilePic,
+    DateTime? createdAt,
+    String? lastMessage,
+    DateTime? lastMessageTime,
+    int? unreadCount,
+  }) {
+    return Contact(
+      chatId: chatId ?? this.chatId,
+      initiatorUserId: initiatorUserId ?? this.initiatorUserId,
+      initiatorUsername: initiatorUsername ?? this.initiatorUsername,
+      initiatorProfilePic: initiatorProfilePic ?? this.initiatorProfilePic,
+      recipientUserId: recipientUserId ?? this.recipientUserId,
+      recipientUsername: recipientUsername ?? this.recipientUsername,
+      recipientProfilePic: recipientProfilePic ?? this.recipientProfilePic,
+      createdAt: createdAt ?? this.createdAt,
+      lastMessage: lastMessage ?? this.lastMessage,
+      lastMessageTime: lastMessageTime ?? this.lastMessageTime,
+      unreadCount: unreadCount ?? this.unreadCount,
+    );
+  }
 
   factory Contact.fromJson(Map<String, dynamic> json) {
     return Contact(
@@ -31,6 +66,11 @@ class Contact {
       recipientUsername: json['recipientUsername'],
       recipientProfilePic: json['recipientProfilePic'],
       createdAt: DateTime.parse(json['createdAt']),
+      lastMessage: json['lastMessage'] ?? '',
+      lastMessageTime: json['lastMessageTime'] != null
+          ? DateTime.parse(json['lastMessageTime'])
+          : DateTime.now(),
+      unreadCount: json['unreadCount'] ?? 0,
     );
   }
 }

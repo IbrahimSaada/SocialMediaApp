@@ -5,7 +5,7 @@ import 'package:cook/home/add_friends_page.dart';
 import 'package:cook/notification/notification_page.dart';
 import 'package:cook/home/search.dart';
 import 'package:cook/askquestion/qna_page.dart';
-import 'package:cook/chat/contacts_page.dart';
+import 'package:cook/contact/contacts_page.dart';
 import 'package:cook/services/LoginService.dart';
 
 Widget buildBottomNavigationBar(BuildContext context) {
@@ -59,14 +59,14 @@ Widget buildBottomNavigationBar(BuildContext context) {
             onPressed: () async {
               // Retrieve userId using LoginService
               int? userId = await loginService.getUserId();
-              String username = 'example'; // Use 'example' as username
-
+              String fullname = await loginService.getFullname();
+    
               if (userId != null) {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => ContactsPage(
-                      username: username,
+                      fullname: fullname,
                       userId: userId,
                       // Since token is not needed, we can omit it or pass an empty string
                     ),

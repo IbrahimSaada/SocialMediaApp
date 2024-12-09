@@ -1,5 +1,3 @@
-// widgets/contact_tile.dart
-
 import 'package:flutter/material.dart';
 
 class ContactTile extends StatelessWidget {
@@ -29,6 +27,12 @@ class ContactTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // If there are unread messages, make lastMessage text bold
+    final TextStyle lastMessageStyle = TextStyle(
+      fontWeight: unreadMessages > 0 ? FontWeight.bold : FontWeight.normal,
+      color: Colors.grey[800],
+    );
+
     return Dismissible(
       key: UniqueKey(),
       background: Container(
@@ -61,7 +65,28 @@ class ContactTile extends StatelessWidget {
           onMuteToggle();
           return false;
         } else if (direction == DismissDirection.endToStart) {
-          return true;
+          // Show confirmation dialog before deleting
+          final bool? confirmed = await showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text('Delete Chat'),
+              content: Text('Are you sure you want to delete this chat?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    onDelete();
+                    Navigator.of(context).pop(true);
+                  },
+                  child: Text('Delete', style: TextStyle(color: Colors.red)),
+                ),
+              ],
+            ),
+          );
+          return confirmed ?? false;
         }
         return false;
       },
@@ -96,14 +121,18 @@ class ContactTile extends StatelessWidget {
             if (isMuted) Icon(Icons.volume_off, color: Colors.grey),
           ],
         ),
-        subtitle: Text(
-          isTyping
-              ? 'typing...'
-              : isOnline
-                  ? 'Active now'
-                  : 'Active $lastActive',
-          style: TextStyle(color: Colors.grey),
-        ),
+        subtitle: isTyping
+            ? Text('typing...', style: TextStyle(color: Colors.grey))
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(lastMessage, style: lastMessageStyle),
+                  Text(
+                    isOnline ? 'Active now' : 'Active $lastActive',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                ],
+              ),
         trailing: unreadMessages > 0
             ? CircleAvatar(
                 backgroundColor: Colors.red,
