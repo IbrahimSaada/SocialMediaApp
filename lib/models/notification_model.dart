@@ -10,7 +10,8 @@ class NotificationModel {
   final DateTime createdAt;
   final bool isRead;
   final int? commentId; 
-  final String? aggregated_answer_ids; // New attribute
+  final String? aggregated_answer_ids; // Existing attribute
+  final String? aggregated_comment_ids; // New attribute
 
   NotificationModel({
     required this.notificationId,
@@ -23,6 +24,7 @@ class NotificationModel {
     required this.isRead,
     this.commentId,
     this.aggregated_answer_ids,
+    this.aggregated_comment_ids,
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
@@ -37,6 +39,7 @@ class NotificationModel {
       isRead: json['isRead'] ?? json['is_read'] ?? false,
       commentId: json['commentId'] ?? json['comment_id'],
       aggregated_answer_ids: json['aggregated_answer_ids'],
+      aggregated_comment_ids: json['aggregated_comment_ids'], // Parse new attribute
     );
   }
 }

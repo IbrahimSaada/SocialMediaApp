@@ -1,3 +1,5 @@
+// pages/notification_page.dart
+
 import 'package:flutter/material.dart';
 import '../models/notification_model.dart';
 import '../page/question_details_page.dart';
@@ -51,15 +53,16 @@ class _NotificationPageState extends State<NotificationPage> {
             final earlierNotifications = notifications.where((notification) {
               final now = DateTime.now();
               return notification.createdAt.isBefore(now) &&
-                  notification.createdAt.day != now.day;
+                  (notification.createdAt.day != now.day ||
+                   notification.createdAt.month != now.month ||
+                   notification.createdAt.year != now.year);
             }).toList();
 
             return Column(
               children: [
                 Container(
                   color: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0, vertical: 10.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -71,10 +74,10 @@ class _NotificationPageState extends State<NotificationPage> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.filter_list,
-                            color: Color(0xFFF45F67)),
+                        icon: const Icon(Icons.filter_list, color: Color(0xFFF45F67)),
                         onPressed: () {
                           print('Filter icon pressed');
+                          // Implement filter functionality if needed
                         },
                       ),
                     ],
@@ -125,8 +128,7 @@ class _NotificationPageState extends State<NotificationPage> {
     );
   }
 
-  Widget buildNotificationCard(
-      NotificationModel notification, double screenWidth) {
+  Widget buildNotificationCard(NotificationModel notification, double screenWidth) {
     IconData iconData = getIconForNotificationType(notification.type);
     String timestamp = getTimeDifference(notification.createdAt);
 
@@ -146,6 +148,7 @@ class _NotificationPageState extends State<NotificationPage> {
         ),
         onDismissed: (direction) {
           print('Notification dismissed: ${notification.message}');
+          // Implement delete functionality if needed
         },
         child: Card(
           shape: RoundedRectangleBorder(
@@ -180,129 +183,160 @@ class _NotificationPageState extends State<NotificationPage> {
               ),
             ),
             onTap: () {
-              print('Tapped on: ${notification.type}');
-              print('Notification details:');
-              print('Type: ${notification.type}');
-              print('relatedEntityId: ${notification.relatedEntityId}');
-              print('commentId: ${notification.commentId}');
-              print('aggregated_answer_ids: ${notification.aggregated_answer_ids}');
-
-              if (notification.relatedEntityId != null ||
-                  notification.type == 'Follow' ||
-                  notification.type == 'Accept' ||
-                  notification.type == 'FollowedBack') {
-                if (notification.type == 'Answer' ||
-                    notification.type == 'AnswerVerified') {
-                  // For 'Answer' and 'AnswerVerified' notifications
-                  int questionId = notification.relatedEntityId!;
-                  // If we have aggregated_answer_ids, parse them
-                  List<int> answerIds = [];
-                  if (notification.aggregated_answer_ids != null &&
-                      notification.aggregated_answer_ids!.isNotEmpty) {
-                    answerIds = notification.aggregated_answer_ids!
-                        .split(',')
-                        .map((id) => int.parse(id.trim()))
-                        .toList();
-                  } else {
-                    // fallback to single commentId as answerId
-                    if (notification.commentId != null) {
-                      answerIds = [notification.commentId!];
-                    }
-                  }
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AnswerDetailsPage(
-                        answerIds: answerIds,
-                        questionId: questionId,
-                      ),
-                    ),
-                  );
-                } else if (notification.type == 'Follow' ||
-                    notification.type == 'Accept' ||
-                    notification.type == 'FollowedBack') {
-                  // Navigate to AddFriendsPage
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AddFriendsPage(),
-                    ),
-                  );
-                } else if (notification.type == 'Like' ||
-                    notification.type == 'Comment' ||
-                    notification.type == 'Share' ||
-                    notification.type == 'Reply') {
-                  if (notification.type == 'Reply' &&
-                      notification.commentId != null) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => CommentDetailsPage(
-                          postId: notification.relatedEntityId!,
-                          commentId: notification.commentId!,
-                        ),
-                      ),
-                    );
-                  } else if (notification.type == 'Share') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => RepostDetailsPage(
-                          postId: notification.relatedEntityId!,
-                          isMultipleShares:
-                              notification.message.contains('others'),
-                        ),
-                      ),
-                    );
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            PostDetailsPage(postId: notification.relatedEntityId!),
-                      ),
-                    );
-                  }
-                } else if (notification.type == 'QuestionLike') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => QuestionDetailsPage(
-                        questionId: notification.relatedEntityId!,
-                      ),
-                    ),
-                  );
-                } else if (notification.type == 'PrivateQuestion') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => PrivateQuestionDetailsPage(
-                        userId: notification.recipientUserId,
-                        questionId: notification.relatedEntityId!,
-                      ),
-                    ),
-                  );
-                } else if (notification.type == 'PrivateQuestionAnswered') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AcceptedPrivateQuestionDetailsPage(
-                        questionId: notification.relatedEntityId!,
-                      ),
-                    ),
-                  );
-                } else {
-                  print('Unhandled notification type: ${notification.type}');
-                }
-              } else {
-                print('No related entity id for this notification');
-              }
+              handleNotificationTap(notification);
             },
           ),
         ),
       ),
     );
+  }
+
+  void handleNotificationTap(NotificationModel notification) {
+    print('Tapped on: ${notification.type}');
+    print('Notification details:');
+    print('Type: ${notification.type}');
+    print('relatedEntityId: ${notification.relatedEntityId}');
+    print('commentId: ${notification.commentId}');
+    print('aggregated_answer_ids: ${notification.aggregated_answer_ids}');
+    print('aggregated_comment_ids: ${notification.aggregated_comment_ids}');
+
+    if (notification.relatedEntityId != null ||
+        notification.type == 'Follow' ||
+        notification.type == 'Accept' ||
+        notification.type == 'FollowedBack') {
+      if (notification.type == 'Answer' ||
+          notification.type == 'AnswerVerified') {
+        int questionId = notification.relatedEntityId!;
+        List<int> answerIds = [];
+        if (notification.aggregated_answer_ids != null &&
+            notification.aggregated_answer_ids!.isNotEmpty) {
+          answerIds = notification.aggregated_answer_ids!
+              .split(',')
+              .map((id) => int.parse(id.trim()))
+              .toList();
+        } else if (notification.commentId != null) {
+          answerIds = [notification.commentId!];
+        }
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AnswerDetailsPage(
+              answerIds: answerIds,
+              questionId: questionId,
+            ),
+          ),
+        );
+      } else if (notification.type == 'Follow' ||
+          notification.type == 'Accept' ||
+          notification.type == 'FollowedBack') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AddFriendsPage(),
+          ),
+        );
+      } else if (notification.type == 'Like' ||
+          notification.type == 'Comment' ||
+          notification.type == 'Share' ||
+          notification.type == 'Reply') {
+        if (notification.type == 'Reply' && notification.commentId != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CommentDetailsPage(
+                postId: notification.relatedEntityId!,
+                commentId: notification.commentId!,
+              ),
+            ),
+          );
+        } else if (notification.type == 'Comment') {
+          if (notification.aggregated_comment_ids != null &&
+              notification.aggregated_comment_ids!.isNotEmpty) {
+            List<int> commentIds = notification.aggregated_comment_ids!
+                .split(',')
+                .map((id) => int.parse(id.trim()))
+                .toList();
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CommentDetailsPage(
+                  postId: notification.relatedEntityId!,
+                  aggregatedCommentIds: commentIds,
+                ),
+              ),
+            );
+          } else if (notification.commentId != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CommentDetailsPage(
+                  postId: notification.relatedEntityId!,
+                  commentId: notification.commentId!,
+                ),
+              ),
+            );
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PostDetailsPage(postId: notification.relatedEntityId!),
+              ),
+            );
+          }
+        } else if (notification.type == 'Share') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => RepostDetailsPage(
+                postId: notification.relatedEntityId!,
+                isMultipleShares: notification.message.contains('others'),
+              ),
+            ),
+          );
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PostDetailsPage(postId: notification.relatedEntityId!),
+            ),
+          );
+        }
+      } else if (notification.type == 'QuestionLike') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => QuestionDetailsPage(
+              questionId: notification.relatedEntityId!,
+            ),
+          ),
+        );
+      } else if (notification.type == 'PrivateQuestion') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PrivateQuestionDetailsPage(
+              userId: notification.recipientUserId,
+              questionId: notification.relatedEntityId!,
+            ),
+          ),
+        );
+      } else if (notification.type == 'PrivateQuestionAnswered') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AcceptedPrivateQuestionDetailsPage(
+              questionId: notification.relatedEntityId!,
+            ),
+          ),
+        );
+      } else {
+        print('Unhandled notification type: ${notification.type}');
+      }
+    } else {
+      print('No related entity id for this notification');
+    }
   }
 
   IconData getIconForNotificationType(String type) {
