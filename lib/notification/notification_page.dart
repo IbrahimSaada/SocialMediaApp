@@ -240,13 +240,19 @@ class _NotificationPageState extends State<NotificationPage> {
           notification.type == 'Comment' ||
           notification.type == 'Share' ||
           notification.type == 'Reply') {
-        if (notification.type == 'Reply' && notification.commentId != null) {
+        if (notification.type == 'Reply' && notification.aggregated_comment_ids != null) {
+          // Parse the aggregated comment IDs
+          List<int> commentIds = notification.aggregated_comment_ids!
+              .split(',')
+              .map((id) => int.parse(id.trim()))
+              .toList();
+
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => CommentDetailsPage(
                 postId: notification.relatedEntityId!,
-                commentId: notification.commentId!,
+                aggregatedCommentIds: commentIds, // Pass the IDs to fetch the comment threads
               ),
             ),
           );
