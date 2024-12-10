@@ -44,28 +44,30 @@ class _CommentDetailsPageState extends State<CommentDetailsPage> with SingleTick
   bool _isExpanded = false;
   int _currentIndex = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    _futurePostDetails = _fetchPostDetails();
-    if (widget.aggregatedCommentIds != null && widget.aggregatedCommentIds!.isNotEmpty) {
-      _futureCommentData = _fetchMultipleCommentThreads();
-    } else if (widget.commentId != null) {
-      _futureCommentData = _fetchCommentThread();
-    } else {
-      // If no commentId and no aggregatedCommentIds, just load post details
-      _futureCommentData = Future.value([]);
-    }
+@override
+void initState() {
+  super.initState();
+  _futurePostDetails = _fetchPostDetails();
 
-    _fetchCurrentUserId();
-
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-      lowerBound: 0.8,
-      upperBound: 1.2,
-    );
+  if (widget.aggregatedCommentIds != null && widget.aggregatedCommentIds!.isNotEmpty) {
+    _futureCommentData = _fetchMultipleCommentThreads();
+  } else if (widget.commentId != null) {
+    // Treat single comment as a list with one ID
+    _futureCommentData = _fetchMultipleCommentThreads();
+  } else {
+    // If no commentId and no aggregatedCommentIds, just load post details
+    _futureCommentData = Future.value([]);
   }
+
+  _fetchCurrentUserId();
+
+  _animationController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 300),
+    lowerBound: 0.8,
+    upperBound: 1.2,
+  );
+}
 
   @override
   void dispose() {
@@ -91,13 +93,11 @@ class _CommentDetailsPageState extends State<CommentDetailsPage> with SingleTick
     return postDetails;
   }
 
-  Future<Comment> _fetchCommentThread() async {
-    return await CommentService.fetchCommentThread(widget.postId, widget.commentId!);
-  }
-
-  Future<List<Comment>> _fetchMultipleCommentThreads() async {
-    return await CommentService.fetchCommentThreads(widget.postId, widget.aggregatedCommentIds!);
-  }
+Future<List<Comment>> _fetchMultipleCommentThreads() async {
+  // Use aggregatedCommentIds or a list containing the single commentId
+  final commentIds = widget.aggregatedCommentIds ?? [widget.commentId!];
+  return await CommentService.fetchCommentThreads(widget.postId, commentIds);
+}
 
   void _toggleExpansion() {
     setState(() {
