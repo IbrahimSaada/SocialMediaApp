@@ -141,15 +141,16 @@ Future<void> changeProfilePrivacy(int userId, PrivacySettings settings) async {
     if (settings.isPublic != null) 'isPublic': settings.isPublic.toString(),
     if (settings.isFollowersPublic != null) 'isFollowersPublic': settings.isFollowersPublic.toString(),
     if (settings.isFollowingPublic != null) 'isFollowingPublic': settings.isFollowingPublic.toString(),
+    if (settings.isNotificationsMuted != null) 'isNotificationsMuted': settings.isNotificationsMuted.toString(),
   };
 
   // Construct the full URL with query parameters
   final Uri uri = Uri.parse(
-    'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/UserProfile/change-privacy'
+    'https://fbe0-185-97-92-30.ngrok-free.app/api/UserProfile/change-privacy'
   ).replace(queryParameters: queryParams);
 
   // Data to sign (userId + privacy settings)
-  final String signatureData = '$userId:${boolToString(settings.isPublic)}:${boolToString(settings.isFollowersPublic)}:${boolToString(settings.isFollowingPublic)}';
+  final String signatureData = '$userId:${boolToString(settings.isPublic)}:${boolToString(settings.isFollowersPublic)}:${boolToString(settings.isFollowingPublic)}:${boolToString(settings.isNotificationsMuted)}';
 
   print('Signature Data: $signatureData'); // For debugging
 
@@ -199,6 +200,7 @@ Future<Map<String, bool>> checkProfilePrivacy(int userId) async {
         'isPublic': jsonData['isPublic'] ?? false,
         'isFollowersPublic': jsonData['isFollowersPublic'] ?? false,
         'isFollowingPublic': jsonData['isFollowingPublic'] ?? false,
+        'isNotificationsMuted': jsonData['isNotificationsMuted'] ?? false,
       };
     } else {
       print('Failed to check profile privacy. Status code: ${response.statusCode}');

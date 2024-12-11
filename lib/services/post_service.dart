@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/post_model.dart';
 import '../models/LikeRequest_model.dart';
+import '../models/user_like.dart';
 import 'LoginService.dart';
 import 'SignatureService.dart';
 import '../models/bookmarkrequest_model.dart';
@@ -290,6 +291,72 @@ class PostService {
     } catch (e) {
       print("Error in unbookmarkPost: $e");
       rethrow; // Re-throw to handle it in the UI layer
+    }
+  }
+    static Future<List<UserLike>> fetchPostLikes(int postId) async {
+    try {
+      // Ensure the user is logged in and get the JWT token
+      if (!await _loginService.isLoggedIn()) {
+        throw Exception("User not logged in.");
+      }
+
+      String? token = await _loginService.getToken();
+
+      // Generate HMAC signature for the request
+      String dataToSign = '$postId';
+      String signature = await _signatureService.generateHMAC(dataToSign);
+
+      final response = await http.get(
+        Uri.parse('$apiUrl/$postId/Likes'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+          'Authorization': 'Bearer $token',  // JWT token
+          'X-Signature': signature,          // HMAC signature
+        },
+      );
+
+      if (response.statusCode == 401) {
+        print('JWT token is invalid or expired. Attempting to refresh token.');
+        // Unauthorized, try refreshing the token
+        try {
+          await _loginService.refreshAccessToken();
+          token = await _loginService.getToken();
+          print('Token refreshed successfully.');
+
+          // Retry the request after token refresh
+          final retryResponse = await http.get(
+            Uri.parse('$apiUrl/$postId/Likes'),
+            headers: <String, String>{
+              'Content-Type': 'application/json; charset=UTF-8',
+              'Authorization': 'Bearer $token',
+              'X-Signature': signature,
+            },
+          );
+
+          if (retryResponse.statusCode == 401) {
+            // Token refresh failed, return an error
+            throw Exception('Session expired or refresh token invalid.');
+          } else if (retryResponse.statusCode == 200) {
+            List<dynamic> data = json.decode(retryResponse.body);
+            return data.map((json) => UserLike.fromJson(json)).toList();
+          } else {
+            throw Exception('Failed to load post likes after token refresh.');
+          }
+        } catch (e) {
+          print('Caught exception during token refresh: $e');
+          throw Exception('Failed to refresh token: Invalid or expired refresh token.');
+        }
+      }
+
+      if (response.statusCode == 200) {
+        List<dynamic> data = json.decode(response.body);
+        return data.map((json) => UserLike.fromJson(json)).toList();
+      } else {
+        throw Exception('Failed to load post likes.');
+      }
+    } catch (e) {
+      print("Error in fetchPostLikes: $e");
+      rethrow;
     }
   }
 }

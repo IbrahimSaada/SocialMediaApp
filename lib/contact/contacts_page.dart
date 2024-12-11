@@ -1,3 +1,4 @@
+// contacts/contacts.dart
 import 'dart:async';
 import 'dart:convert';
 import 'package:cook/models/deleteuserchat.dart';
@@ -13,6 +14,7 @@ import '../chat/chat_page.dart';
 import 'pluscontact.dart';
 import 'package:intl/intl.dart';
 import 'package:cryptography/cryptography.dart';
+import 'package:cook/models/mute_user_dto.dart'; // Import the MuteUserDto
 
 class ContactsPage extends StatefulWidget {
   final String fullname;
@@ -54,7 +56,6 @@ class _ContactsPageState extends State<ContactsPage> {
       onChatCreated: _onChatCreated,
       onNewChatNotification: _onNewChatNotification,
       onError: _onError,
-      // Real-time updates for the contacts page
       onReceiveMessage: _onChatUpdate,
       onMessageSent: _onChatUpdate,
       onMessageEdited: _onChatUpdate,
@@ -133,7 +134,6 @@ class _ContactsPageState extends State<ContactsPage> {
           final chat = chats[i];
           if (chat.lastMessage.isNotEmpty) {
             try {
-              // Attempt to decode and decrypt
               final ciphertext = base64Decode(chat.lastMessage);
               final decryptedBytes = await encryptionService.decryptMessage(
                 encryptionKey: _sessionKeys!.encryptionKey,
@@ -143,7 +143,7 @@ class _ContactsPageState extends State<ContactsPage> {
               chats[i] = chat.copyWith(lastMessage: decryptedText);
             } catch (e) {
               print('Error decrypting lastMessage for chatId=${chat.chatId}: $e');
-              // If decryption fails, we can leave it as the original ciphertext or show a placeholder
+              // If decryption fails, leave as is or show placeholder
             }
           }
         }
@@ -198,10 +198,45 @@ class _ContactsPageState extends State<ContactsPage> {
     }
   }
 
-  void _toggleMute(int index) {
-    setState(() {
-      muteStatus[index] = !(muteStatus[index] ?? false);
-    });
+  Future<void> _toggleMute(int index) async {
+    final chat = _filteredChats[index];
+    // Determine the other userId
+    int otherUserId = chat.initiatorUserId == widget.userId
+        ? chat.recipientUserId
+        : chat.initiatorUserId;
+
+    final currentlyMuted = muteStatus[index] ?? false;
+
+    // We'll call the appropriate API
+    final dto = MuteUserDto(
+      mutedByUserId: widget.userId,
+      mutedUserId: otherUserId,
+    );
+
+    try {
+      if (!currentlyMuted) {
+        // Mute the user
+        await _chatService.muteUser(dto);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('User muted successfully.')),
+        );
+      } else {
+        // Unmute the user
+        await _chatService.unmuteUser(dto);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('User unmuted successfully.')),
+        );
+      }
+
+      setState(() {
+        muteStatus[index] = !currentlyMuted;
+      });
+    } catch (e) {
+      print('Error toggling mute: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to toggle mute.')),
+      );
+    }
   }
 
   Future<void> _deleteChatWithUndo(Contact chat) async {
@@ -350,7 +385,7 @@ class _ContactsPageState extends State<ContactsPage> {
 
   Future<List<int>> _fetchRecipientPublicKeyFromServer() async {
     print('Fetching recipient public key (mock, stable) for ContactsPage');
-    // Using the same stable approach as ChatPage for demonstration:
+    // Using stable approach:
     final seed = List<int>.filled(32, 2);
     final algo = X25519();
     final kp = await algo.newKeyPairFromSeed(seed);
