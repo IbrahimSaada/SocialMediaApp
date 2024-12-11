@@ -1,4 +1,4 @@
-// home/post_card.dart
+// post_card.dart
 
 import 'package:flutter/material.dart';
 import '***REMOVED***/models/feed/post_info.dart';
@@ -13,10 +13,14 @@ import '***REMOVED***/profile/otheruserprofilepage.dart';
 import '***REMOVED***/profile/profile_page.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:timeago/timeago.dart' as timeago;
-import 'package:shimmer/shimmer.dart'; // Import shimmer package
+import 'package:shimmer/shimmer.dart';
 import '***REMOVED***/models/LikeRequest_model.dart';
 import '***REMOVED***/models/bookmarkrequest_model.dart';
 import 'full_screen_image_page.dart';
+
+// Add this import for the PostLikesBottomSheet and UserLike:
+import '../models/user_like.dart';
+import '../home/post_bottom_likes_sheet.dart';
 
 class PostCard extends StatefulWidget {
   final PostInfo postInfo;
@@ -177,6 +181,32 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     );
   }
 
+  Future<void> _showLikesBottomSheet() async {
+    try {
+      List<UserLike> likes = await PostService.fetchPostLikes(widget.postInfo.postId);
+      if (context.mounted) {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          builder: (BuildContext context) {
+            return PostLikesBottomSheet(
+              postId: widget.postInfo.postId,
+              initialLikes: likes,
+            );
+          },
+        );
+      }
+    } catch (e) {
+      if (e.toString().contains('Session expired')) {
+        if (context.mounted) {
+          handleSessionExpired(context);
+        }
+      } else {
+        print('Failed to fetch post likes: $e');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final post = widget.postInfo;
@@ -222,9 +252,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                     },
                     child: CircleAvatar(
                       backgroundImage: CachedNetworkImageProvider(user.profilePictureUrl),
-                      onBackgroundImageError: (_, __) {
-                        // Optionally handle the error
-                      },
+                      onBackgroundImageError: (_, __) {},
                     ),
                   ),
                   const SizedBox(width: 8.0),
@@ -342,45 +370,45 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
               // Post media (images or videos)
               if (post.media.isNotEmpty)
                 SizedBox(
-  height: 300,
-  width: double.infinity,
-  child: PageView.builder(
-    itemCount: post.media.length,
-    onPageChanged: (index) {
-      setState(() {
-        _currentIndex = index;
-      });
-    },
-    itemBuilder: (context, index) {
-      final media = post.media[index];
-      return GestureDetector(
-        onDoubleTap: () {
-          _viewImageFullscreen(
-            post.media.map((m) => m.mediaUrl).toList(),
-            index,
-          );
-        },
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(10.0),
-          child: media.mediaType == 'photo'
-              ? CachedNetworkImage(
-                  imageUrl: media.mediaUrl,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Shimmer.fromColors(
-                    baseColor: Colors.grey[300]!,
-                    highlightColor: Colors.grey[100]!,
-                    child: Container(
-                      color: Colors.white,
-                    ),
+                  height: 300,
+                  width: double.infinity,
+                  child: PageView.builder(
+                    itemCount: post.media.length,
+                    onPageChanged: (index) {
+                      setState(() {
+                        _currentIndex = index;
+                      });
+                    },
+                    itemBuilder: (context, index) {
+                      final media = post.media[index];
+                      return GestureDetector(
+                        onDoubleTap: () {
+                          _viewImageFullscreen(
+                            post.media.map((m) => m.mediaUrl).toList(),
+                            index,
+                          );
+                        },
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10.0),
+                          child: media.mediaType == 'photo'
+                              ? CachedNetworkImage(
+                                  imageUrl: media.mediaUrl,
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) => Shimmer.fromColors(
+                                    baseColor: Colors.grey[300]!,
+                                    highlightColor: Colors.grey[100]!,
+                                    child: Container(
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  errorWidget: (context, url, error) => Icon(Icons.error),
+                                )
+                              : VideoPost(mediaUrl: media.mediaUrl),
+                        ),
+                      );
+                    },
                   ),
-                  errorWidget: (context, url, error) => Icon(Icons.error),
-                )
-              : VideoPost(mediaUrl: media.mediaUrl),
-        ),
-      );
-    },
-  ),
-),
+                ),
               if (post.media.length > 1)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -409,7 +437,10 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                     ),
                     onPressed: _handleLike,
                   ),
-                  Text('${post.likeCount}', style: TextStyle(color: Color(0xFFF45F67))),
+                  GestureDetector(
+                    onTap: _showLikesBottomSheet,
+                    child: Text('${post.likeCount}', style: TextStyle(color: Color(0xFFF45F67))),
+                  ),
                   const SizedBox(width: 16.0),
                   IconButton(
                     icon: Icon(Icons.comment, color: Color(0xFFF45F67)),

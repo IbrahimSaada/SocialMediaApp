@@ -4,6 +4,8 @@ import '***REMOVED***/models/message_model.dart';
 import '***REMOVED***/models/deleteuserchat.dart';
 import '***REMOVED***/services/apiService.dart';
 
+import '../models/mute_user_dto.dart';
+
 class ChatService {
   final String baseUrl = '***REMOVED***/api/Chat'; 
   final ApiService _apiService = ApiService();
@@ -43,6 +45,41 @@ class ChatService {
 
     if (response.statusCode != 200) {
       throw Exception('Failed to delete chat: ${response.body}');
+    }
+  }
+
+    // Mute a user
+  Future<void> muteUser(MuteUserDto dto) async {
+    // dataToSign = "MutedByUserId:...|MutedUserId:..."
+    final dataToSign = "MutedByUserId:${dto.mutedByUserId}|MutedUserId:${dto.mutedUserId}";
+    final uri = Uri.parse('$baseUrl/mute-user');
+
+    final response = await _apiService.makeRequestWithToken(
+      uri,
+      dataToSign,
+      'POST',
+      body: dto.toJson(),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to mute user: ${response.body}');
+    }
+  }
+
+  // Unmute a user
+  Future<void> unmuteUser(MuteUserDto dto) async {
+    final dataToSign = "MutedByUserId:${dto.mutedByUserId}|MutedUserId:${dto.mutedUserId}";
+    final uri = Uri.parse('$baseUrl/unmute-user');
+
+    final response = await _apiService.makeRequestWithToken(
+      uri,
+      dataToSign,
+      'POST',
+      body: dto.toJson(),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to unmute user: ${response.body}');
     }
   }
 }

@@ -16,6 +16,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _isProfilePublic = true;
   bool _isFollowersPublic = true;
   bool _isFollowingPublic = true;
+  bool _isNotificationsMuted = true;
   String _language = 'English';
   bool _darkMode = false;
   final UserProfileService _userProfileService = UserProfileService();
@@ -48,6 +49,7 @@ Future<void> _loadProfilePrivacy() async {
       _isProfilePublic = privacySettings['isPublic'] ?? false;
       _isFollowersPublic = privacySettings['isFollowersPublic'] ?? false;
       _isFollowingPublic = privacySettings['isFollowingPublic'] ?? false;
+      _isNotificationsMuted = privacySettings['isNotificationsMuted'] ?? false;
     });
   } on SessionExpiredException {
     print("SessionExpired detected while loading privacy");
@@ -68,6 +70,7 @@ void _updatePrivacySettings() async {
     isPublic: _isProfilePublic,
     isFollowersPublic: _isFollowersPublic,
     isFollowingPublic: _isFollowingPublic,
+    isNotificationsMuted: _isNotificationsMuted,
   );
 
   print('Updating Privacy Settings: ${settings.toJson()}'); // Log the complete payload
@@ -168,13 +171,14 @@ void _updatePrivacySettings() async {
           ),
           Divider(),
           _buildSwitchTile(
-            title: 'Enable Notifications',
-            value: _notificationsEnabled,
+            title: 'Mute Notifications',
+            value: _isNotificationsMuted,
             icon: Icons.notifications,
             onChanged: (value) {
               setState(() {
-                _notificationsEnabled = value;
+                _isNotificationsMuted = value;
               });
+              _updatePrivacySettings(); // Update backend on change
             },
           ),
           Divider(),
