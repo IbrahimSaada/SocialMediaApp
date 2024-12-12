@@ -7,7 +7,7 @@ import '***REMOVED***/services/SignatureService.dart'; // Import SignatureServic
 
 class StoryServiceRequest {
   final String baseUrl =
-      "***REMOVED***/api/Stories"; // Base API URL
+      "https://af4a-185-97-92-30.ngrok-free.app/api/Stories"; // Base API URL
 
   final LoginService _loginService = LoginService();
   final SignatureService _signatureService = SignatureService(); // Use SignatureService

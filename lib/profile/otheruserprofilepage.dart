@@ -76,6 +76,73 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     super.dispose();
   }
 
+  void _blockUser() async {
+  bool confirmBlock = await showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text(
+          "Block User",
+          style: TextStyle(color: Color(0xFFF45F67)),
+        ),
+        content: Text(
+          "Are you sure you want to block this user? They will no longer be able to interact with you or view your profile.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              "Cancel",
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              "Block",
+              style: TextStyle(color: Color(0xFFF45F67)),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (confirmBlock) {
+    try {
+      bool isBlocked = await _userProfileService.blockUser(
+        currentUserId!,
+        widget.otherUserId,
+      );
+
+      if (isBlocked) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("User blocked successfully."),
+            backgroundColor: Color(0xFFF45F67),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to block the user."),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      print("Error blocking user: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("An error occurred. Please try again later."),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
+
+
   // Add a new method to show the QR Code Modal
 void _showQRCode() {
   if (userProfile?.qrCode != null) {
@@ -471,6 +538,8 @@ void _scrollListener() {
                 onSelected: (value) {
                   if (value == "report") {
                     _showReportOptions();
+                  } else if (value == "block") {
+                    _blockUser();
                   }
                 },
                 itemBuilder: (BuildContext context) {
