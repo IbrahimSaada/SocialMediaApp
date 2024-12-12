@@ -11,62 +11,50 @@ import '../models/bookmarkrequest_model.dart';
 
 class PostService {
   static const String apiUrl = 'https://af4a-185-97-92-30.ngrok-free.app/api/Posts';
-  static final LoginService _loginService = LoginService();  // Static service
-  static final SignatureService _signatureService = SignatureService();  // Static service
+  static final LoginService _loginService = LoginService(); 
+  static final SignatureService _signatureService = SignatureService();
 
-  // Fetch posts (requires JWT and signature)
+  // Fetch posts
   static Future<List<Post>> fetchPosts({required int userId}) async {
     try {
-      // Ensure the user is logged in and get the JWT token
       if (!await _loginService.isLoggedIn()) {
         throw Exception("User not logged in.");
       }
-
       String? token = await _loginService.getToken();
-
-      // Generate HMAC signature for the request
-      String dataToSign = '$userId';  // Data to sign
+      String dataToSign = '$userId';
       String signature = await _signatureService.generateHMAC(dataToSign);
 
       final response = await http.get(
-        Uri.parse('$apiUrl?userId=$userId'),  // Query parameter
-        headers: <String, String>{
+        Uri.parse('$apiUrl?userId=$userId'),
+        headers: {
           'Content-Type': 'application/json; charset=UTF-8',
-          'Authorization': 'Bearer $token',  // JWT token
-          'X-Signature': signature,          // HMAC signature
+          'Authorization': 'Bearer $token',
+          'X-Signature': signature,
         },
       );
 
       if (response.statusCode == 401) {
         print('JWT token is invalid or expired. Attempting to refresh token.');
-        // Unauthorized, try refreshing the token
-        try {
-          await _loginService.refreshAccessToken();
-          token = await _loginService.getToken();
-          print('Token refreshed successfully.');
+        await _loginService.refreshAccessToken();
+        token = await _loginService.getToken();
+        print('Token refreshed successfully.');
 
-          // Retry the request after token refresh
-          final retryResponse = await http.get(
-            Uri.parse('$apiUrl?userId=$userId'),
-            headers: <String, String>{
-              'Content-Type': 'application/json; charset=UTF-8',
-              'Authorization': 'Bearer $token',
-              'X-Signature': signature,
-            },
-          );
+        final retryResponse = await http.get(
+          Uri.parse('$apiUrl?userId=$userId'),
+          headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Authorization': 'Bearer $token',
+            'X-Signature': signature,
+          },
+        );
 
-          if (retryResponse.statusCode == 401) {
-            // Token refresh failed, return an error
-            throw Exception('Session expired or refresh token invalid.');
-          } else if (retryResponse.statusCode == 200) {
-            List<dynamic> data = json.decode(retryResponse.body);
-            return data.map((json) => Post.fromJson(json)).toList();
-          } else {
-            throw Exception('Failed to load posts after token refresh.');
-          }
-        } catch (e) {
-          print('Caught exception during token refresh: $e');
-          throw Exception('Failed to refresh token: Invalid or expired refresh token.');
+        if (retryResponse.statusCode == 401) {
+          throw Exception('Session expired or refresh token invalid.');
+        } else if (retryResponse.statusCode == 200) {
+          List<dynamic> data = json.decode(retryResponse.body);
+          return data.map((json) => Post.fromJson(json)).toList();
+        } else {
+          throw Exception('Failed to load posts after token refresh.');
         }
       }
 
@@ -82,58 +70,56 @@ class PostService {
     }
   }
 
-  // Like a post (requires JWT and signature)
+  // Like a post
   static Future<void> likePost(LikeRequest likeRequest) async {
     try {
-      // Ensure the user is logged in and get the JWT token
       if (!await _loginService.isLoggedIn()) {
         throw Exception("User not logged in.");
       }
-
       String? token = await _loginService.getToken();
-
-      // Generate HMAC signature for the request
       String dataToSign = '${likeRequest.userId}:${likeRequest.postId}';
       String signature = await _signatureService.generateHMAC(dataToSign);
 
       final response = await http.post(
         Uri.parse('$apiUrl/Like'),
-        headers: <String, String>{
+        headers: {
           'Content-Type': 'application/json; charset=UTF-8',
-          'Authorization': 'Bearer $token',  // JWT token
-          'X-Signature': signature,          // HMAC signature
+          'Authorization': 'Bearer $token',
+          'X-Signature': signature,
         },
         body: jsonEncode(likeRequest.toJson()),
       );
 
+      if (response.statusCode == 403) {
+        final reason = response.body;
+        throw Exception('BLOCKED:$reason');
+      }
+
       if (response.statusCode == 401) {
         print('JWT token is invalid or expired. Attempting to refresh token.');
-        // Unauthorized, try refreshing the token
-        try {
-          await _loginService.refreshAccessToken();
-          token = await _loginService.getToken();
-          print('Token refreshed successfully.');
+        await _loginService.refreshAccessToken();
+        token = await _loginService.getToken();
+        print('Token refreshed successfully.');
 
-          // Retry the request after token refresh
-          final retryResponse = await http.post(
-            Uri.parse('$apiUrl/Like'),
-            headers: <String, String>{
-              'Content-Type': 'application/json; charset=UTF-8',
-              'Authorization': 'Bearer $token',
-              'X-Signature': signature,
-            },
-            body: jsonEncode(likeRequest.toJson()),
-          );
+        final retryResponse = await http.post(
+          Uri.parse('$apiUrl/Like'),
+          headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Authorization': 'Bearer $token',
+            'X-Signature': signature,
+          },
+          body: jsonEncode(likeRequest.toJson()),
+        );
 
-          if (retryResponse.statusCode == 401) {
-            // Token refresh failed, return an error
-            throw Exception('Session expired or refresh token invalid.');
-          } else if (retryResponse.statusCode != 200) {
-            throw Exception('Failed to like post after token refresh.');
-          }
-        } catch (e) {
-          print('Caught exception during token refresh: $e');
-          throw Exception('Failed to refresh token: Invalid or expired refresh token.');
+        if (retryResponse.statusCode == 403) {
+          final reason = retryResponse.body;
+          throw Exception('BLOCKED:$reason');
+        }
+
+        if (retryResponse.statusCode == 401) {
+          throw Exception('Session expired or refresh token invalid.');
+        } else if (retryResponse.statusCode != 200) {
+          throw Exception('Failed to like post after token refresh.');
         }
       } else if (response.statusCode != 200) {
         throw Exception('Failed to like post.');
@@ -144,58 +130,56 @@ class PostService {
     }
   }
 
-  // Unlike a post (requires JWT and signature)
+  // Unlike a post
   static Future<void> unlikePost(LikeRequest likeRequest) async {
     try {
-      // Ensure the user is logged in and get the JWT token
       if (!await _loginService.isLoggedIn()) {
         throw Exception("User not logged in.");
       }
-
       String? token = await _loginService.getToken();
-
-      // Generate HMAC signature for the request
       String dataToSign = '${likeRequest.userId}:${likeRequest.postId}';
       String signature = await _signatureService.generateHMAC(dataToSign);
 
       final response = await http.post(
         Uri.parse('$apiUrl/Unlike'),
-        headers: <String, String>{
+        headers: {
           'Content-Type': 'application/json; charset=UTF-8',
-          'Authorization': 'Bearer $token',  // JWT token
-          'X-Signature': signature,          // HMAC signature
+          'Authorization': 'Bearer $token',
+          'X-Signature': signature,
         },
         body: jsonEncode(likeRequest.toJson()),
       );
 
+      if (response.statusCode == 403) {
+        final reason = response.body;
+        throw Exception('BLOCKED:$reason');
+      }
+
       if (response.statusCode == 401) {
-        print('JWT token is invalid or expired. Attempting to refresh token.');
-        // Unauthorized, try refreshing the token
-        try {
-          await _loginService.refreshAccessToken();
-          token = await _loginService.getToken();
-          print('Token refreshed successfully.');
+        print('JWT token is invalid or expired.');
+        await _loginService.refreshAccessToken();
+        token = await _loginService.getToken();
+        print('Token refreshed successfully.');
 
-          // Retry the request after token refresh
-          final retryResponse = await http.post(
-            Uri.parse('$apiUrl/Unlike'),
-            headers: <String, String>{
-              'Content-Type': 'application/json; charset=UTF-8',
-              'Authorization': 'Bearer $token',
-              'X-Signature': signature,
-            },
-            body: jsonEncode(likeRequest.toJson()),
-          );
+        final retryResponse = await http.post(
+          Uri.parse('$apiUrl/Unlike'),
+          headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Authorization': 'Bearer $token',
+            'X-Signature': signature,
+          },
+          body: jsonEncode(likeRequest.toJson()),
+        );
 
-          if (retryResponse.statusCode == 401) {
-            // Token refresh failed, return an error
-            throw Exception('Session expired or refresh token invalid.');
-          } else if (retryResponse.statusCode != 200) {
-            throw Exception('Failed to unlike post after token refresh.');
-          }
-        } catch (e) {
-          print('Caught exception during token refresh: $e');
-          throw Exception('Failed to refresh token: Invalid or expired refresh token.');
+        if (retryResponse.statusCode == 403) {
+          final reason = retryResponse.body;
+          throw Exception('BLOCKED:$reason');
+        }
+
+        if (retryResponse.statusCode == 401) {
+          throw Exception('Session expired or refresh token invalid.');
+        } else if (retryResponse.statusCode != 200) {
+          throw Exception('Failed to unlike post after token refresh.');
         }
       } else if (response.statusCode != 200) {
         throw Exception('Failed to unlike post.');
@@ -206,6 +190,7 @@ class PostService {
     }
   }
 
+  // Bookmark post
   static Future<void> bookmarkPost(BookmarkRequest bookmarkRequest) async {
     try {
       String? token = await _loginService.getToken();
@@ -214,7 +199,7 @@ class PostService {
 
       final response = await http.post(
         Uri.parse('$apiUrl/Bookmark'),
-        headers: <String, String>{
+        headers: {
           'Content-Type': 'application/json; charset=UTF-8',
           'Authorization': 'Bearer $token',
           'X-Signature': signature,
@@ -222,21 +207,29 @@ class PostService {
         body: jsonEncode(bookmarkRequest.toJson()),
       );
 
+      if (response.statusCode == 403) {
+        final reason = response.body;
+        throw Exception('BLOCKED:$reason');
+      }
+
       if (response.statusCode == 401) {
-        // Token is invalid or expired, attempt to refresh it
         await _loginService.refreshAccessToken();
         token = await _loginService.getToken();
-        
-        // Retry the request after refreshing the token
+
         final retryResponse = await http.post(
           Uri.parse('$apiUrl/Bookmark'),
-          headers: <String, String>{
+          headers: {
             'Content-Type': 'application/json; charset=UTF-8',
             'Authorization': 'Bearer $token',
             'X-Signature': signature,
           },
           body: jsonEncode(bookmarkRequest.toJson()),
         );
+
+        if (retryResponse.statusCode == 403) {
+          final reason = retryResponse.body;
+          throw Exception('BLOCKED:$reason');
+        }
 
         if (retryResponse.statusCode != 200) {
           throw Exception('Failed to bookmark post after token refresh.');
@@ -246,10 +239,11 @@ class PostService {
       }
     } catch (e) {
       print("Error in bookmarkPost: $e");
-      rethrow; // Re-throw to handle it in the UI layer
+      rethrow;
     }
   }
 
+  // Unbookmark post
   static Future<void> unbookmarkPost(BookmarkRequest bookmarkRequest) async {
     try {
       String? token = await _loginService.getToken();
@@ -258,7 +252,7 @@ class PostService {
 
       final response = await http.post(
         Uri.parse('$apiUrl/Unbookmark'),
-        headers: <String, String>{
+        headers: {
           'Content-Type': 'application/json; charset=UTF-8',
           'Authorization': 'Bearer $token',
           'X-Signature': signature,
@@ -266,21 +260,29 @@ class PostService {
         body: jsonEncode(bookmarkRequest.toJson()),
       );
 
+      if (response.statusCode == 403) {
+        final reason = response.body;
+        throw Exception('BLOCKED:$reason');
+      }
+
       if (response.statusCode == 401) {
-        // Token is invalid or expired, attempt to refresh it
         await _loginService.refreshAccessToken();
         token = await _loginService.getToken();
-        
-        // Retry the request after refreshing the token
+
         final retryResponse = await http.post(
           Uri.parse('$apiUrl/Unbookmark'),
-          headers: <String, String>{
+          headers: {
             'Content-Type': 'application/json; charset=UTF-8',
             'Authorization': 'Bearer $token',
             'X-Signature': signature,
           },
           body: jsonEncode(bookmarkRequest.toJson()),
         );
+
+        if (retryResponse.statusCode == 403) {
+          final reason = retryResponse.body;
+          throw Exception('BLOCKED:$reason');
+        }
 
         if (retryResponse.statusCode != 200) {
           throw Exception('Failed to unbookmark post after token refresh.');
@@ -290,61 +292,62 @@ class PostService {
       }
     } catch (e) {
       print("Error in unbookmarkPost: $e");
-      rethrow; // Re-throw to handle it in the UI layer
+      rethrow;
     }
   }
-    static Future<List<UserLike>> fetchPostLikes(int postId) async {
+
+  // Fetch post likes
+  static Future<List<UserLike>> fetchPostLikes(int postId) async {
     try {
-      // Ensure the user is logged in and get the JWT token
       if (!await _loginService.isLoggedIn()) {
         throw Exception("User not logged in.");
       }
 
       String? token = await _loginService.getToken();
-
-      // Generate HMAC signature for the request
       String dataToSign = '$postId';
       String signature = await _signatureService.generateHMAC(dataToSign);
 
       final response = await http.get(
         Uri.parse('$apiUrl/$postId/Likes'),
-        headers: <String, String>{
+        headers: {
           'Content-Type': 'application/json; charset=UTF-8',
-          'Authorization': 'Bearer $token',  // JWT token
-          'X-Signature': signature,          // HMAC signature
+          'Authorization': 'Bearer $token',
+          'X-Signature': signature,
         },
       );
 
+      if (response.statusCode == 403) {
+        final reason = response.body;
+        throw Exception('BLOCKED:$reason');
+      }
+
       if (response.statusCode == 401) {
         print('JWT token is invalid or expired. Attempting to refresh token.');
-        // Unauthorized, try refreshing the token
-        try {
-          await _loginService.refreshAccessToken();
-          token = await _loginService.getToken();
-          print('Token refreshed successfully.');
+        await _loginService.refreshAccessToken();
+        token = await _loginService.getToken();
+        print('Token refreshed successfully.');
 
-          // Retry the request after token refresh
-          final retryResponse = await http.get(
-            Uri.parse('$apiUrl/$postId/Likes'),
-            headers: <String, String>{
-              'Content-Type': 'application/json; charset=UTF-8',
-              'Authorization': 'Bearer $token',
-              'X-Signature': signature,
-            },
-          );
+        final retryResponse = await http.get(
+          Uri.parse('$apiUrl/$postId/Likes'),
+          headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Authorization': 'Bearer $token',
+            'X-Signature': signature,
+          },
+        );
 
-          if (retryResponse.statusCode == 401) {
-            // Token refresh failed, return an error
-            throw Exception('Session expired or refresh token invalid.');
-          } else if (retryResponse.statusCode == 200) {
-            List<dynamic> data = json.decode(retryResponse.body);
-            return data.map((json) => UserLike.fromJson(json)).toList();
-          } else {
-            throw Exception('Failed to load post likes after token refresh.');
-          }
-        } catch (e) {
-          print('Caught exception during token refresh: $e');
-          throw Exception('Failed to refresh token: Invalid or expired refresh token.');
+        if (retryResponse.statusCode == 403) {
+          final reason = retryResponse.body;
+          throw Exception('BLOCKED:$reason');
+        }
+
+        if (retryResponse.statusCode == 401) {
+          throw Exception('Session expired or refresh token invalid.');
+        } else if (retryResponse.statusCode == 200) {
+          List<dynamic> data = json.decode(retryResponse.body);
+          return data.map((json) => UserLike.fromJson(json)).toList();
+        } else {
+          throw Exception('Failed to load post likes after token refresh.');
         }
       }
 

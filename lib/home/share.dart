@@ -3,8 +3,27 @@
 import 'package:flutter/material.dart';
 import 'package:cook/services/LoginService.dart';
 import 'package:cook/services/RepostServices.dart';
-import 'package:cook/maintenance/expiredtoken.dart'; // Import expired token handler
+import 'package:cook/maintenance/expiredtoken.dart';
 import 'package:cook/services/feed_service.dart';
+
+void showBlockSnackbar(BuildContext context, String reason) {
+  String message;
+  if (reason.contains('You are blocked by the post owner')) {
+    message = 'User blocked you';
+  } else if (reason.contains('You have blocked the post owner')) {
+    message = 'You blocked the user';
+  } else {
+    message = 'Action not allowed due to blocking';
+  }
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.redAccent,
+      duration: const Duration(seconds: 3),
+    ),
+  );
+}
 
 class ShareBottomSheet extends StatelessWidget {
   final int postId;
@@ -16,10 +35,10 @@ class ShareBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: MediaQuery.of(context).viewInsets, // Handles keyboard overlap
+      padding: MediaQuery.of(context).viewInsets, 
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16.0), // Padding for the bottom sheet
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
@@ -34,7 +53,6 @@ class ShareBottomSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Top handle bar for dragging
             Container(
               width: MediaQuery.of(context).size.width * 0.2,
               height: 5,
@@ -44,7 +62,6 @@ class ShareBottomSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 15),
-            // Share Card
             Container(
               width: MediaQuery.of(context).size.width,
               decoration: BoxDecoration(
@@ -96,21 +113,25 @@ class ShareBottomSheet extends StatelessWidget {
                         ElevatedButton(
                           onPressed: () async {
                             String shareText = _shareTextController.text.trim();
-
-                            // Check user session before sharing
                             int? userId = await LoginService().getUserId();
 
                             if (userId != null) {
-                              // Perform the repost action
                               try {
-                                await RepostService().createRepost(
-                                    userId, postId, shareText);
-                                Navigator.pop(context); // Close bottom sheet after successful share
+                                await RepostService().createRepost(userId, postId, shareText);
+                                Navigator.pop(context);
                               } catch (e) {
-                                print('Failed to repost: $e');
+                                if (e.toString().contains('Session expired')) {
+                                  if (context.mounted) {
+                                    handleSessionExpired(context);
+                                  }
+                                } else if (e.toString().startsWith('Exception: BLOCKED:')) {
+                                  String reason = e.toString().replaceFirst('Exception: BLOCKED:', '');
+                                  showBlockSnackbar(context, reason);
+                                } else {
+                                  print('Failed to repost: $e');
+                                }
                               }
                             } else {
-                              // Session expired, show dialog
                               handleSessionExpired(context);
                             }
                           },
