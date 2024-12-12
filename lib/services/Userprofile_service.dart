@@ -9,7 +9,7 @@ import 'apiService.dart';
 import 'SessionExpiredException.dart';
 
 class UserProfileService {
-  static const String baseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/UserProfile';
+  static const String baseUrl = 'https://af4a-185-97-92-30.ngrok-free.app/api/UserProfile';
   final ApiService _apiService = ApiService();
   // Fetch user profile method
     Future<UserProfile?> fetchUserProfile(int userId) async {
@@ -486,5 +486,111 @@ Future<bool> editSharedPostComment(int sharedPostId, String newComment, int user
   }
 }
 
+  // Method to block a user
+Future<bool> blockUser(int userId, int targetUserId) async {
+final Uri url = Uri.parse('$baseUrl/block/$userId');
 
+  // Constructing signature data
+  final String signatureData = '$userId:$targetUserId';
+
+  // Log the data for debugging
+  print("Frontend Debug:");
+  print("userId (Frontend): $userId");
+  print("targetUserId: $targetUserId");
+  print("Signature Data: $signatureData");
+
+  try {
+    final response = await _apiService.makeRequestWithToken(
+      url,
+      signatureData, // Signature data passed to the request
+      'POST',
+      body: {'targetUserId': targetUserId}, // Sending the target user ID in the request body
+    );
+
+    print("Received response with status code ${response.statusCode}");
+    print("Response body: ${response.body}");
+
+    if (response.statusCode == 200) {
+      print("User blocked successfully.");
+      return true;
+    } else if (response.statusCode == 401) {
+      print("401 Unauthorized detected. Signature might be invalid or expired.");
+    } else {
+      print("Failed to block user. Status code: ${response.statusCode}");
+      print("Response body: ${response.body}");
+    }
+    return false;
+  } on SessionExpiredException {
+    print('Session expired during blockUser');
+    rethrow;
+  } catch (e) {
+    print('Error in blockUser: $e');
+    return false;
+  }
+}
+
+  // Method to unblock a user
+  Future<bool> unblockUser(int userId, int targetUserId) async {
+    final Uri url = Uri.parse('$baseUrl/unblock');
+    final String signatureData = '$userId:$targetUserId';
+
+    try {
+      final response = await _apiService.makeRequestWithToken(
+        url,
+        signatureData,
+        'DELETE',
+        body: {'targetUserId': targetUserId}, // Pass the targetUserId in the request body
+      );
+
+      if (response.statusCode == 200) {
+        print("User unblocked successfully.");
+        return true;
+      } else {
+        print("Failed to unblock user. Status code: ${response.statusCode}");
+        print("Response body: ${response.body}");
+        return false;
+      }
+    } on SessionExpiredException {
+      print('Session expired during unblockUser');
+      rethrow;
+    } catch (e) {
+      print('Error in unblockUser: $e');
+      return false;
+    }
+  }
+
+  // Method to get a list of blocked users
+  Future<Map<String, dynamic>?> getBlockedUsers(
+    int userId, {
+    int pageNumber = 1,
+    int pageSize = 10,
+  }) async {
+    final Uri url = Uri.parse(
+      '$baseUrl/blocked?userId=$userId&pageNumber=$pageNumber&pageSize=$pageSize',
+    );
+    final String signatureData = '$userId:$pageNumber:$pageSize';
+
+    try {
+      final response = await _apiService.makeRequestWithToken(
+        url,
+        signatureData,
+        'GET',
+      );
+
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body);
+        return jsonData; // Returning the response as-is for further use
+      } else {
+        print("Failed to fetch blocked users. Status code: ${response.statusCode}");
+        print("Response body: ${response.body}");
+        return null;
+      }
+    } on SessionExpiredException {
+      print('Session expired during getBlockedUsers');
+      rethrow;
+    } catch (e) {
+      print('Error in getBlockedUsers: $e');
+      return null;
+    }
+  }
 }

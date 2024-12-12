@@ -8,7 +8,7 @@ import 'SignatureService.dart';  // For HMAC signature generation
 
 class RepostService {
   static const String baseUrl =
-      'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api'; // Replace with your API base URL
+      'https://af4a-185-97-92-30.ngrok-free.app/api'; // Replace with your API base URL
 
   final LoginService _loginService = LoginService();  // Instantiate LoginService
   final SignatureService _signatureService = SignatureService();  // Instantiate SignatureService

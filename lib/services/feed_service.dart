@@ -7,7 +7,7 @@ import '../models/feed/post_item.dart';
 import '../models/feed/repost_item.dart';
 
 class FeedService {
-  static const String baseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api';
+  static const String baseUrl = 'https://af4a-185-97-92-30.ngrok-free.app/api';
 
   Future<List<FeedItem>> fetchFeed({
     required int userId,

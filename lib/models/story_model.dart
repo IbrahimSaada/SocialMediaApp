@@ -20,20 +20,20 @@ class Media {
   // Getter to convert `createdAt` to local time
   DateTime get localCreatedAt => _createdAtUtc.toLocal();
 
-  factory Media.fromJson(Map<String, dynamic> json) {
-    String createdAtString = json['createdatforeachstory'];
-    if (!createdAtString.endsWith('Z')) {
-      createdAtString = '${createdAtString}Z';
-    }
-    DateTime utcTime = DateTime.parse(createdAtString).toUtc();
+factory Media.fromJson(Map<String, dynamic> json) {
+  String createdAtString = json['createdatforeachstory'];
 
-    return Media(
-      mediaId: json['media_id'],
-      mediaUrl: json['media_url'],
-      mediaType: json['media_type'],
-      createdAt: utcTime, // Ensure UTC is passed here
-    );
-  }
+  // Parse directly, assuming backend always sends valid ISO 8601 formats
+  DateTime utcTime = DateTime.parse(createdAtString).toUtc();
+
+  return Media(
+    mediaId: json['media_id'],
+    mediaUrl: json['media_url'],
+    mediaType: json['media_type'],
+    createdAt: utcTime, // Ensure UTC is passed here
+  );
+}
+
 
   Map<String, dynamic> toJson() {
     return {
