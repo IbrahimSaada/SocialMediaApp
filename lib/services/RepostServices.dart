@@ -3,34 +3,29 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '***REMOVED***/models/repost_model.dart';
-import 'LoginService.dart';  // For JWT token management
-import 'SignatureService.dart';  // For HMAC signature generation
+import 'LoginService.dart';
+import 'SignatureService.dart';
 
 class RepostService {
   static const String baseUrl =
-      'https://af4a-185-97-92-30.ngrok-free.app/api'; // Replace with your API base URL
+      'https://af4a-185-97-92-30.ngrok-free.app/api';
 
-  final LoginService _loginService = LoginService();  // Instantiate LoginService
-  final SignatureService _signatureService = SignatureService();  // Instantiate SignatureService
+  final LoginService _loginService = LoginService();
+  final SignatureService _signatureService = SignatureService();
 
-  // Method to fetch reposts with JWT token and HMAC signature, with auto token refresh
   Future<List<Repost>> fetchReposts() async {
     try {
-      // Ensure the user is logged in and get the JWT token
       if (!await _loginService.isLoggedIn()) {
         throw Exception("User not logged in.");
       }
-
       String? token = await _loginService.getToken();
       if (token == null) {
         throw Exception("No valid token found.");
       }
 
-      // Generate HMAC signature (for this example, 'all' could be the signing data)
       String dataToSign = 'all';
       String signature = await _signatureService.generateHMAC(dataToSign);
 
-      // Send GET request with JWT token and HMAC signature
       final response = await http.get(
         Uri.parse('$baseUrl/Shares'),
         headers: {
@@ -39,23 +34,21 @@ class RepostService {
         },
       );
 
-      if (response.statusCode == 200) {
-        // Parse the JSON response
-        List<dynamic> repostsJson = json.decode(response.body);
+      if (response.statusCode == 403) {
+        final reason = response.body;
+        throw Exception('BLOCKED:$reason');
+      }
 
-        // Convert the JSON list to a list of Repost objects
+      if (response.statusCode == 200) {
+        List<dynamic> repostsJson = json.decode(response.body);
         List<Repost> reposts =
             repostsJson.map((json) => Repost.fromJson(json)).toList();
-
         return reposts;
       } else if (response.statusCode == 401) {
         print('Token expired. Attempting to refresh...');
-
-        // Try to refresh the token
         await _loginService.refreshAccessToken();
-        token = await _loginService.getToken();  // Get the new token
+        token = await _loginService.getToken();
 
-        // Retry the request with the refreshed token
         signature = await _signatureService.generateHMAC(dataToSign);
         final retryResponse = await http.get(
           Uri.parse('$baseUrl/Shares'),
@@ -65,12 +58,15 @@ class RepostService {
           },
         );
 
+        if (retryResponse.statusCode == 403) {
+          final reason = retryResponse.body;
+          throw Exception('BLOCKED:$reason');
+        }
+
         if (retryResponse.statusCode == 200) {
-          // Parse the JSON response after token refresh
           List<dynamic> repostsJson = json.decode(retryResponse.body);
           List<Repost> reposts =
               repostsJson.map((json) => Repost.fromJson(json)).toList();
-
           return reposts;
         } else {
           throw Exception('Failed to load reposts after token refresh');
@@ -84,77 +80,77 @@ class RepostService {
     }
   }
 
-  // Method to create a repost (POST request) with JWT and HMAC signature, with auto token refresh
-Future<void> createRepost(int userId, int postId, String? comment) async {
-  try {
-    // Ensure the user is logged in and get the JWT token
-    if (!await _loginService.isLoggedIn()) {
-      throw Exception("User not logged in.");
-    }
+  Future<void> createRepost(int userId, int postId, String? comment) async {
+    try {
+      if (!await _loginService.isLoggedIn()) {
+        throw Exception("User not logged in.");
+      }
+      String? token = await _loginService.getToken();
+      if (token == null) {
+        throw Exception("No valid token found.");
+      }
 
-    String? token = await _loginService.getToken();
-    if (token == null) {
-      throw Exception("No valid token found.");
-    }
+      String dataToSign = '$userId:$postId:${comment ?? ""}';
+      String signature = await _signatureService.generateHMAC(dataToSign);
 
-    // Prepare the data for HMAC signature
-    String dataToSign = '$userId:$postId:${comment ?? ""}';
-    String signature = await _signatureService.generateHMAC(dataToSign);
-
-    // Send the POST request
-    final response = await http.post(
-      Uri.parse('$baseUrl/Shares'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',  // Include JWT token
-        'X-Signature': signature,          // Include HMAC signature
-      },
-      body: json.encode({
-        'userId': userId,
-        'postId': postId,
-        'comment': comment ?? '', // Optional comment
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      print('Repost created successfully');
-    } else if (response.statusCode == 401) {
-      print('Token expired. Attempting to refresh...');
-
-      // Try to refresh the token
-      await _loginService.refreshAccessToken();
-      token = await _loginService.getToken();  // Get the new token
-
-      // Retry the request with the refreshed token and recompute the signature
-      signature = await _signatureService.generateHMAC(dataToSign);
-      final retryResponse = await http.post(
+      final response = await http.post(
         Uri.parse('$baseUrl/Shares'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',  // Refreshed JWT token
-          'X-Signature': signature,          // Recomputed HMAC signature
+          'Authorization': 'Bearer $token',
+          'X-Signature': signature,
         },
         body: json.encode({
           'userId': userId,
           'postId': postId,
-          'comment': comment ?? '', // Optional comment
+          'comment': comment ?? '',
         }),
       );
 
-      if (retryResponse.statusCode == 200) {
-        print('Repost created successfully after token refresh');
-      } else {
-        throw Exception('Failed to create repost after token refresh');
+      if (response.statusCode == 403) {
+        String reason = response.body;
+        throw Exception('BLOCKED:$reason');
       }
-    } else {
-      throw Exception('Failed to create repost: ${response.body}');
+
+      if (response.statusCode == 200) {
+        print('Repost created successfully');
+      } else if (response.statusCode == 401) {
+        await _loginService.refreshAccessToken();
+        token = await _loginService.getToken();
+
+        signature = await _signatureService.generateHMAC(dataToSign);
+        final retryResponse = await http.post(
+          Uri.parse('$baseUrl/Shares'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+            'X-Signature': signature,
+          },
+          body: json.encode({
+            'userId': userId,
+            'postId': postId,
+            'comment': comment ?? '',
+          }),
+        );
+
+        if (retryResponse.statusCode == 403) {
+          String reason = retryResponse.body;
+          throw Exception('BLOCKED:$reason');
+        }
+
+        if (retryResponse.statusCode == 200) {
+          print('Repost created successfully after token refresh');
+        } else {
+          throw Exception('Failed to create repost after token refresh');
+        }
+      } else {
+        throw Exception('Failed to create repost: ${response.body}');
+      }
+    } catch (e) {
+      if (e.toString().contains('Token expired')) {
+        throw Exception('Session expired');
+      }
+      rethrow;
     }
-  } catch (e) {
-    if (e.toString().contains('Token expired')) {
-      throw Exception('Session expired');
-    }
-    print('Failed to create repost: $e');
-    throw Exception('Failed to create repost');
   }
-}
 }

@@ -16,11 +16,28 @@ import 'package:timeago/timeago.dart' as timeago;
 import 'package:shimmer/shimmer.dart';
 import '***REMOVED***/models/LikeRequest_model.dart';
 import '***REMOVED***/models/bookmarkrequest_model.dart';
-import 'full_screen_image_page.dart';
-
-// Add this import for the PostLikesBottomSheet and UserLike:
 import '../models/user_like.dart';
 import '../home/post_bottom_likes_sheet.dart';
+import 'full_screen_image_page.dart';
+
+void showBlockSnackbar(BuildContext context, String reason) {
+  String message;
+  if (reason.contains('You are blocked by the post owner')) {
+    message = 'User blocked you';
+  } else if (reason.contains('You have blocked the post owner')) {
+    message = 'You blocked the user';
+  } else {
+    message = 'Action not allowed due to blocking';
+  }
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.redAccent,
+      duration: const Duration(seconds: 3),
+    ),
+  );
+}
 
 class PostCard extends StatefulWidget {
   final PostInfo postInfo;
@@ -107,10 +124,20 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
         _isBookmarked = !_isBookmarked;
       });
     } catch (e) {
-      if (e.toString().contains('Session expired')) {
+      final errStr = e.toString();
+      if (errStr.contains('Session expired')) {
         if (context.mounted) {
           handleSessionExpired(context);
         }
+      } else if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+        // Extract reason
+        String reason;
+        if (errStr.startsWith('Exception: BLOCKED:')) {
+          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+        } else {
+          reason = errStr;
+        }
+        showBlockSnackbar(context, reason);
       } else {
         print('Failed to bookmark/unbookmark post: $e');
       }
@@ -161,10 +188,19 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
         });
       }
     } catch (e) {
-      if (e.toString().contains('Session expired')) {
+      final errStr = e.toString();
+      if (errStr.contains('Session expired')) {
         if (context.mounted) {
           handleSessionExpired(context);
         }
+      } else if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+        String reason;
+        if (errStr.startsWith('Exception: BLOCKED:')) {
+          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+        } else {
+          reason = errStr;
+        }
+        showBlockSnackbar(context, reason);
       } else {
         print('Failed to like/unlike post: $e');
       }
@@ -197,10 +233,19 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
         );
       }
     } catch (e) {
-      if (e.toString().contains('Session expired')) {
+      final errStr = e.toString();
+      if (errStr.contains('Session expired')) {
         if (context.mounted) {
           handleSessionExpired(context);
         }
+      } else if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+        String reason;
+        if (errStr.startsWith('Exception: BLOCKED:')) {
+          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+        } else {
+          reason = errStr;
+        }
+        showBlockSnackbar(context, reason);
       } else {
         print('Failed to fetch post likes: $e');
       }
@@ -215,18 +260,17 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 8.0),
       child: Container(
-        width: MediaQuery.of(context).size.width, // Full width
+        width: MediaQuery.of(context).size.width, 
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(15.0), // Softer rounded corners
-          color: Colors.white, // White background for the PostCard
-          border: Border.all(color: Colors.grey.shade300, width: 1), // Thin grey border
+          borderRadius: BorderRadius.circular(15.0),
+          color: Colors.white,
+          border: Border.all(color: Colors.grey.shade300, width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header with avatar and post info
               Row(
                 children: [
                   GestureDetector(
@@ -344,7 +388,6 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                 ],
               ),
               const SizedBox(height: 12.0),
-              // Caption text
               if (widget.content.isNotEmpty)
                 _isExpanded
                     ? Text(widget.content)
@@ -367,7 +410,6 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                   ),
                 ),
               const SizedBox(height: 16.0),
-              // Post media (images or videos)
               if (post.media.isNotEmpty)
                 SizedBox(
                   height: 300,
@@ -427,7 +469,6 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                   }),
                 ),
               const SizedBox(height: 16.0),
-              // Like, comment, share buttons
               Row(
                 children: [
                   IconButton(
@@ -461,7 +502,6 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                     },
                   ),
                   const Spacer(),
-                  // Bookmark button with animation
                   ScaleTransition(
                     scale: _animationController,
                     child: IconButton(

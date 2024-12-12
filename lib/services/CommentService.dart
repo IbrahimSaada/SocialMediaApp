@@ -12,8 +12,6 @@ class CommentService {
   static final LoginService _loginService = LoginService();
   static final SignatureService _signatureService = SignatureService();
 
-  // Existing methods...
-
   static Future<void> postComment(CommentRequest commentRequest) async {
     try {
       if (!await _loginService.isLoggedIn()) {
@@ -26,7 +24,7 @@ class CommentService {
 
       final response = await http.post(
         Uri.parse('$apiUrl/${commentRequest.postId}/Commenting'),
-        headers: <String, String>{
+        headers: {
           'Content-Type': 'application/json; charset=UTF-8',
           'Authorization': 'Bearer $token',
           'X-Signature': signature,
@@ -34,31 +32,36 @@ class CommentService {
         body: jsonEncode(commentRequest.toJson()),
       );
 
+      if (response.statusCode == 403) {
+        final reason = response.body;
+        throw Exception('BLOCKED:$reason');
+      }
+
       if (response.statusCode == 401) {
-        print('JWT token is invalid or expired. Attempting to refresh token.');
-        try {
-          await _loginService.refreshAccessToken();
-          token = await _loginService.getToken();
-          print('Token refreshed successfully.');
+        await _loginService.refreshAccessToken();
+        token = await _loginService.getToken();
 
-          final retryResponse = await http.post(
-            Uri.parse('$apiUrl/${commentRequest.postId}/Commenting'),
-            headers: <String, String>{
-              'Content-Type': 'application/json; charset=UTF-8',
-              'Authorization': 'Bearer $token',
-              'X-Signature': signature,
-            },
-            body: jsonEncode(commentRequest.toJson()),
-          );
+        final retryResponse = await http.post(
+          Uri.parse('$apiUrl/${commentRequest.postId}/Commenting'),
+          headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Authorization': 'Bearer $token',
+            'X-Signature': signature,
+          },
+          body: jsonEncode(commentRequest.toJson()),
+        );
 
-          if (retryResponse.statusCode == 401) {
-            throw Exception('Session expired or refresh token invalid.');
-          } else if (retryResponse.statusCode != 201) {
-            throw Exception('Failed to post comment after token refresh.');
-          }
-        } catch (e) {
-          print('Caught exception during token refresh: $e');
-          throw Exception('Failed to refresh token: Invalid or expired refresh token.');
+        if (retryResponse.statusCode == 403) {
+          final reason = retryResponse.body;
+          throw Exception('BLOCKED:$reason');
+        }
+
+        if (retryResponse.statusCode == 401) {
+          throw Exception('Session expired or refresh token invalid.');
+        } else if (retryResponse.statusCode != 201) {
+          final responseBody = jsonDecode(retryResponse.body);
+          final errorDetails = responseBody['error'] ?? responseBody['message'] ?? 'Unknown error';
+          throw Exception('Failed to post comment: $errorDetails');
         }
       } else if (response.statusCode != 201) {
         final responseBody = jsonDecode(response.body);
@@ -66,7 +69,6 @@ class CommentService {
         throw Exception('Failed to post comment: $errorDetails');
       }
     } catch (e) {
-      print('Error in postComment: $e');
       rethrow;
     }
   }
@@ -83,40 +85,43 @@ class CommentService {
 
       final response = await http.get(
         Uri.parse('$apiUrl/$postId/Comments'),
-        headers: <String, String>{
+        headers: {
           'Content-Type': 'application/json; charset=UTF-8',
           'Authorization': 'Bearer $token',
           'X-Signature': signature,
         },
       );
 
+      if (response.statusCode == 403) {
+        final reason = response.body;
+        throw Exception('BLOCKED:$reason');
+      }
+
       if (response.statusCode == 401) {
-        print('JWT token is invalid or expired. Attempting to refresh token.');
-        try {
-          await _loginService.refreshAccessToken();
-          token = await _loginService.getToken();
-          print('Token refreshed successfully.');
+        await _loginService.refreshAccessToken();
+        token = await _loginService.getToken();
 
-          final retryResponse = await http.get(
-            Uri.parse('$apiUrl/$postId/Comments'),
-            headers: <String, String>{
-              'Content-Type': 'application/json; charset=UTF-8',
-              'Authorization': 'Bearer $token',
-              'X-Signature': signature,
-            },
-          );
+        final retryResponse = await http.get(
+          Uri.parse('$apiUrl/$postId/Comments'),
+          headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Authorization': 'Bearer $token',
+            'X-Signature': signature,
+          },
+        );
 
-          if (retryResponse.statusCode == 401) {
-            throw Exception('Session expired or refresh token invalid.');
-          } else if (retryResponse.statusCode == 200) {
-            List<dynamic> data = jsonDecode(retryResponse.body);
-            return data.map((commentJson) => Comment.fromJson(commentJson)).toList();
-          } else {
-            throw Exception('Failed to load comments after token refresh.');
-          }
-        } catch (e) {
-          print('Caught exception during token refresh: $e');
-          throw Exception('Failed to refresh token: Invalid or expired refresh token.');
+        if (retryResponse.statusCode == 403) {
+          final reason = retryResponse.body;
+          throw Exception('BLOCKED:$reason');
+        }
+
+        if (retryResponse.statusCode == 401) {
+          throw Exception('Session expired or refresh token invalid.');
+        } else if (retryResponse.statusCode == 200) {
+          List<dynamic> data = jsonDecode(retryResponse.body);
+          return data.map((commentJson) => Comment.fromJson(commentJson)).toList();
+        } else {
+          throw Exception('Failed to load comments after token refresh.');
         }
       }
 
@@ -127,7 +132,6 @@ class CommentService {
         throw Exception('Failed to load comments.');
       }
     } catch (e) {
-      print('Error in fetchComments: $e');
       rethrow;
     }
   }
@@ -144,7 +148,7 @@ class CommentService {
 
       final response = await http.put(
         Uri.parse('$apiUrl/${commentRequest.postId}/Comments/$commentId'),
-        headers: <String, String>{
+        headers: {
           'Content-Type': 'application/json; charset=UTF-8',
           'Authorization': 'Bearer $token',
           'X-Signature': signature,
@@ -152,33 +156,36 @@ class CommentService {
         body: jsonEncode(commentRequest.toJson()),
       );
 
+      if (response.statusCode == 403) {
+        final reason = response.body;
+        throw Exception('BLOCKED:$reason');
+      }
+
       if (response.statusCode == 401) {
-        print('JWT token is invalid or expired. Attempting to refresh token.');
-        try {
-          await _loginService.refreshAccessToken();
-          token = await _loginService.getToken();
-          print('Token refreshed successfully.');
+        await _loginService.refreshAccessToken();
+        token = await _loginService.getToken();
 
-          final retryResponse = await http.put(
-            Uri.parse('$apiUrl/${commentRequest.postId}/Comments/$commentId'),
-            headers: <String, String>{
-              'Content-Type': 'application/json; charset=UTF-8',
-              'Authorization': 'Bearer $token',
-              'X-Signature': signature,
-            },
-            body: jsonEncode(commentRequest.toJson()),
-          );
+        final retryResponse = await http.put(
+          Uri.parse('$apiUrl/${commentRequest.postId}/Comments/$commentId'),
+          headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Authorization': 'Bearer $token',
+            'X-Signature': signature,
+          },
+          body: jsonEncode(commentRequest.toJson()),
+        );
 
-          if (retryResponse.statusCode == 401) {
-            throw Exception('Session expired or refresh token invalid.');
-          } else if (retryResponse.statusCode != 200) {
-            final responseBody = jsonDecode(retryResponse.body);
-            final errorDetails = responseBody['error'] ?? responseBody['message'] ?? 'Unknown error';
-            throw Exception('Failed to edit comment: $errorDetails');
-          }
-        } catch (e) {
-          print('Caught exception during token refresh: $e');
-          throw Exception('Failed to refresh token: Invalid or expired refresh token.');
+        if (retryResponse.statusCode == 403) {
+          final reason = retryResponse.body;
+          throw Exception('BLOCKED:$reason');
+        }
+
+        if (retryResponse.statusCode == 401) {
+          throw Exception('Session expired or refresh token invalid.');
+        } else if (retryResponse.statusCode != 200) {
+          final responseBody = jsonDecode(retryResponse.body);
+          final errorDetails = responseBody['error'] ?? responseBody['message'] ?? 'Unknown error';
+          throw Exception('Failed to edit comment: $errorDetails');
         }
       } else if (response.statusCode != 200) {
         final responseBody = jsonDecode(response.body);
@@ -186,7 +193,6 @@ class CommentService {
         throw Exception('Failed to edit comment: $errorDetails');
       }
     } catch (e) {
-      print('Error in editComment: $e');
       rethrow;
     }
   }
@@ -203,39 +209,42 @@ class CommentService {
 
       final response = await http.delete(
         Uri.parse('$apiUrl/$postId/Comments/$commentId?userId=$userId'),
-        headers: <String, String>{
+        headers: {
           'Content-Type': 'application/json; charset=UTF-8',
           'Authorization': 'Bearer $token',
           'X-Signature': signature,
         },
       );
 
+      if (response.statusCode == 403) {
+        final reason = response.body;
+        throw Exception('BLOCKED:$reason');
+      }
+
       if (response.statusCode == 401) {
-        print('JWT token is invalid or expired. Attempting to refresh token.');
-        try {
-          await _loginService.refreshAccessToken();
-          token = await _loginService.getToken();
-          print('Token refreshed successfully.');
+        await _loginService.refreshAccessToken();
+        token = await _loginService.getToken();
 
-          final retryResponse = await http.delete(
-            Uri.parse('$apiUrl/$postId/Comments/$commentId?userId=$userId'),
-            headers: <String, String>{
-              'Content-Type': 'application/json; charset=UTF-8',
-              'Authorization': 'Bearer $token',
-              'X-Signature': signature,
-            },
-          );
+        final retryResponse = await http.delete(
+          Uri.parse('$apiUrl/$postId/Comments/$commentId?userId=$userId'),
+          headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Authorization': 'Bearer $token',
+            'X-Signature': signature,
+          },
+        );
 
-          if (retryResponse.statusCode == 401) {
-            throw Exception('Session expired or refresh token invalid.');
-          } else if (retryResponse.statusCode != 200) {
-            final responseBody = jsonDecode(retryResponse.body);
-            final errorDetails = responseBody['error'] ?? responseBody['message'] ?? 'Unknown error';
-            throw Exception('Failed to delete comment: $errorDetails');
-          }
-        } catch (e) {
-          print('Caught exception during token refresh: $e');
-          throw Exception('Failed to refresh token: Invalid or expired refresh token.');
+        if (retryResponse.statusCode == 403) {
+          final reason = retryResponse.body;
+          throw Exception('BLOCKED:$reason');
+        }
+
+        if (retryResponse.statusCode == 401) {
+          throw Exception('Session expired or refresh token invalid.');
+        } else if (retryResponse.statusCode != 200) {
+          final responseBody = jsonDecode(retryResponse.body);
+          final errorDetails = responseBody['error'] ?? responseBody['message'] ?? 'Unknown error';
+          throw Exception('Failed to delete comment: $errorDetails');
         }
       } else if (response.statusCode != 200) {
         final responseBody = jsonDecode(response.body);
@@ -243,7 +252,6 @@ class CommentService {
         throw Exception('Failed to delete comment: $errorDetails');
       }
     } catch (e) {
-      print('Error in deleteComment: $e');
       rethrow;
     }
   }
@@ -263,40 +271,43 @@ class CommentService {
 
       final response = await http.get(
         Uri.parse(url),
-        headers: <String, String>{
+        headers: {
           'Content-Type': 'application/json; charset=UTF-8',
           'Authorization': 'Bearer $token',
           'X-Signature': signature,
         },
       );
 
+      if (response.statusCode == 403) {
+        final reason = response.body;
+        throw Exception('BLOCKED:$reason');
+      }
+
       if (response.statusCode == 401) {
-        print('JWT token is invalid or expired. Attempting to refresh token.');
-        try {
           await _loginService.refreshAccessToken();
           token = await _loginService.getToken();
-          print('Token refreshed successfully.');
 
-          final retryResponse = await http.get(
-            Uri.parse(url),
-            headers: <String, String>{
-              'Content-Type': 'application/json; charset=UTF-8',
-              'Authorization': 'Bearer $token',
-              'X-Signature': signature,
-            },
-          );
+        final retryResponse = await http.get(
+          Uri.parse(url),
+          headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Authorization': 'Bearer $token',
+            'X-Signature': signature,
+          },
+        );
 
-          if (retryResponse.statusCode == 401) {
-            throw Exception('Session expired or refresh token invalid.');
-          } else if (retryResponse.statusCode == 200) {
-            List<dynamic> data = jsonDecode(retryResponse.body);
-            return data.map((commentJson) => Comment.fromJson(commentJson)).toList();
-          } else {
-            throw Exception('Failed to load comment threads after token refresh.');
-          }
-        } catch (e) {
-          print('Caught exception during token refresh: $e');
-          throw Exception('Failed to refresh token: Invalid or expired refresh token.');
+        if (retryResponse.statusCode == 403) {
+          final reason = retryResponse.body;
+          throw Exception('BLOCKED:$reason');
+        }
+
+        if (retryResponse.statusCode == 401) {
+          throw Exception('Session expired or refresh token invalid.');
+        } else if (retryResponse.statusCode == 200) {
+          List<dynamic> data = jsonDecode(retryResponse.body);
+          return data.map((commentJson) => Comment.fromJson(commentJson)).toList();
+        } else {
+          throw Exception('Failed to load comment threads after token refresh.');
         }
       }
 
@@ -307,7 +318,6 @@ class CommentService {
         throw Exception('Failed to load comment threads.');
       }
     } catch (e) {
-      print('Error in fetchCommentThreads: $e');
       rethrow;
     }
   }
