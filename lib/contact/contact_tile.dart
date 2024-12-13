@@ -43,7 +43,10 @@ class ContactTile extends StatelessWidget {
           children: [
             Icon(isMuted ? Icons.volume_up : Icons.volume_off, color: Colors.white),
             SizedBox(width: 8),
-            Text(isMuted ? 'Unmute' : 'Mute', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            Text(
+              isMuted ? 'Unmute' : 'Mute',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
           ],
         ),
       ),
@@ -54,7 +57,10 @@ class ContactTile extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            Text(
+              'Delete',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
             SizedBox(width: 8),
             Icon(Icons.delete, color: Colors.white),
           ],
@@ -113,13 +119,9 @@ class ContactTile extends StatelessWidget {
               ),
           ],
         ),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(contactName, style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-            if (isMuted) Icon(Icons.volume_off, color: Colors.grey),
-          ],
+        title: Text(
+          contactName,
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: isTyping
             ? Text('typing...', style: TextStyle(color: Colors.grey))
@@ -133,16 +135,28 @@ class ContactTile extends StatelessWidget {
                   ),
                 ],
               ),
-        trailing: unreadMessages > 0
-            ? CircleAvatar(
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isMuted)
+              Icon(
+                Icons.volume_off,
+                color: Colors.grey,
+                size: 20,
+              ),
+            if (unreadMessages > 0)
+              SizedBox(width: 8), // Space between mute icon and unread messages
+            if (unreadMessages > 0)
+              CircleAvatar(
                 backgroundColor: Colors.red,
                 radius: 12,
                 child: Text(
                   '$unreadMessages',
                   style: TextStyle(color: Colors.white, fontSize: 12),
                 ),
-              )
-            : null,
+              ),
+          ],
+        ),
       ),
     );
   }

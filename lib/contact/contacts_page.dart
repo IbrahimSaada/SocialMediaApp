@@ -52,7 +52,6 @@ class _ContactsPageState extends State<ContactsPage> {
   final SignalRService _signalRService = SignalRService();
   List<Contact> _chats = [];
   List<Contact> _filteredChats = [];
-  Map<int, bool> muteStatus = {};
   String _searchQuery = '';
   bool _isLoading = true;
 
@@ -103,7 +102,8 @@ class _ContactsPageState extends State<ContactsPage> {
               lastMessage: '',
               lastMessageTime: DateTime.now(),
               unreadCount: 0,
-              createdAt: DateTime.now()));
+              createdAt: DateTime.now(),
+              isMuted: false));
 
       if (chat.chatId != 0) {
         setState(() {
@@ -241,14 +241,13 @@ class _ContactsPageState extends State<ContactsPage> {
         ? chat.recipientUserId
         : chat.initiatorUserId;
 
-    final currentlyMuted = muteStatus[index] ?? false;
     final dto = MuteUserDto(
       mutedByUserId: widget.userId,
       mutedUserId: otherUserId,
     );
 
     try {
-      if (!currentlyMuted) {
+      if (!chat.isMuted) {
         await _chatService.muteUser(dto);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('User muted successfully.')),
@@ -261,7 +260,10 @@ class _ContactsPageState extends State<ContactsPage> {
       }
 
       setState(() {
-        muteStatus[index] = !currentlyMuted;
+        _filteredChats[index] = chat.copyWith(isMuted: !chat.isMuted);
+        _chats = _chats.map((c) {
+          return c.chatId == chat.chatId ? chat.copyWith(isMuted: !chat.isMuted) : c;
+        }).toList();
       });
     } catch (e) {
       print('Error toggling mute: $e');
@@ -510,7 +512,7 @@ class _ContactsPageState extends State<ContactsPage> {
                               profileImage: _getDisplayProfileImage(chat),
                               isOnline: true,
                               lastActive: _formatLastMessageTime(chat.lastMessageTime),
-                              isMuted: muteStatus[index] ?? false,
+                              isMuted: chat.isMuted,
                               unreadMessages: chat.unreadCount,
                               isTyping: isTyping,
                               onMuteToggle: () => _toggleMute(index),
