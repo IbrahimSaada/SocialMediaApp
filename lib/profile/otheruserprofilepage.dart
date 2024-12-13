@@ -21,6 +21,27 @@ import 'package:cook/maintenance/expiredtoken.dart';
 import 'package:cook/services/SessionExpiredException.dart';
 import 'package:cook/profile/qr_code.dart';
 
+void showBlockSnackbar(BuildContext context, String reason) {
+  String message;
+  if (reason.contains('You are blocked by the post owner')) {
+    message = 'User blocked you';
+  } else if (reason.contains('You have blocked the post owner')) {
+    message = 'You blocked the user';
+  } else if (reason.toLowerCase().contains('blocked')) {
+    message = 'Action not allowed due to blocking';
+  } else {
+    message = 'Action not allowed.';
+  }
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.redAccent,
+      duration: const Duration(seconds: 3),
+    ),
+  );
+}
+
 class OtherUserProfilePage extends StatefulWidget {
   final int otherUserId;
 
@@ -77,249 +98,289 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   }
 
   void _blockUser() async {
-  bool confirmBlock = await showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text(
-          "Block User",
-          style: TextStyle(color: Color(0xFFF45F67)),
-        ),
-        content: Text(
-          "Are you sure you want to block this user? They will no longer be able to interact with you or view your profile.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(
-              "Cancel",
-              style: TextStyle(color: Colors.grey),
+    bool confirmBlock = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            "Block User",
+            style: TextStyle(color: Color(0xFFF45F67)),
+          ),
+          content: Text(
+            "Are you sure you want to block this user? They will no longer be able to interact with you or view your profile.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                "Cancel",
+                style: TextStyle(color: Colors.grey),
+              ),
             ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(
-              "Block",
-              style: TextStyle(color: Color(0xFFF45F67)),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(
+                "Block",
+                style: TextStyle(color: Color(0xFFF45F67)),
+              ),
             ),
-          ),
-        ],
-      );
-    },
-  );
-
-  if (confirmBlock) {
-    try {
-      bool isBlocked = await _userProfileService.blockUser(
-        currentUserId!,
-        widget.otherUserId,
-      );
-
-      if (isBlocked) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("User blocked successfully."),
-            backgroundColor: Color(0xFFF45F67),
-          ),
+          ],
         );
+      },
+    );
+
+    if (confirmBlock) {
+      try {
+        bool isBlocked = await _userProfileService.blockUser(
+          currentUserId!,
+          widget.otherUserId,
+        );
+
+        if (isBlocked) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("User blocked successfully."),
+              backgroundColor: Color(0xFFF45F67),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Failed to block the user."),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e) {
+        print("Error blocking user: $e");
+        final errStr = e.toString();
+        if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+          String reason;
+          if (errStr.startsWith('Exception: BLOCKED:')) {
+            reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+          } else {
+            reason = errStr;
+          }
+          showBlockSnackbar(context, reason);
+        } else if (errStr.contains('Session expired')) {
+          handleSessionExpired(context);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("An error occurred. Please try again later."),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  void _showQRCode() {
+    if (userProfile?.qrCode != null) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return QRCodeModal(qrCodeUrl: userProfile!.qrCode);
+        },
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("QR code not available."),
+          backgroundColor: Color(0xFFF45F67),
+        ),
+      );
+    }
+  }
+
+  Future<void> _loadUserProfile() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    currentUserId = await _loginService.getUserId();
+
+    try {
+      userProfile = await _userProfileService.fetchUserProfile(widget.otherUserId);
+
+      if (userProfile != null) {
+        setState(() {
+          username = userProfile!.fullName;
+          bio = userProfile!.bio;
+          rating = userProfile!.rating;
+          postNb = userProfile!.postNb;
+          followersNb = userProfile!.followersNb;
+          followingNb = userProfile!.followingNb;
+        });
+
+        Map<String, bool> privacySettings = await _userProfileService.checkProfilePrivacy(widget.otherUserId);
+        setState(() {
+          isProfilePublic = privacySettings['isPublic'] ?? false;
+          isFollowersPublic = privacySettings['isFollowersPublic'] ?? false;
+          isFollowingPublic = privacySettings['isFollowingPublic'] ?? false;
+        });
+
+        await _fetchUserPosts();
+        await _fetchSharedPosts();
+
+        final followStatus = await _checkFollowStatus();
+        if (followStatus != null) {
+          setState(() {
+            isFollowing = followStatus.isFollowing;
+            amFollowing = followStatus.amFollowing;
+          });
+        }
+      } else {
+        print('Failed to load user profile. Possibly due to session expiration.');
+        handleSessionExpired(context);
+      }
+    } catch (e) {
+      print("Error fetching user profile: $e");
+      final errStr = e.toString();
+      if (errStr.contains('401')) {
+        handleSessionExpired(context);
+      } else if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+        String reason;
+        if (errStr.startsWith('Exception: BLOCKED:')) {
+          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+        } else {
+          reason = errStr;
+        }
+        showBlockSnackbar(context, reason);
+      } else if (errStr.contains('Session expired')) {
+        handleSessionExpired(context);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Failed to block the user."),
+            content: Text("An unexpected error occurred."),
+            backgroundColor: Color(0xFFF45F65),
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _fetchUserPosts() async {
+    if (isPaginating || currentUserId == null) return; 
+    try {
+      setState(() {
+        isPaginating = true;
+      });
+      List<Post> newPosts = await _userpostService.fetchUserPosts(
+          widget.otherUserId, currentUserId!, currentPageNumber, pageSize);
+      setState(() {
+        userPosts.addAll(newPosts);
+        currentPageNumber++;
+        isPaginating = false;
+      });
+    } on SessionExpiredException {
+      print("SessionExpired detected in _fetchUserPosts (OtherUserProfile)");
+      handleSessionExpired(context);
+    } catch (e) {
+      print("Error fetching posts: $e");
+      final errStr = e.toString();
+      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+        String reason;
+        if (errStr.startsWith('Exception: BLOCKED:')) {
+          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+        } else {
+          reason = errStr;
+        }
+        showBlockSnackbar(context, reason);
+      } else if (errStr.contains('Session expired')) {
+        handleSessionExpired(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('An error occurred while fetching user posts.'),
+          backgroundColor: Colors.red,
+        ));
+      }
+      setState(() {
+        isPaginating = false;
+      });
+    }
+  }
+
+  Future<void> _fetchSharedPosts() async {
+    if (isPaginatingSharedPosts || currentUserId == null || !hasMoreSharedPosts) return;
+
+    try {
+      setState(() {
+        isPaginatingSharedPosts = true;
+      });
+
+      List<SharedPostDetails> newSharedPosts = await _userpostService.fetchSharedPosts(
+        widget.otherUserId,
+        currentUserId!,
+        currentSharedPageNumber,
+        pageSize,
+      );
+
+      setState(() {
+        sharedPosts.addAll(newSharedPosts);
+        currentSharedPageNumber++;
+        isPaginatingSharedPosts = false;
+        isPrivateAccount = false;
+
+        if (newSharedPosts.length < pageSize) {
+          hasMoreSharedPosts = false;
+        }
+      });
+    } on SessionExpiredException {
+      print("SessionExpired detected in _fetchSharedPosts");
+      setState(() {
+        isPaginatingSharedPosts = false;
+      });
+      handleSessionExpired(context);
+    } catch (e) {
+      print("Error fetching shared posts: $e");
+      final errStr = e.toString();
+      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+        String reason;
+        if (errStr.startsWith('Exception: BLOCKED:')) {
+          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+        } else {
+          reason = errStr;
+        }
+        showBlockSnackbar(context, reason);
+      } else if (errStr.contains('Session expired')) {
+        handleSessionExpired(context);
+      } else if (errStr.contains('Access denied')) {
+        setState(() {
+          isPrivateAccount = true;
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('An error occurred while fetching shared posts.'),
             backgroundColor: Colors.red,
           ),
         );
       }
-    } catch (e) {
-      print("Error blocking user: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("An error occurred. Please try again later."),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-}
 
-
-  // Add a new method to show the QR Code Modal
-void _showQRCode() {
-  if (userProfile?.qrCode != null) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return QRCodeModal(qrCodeUrl: userProfile!.qrCode);
-      },
-    );
-  } else {
-    // Optional: Show a message if QR code is not available
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("QR code not available."),
-        backgroundColor: Color(0xFFF45F67),
-      ),
-    );
-  }
-}
-
-Future<void> _loadUserProfile() async {
-  setState(() {
-    isLoading = true;
-  });
-
-  currentUserId = await _loginService.getUserId();
-
-  try {
-    userProfile = await _userProfileService.fetchUserProfile(widget.otherUserId);
-
-    if (userProfile != null) {
       setState(() {
-        username = userProfile!.fullName;
-        bio = userProfile!.bio;
-        rating = userProfile!.rating;
-        postNb = userProfile!.postNb;
-        followersNb = userProfile!.followersNb;
-        followingNb = userProfile!.followingNb;
+        isPaginatingSharedPosts = false;
       });
-
-      // Fetch and update privacy settings
-      Map<String, bool> privacySettings = await _userProfileService.checkProfilePrivacy(widget.otherUserId);
-      setState(() {
-        isProfilePublic = privacySettings['isPublic'] ?? false;
-        isFollowersPublic = privacySettings['isFollowersPublic'] ?? false;
-        isFollowingPublic = privacySettings['isFollowingPublic'] ?? false;
-      });
-
-      await _fetchUserPosts();
-      await _fetchSharedPosts();
-
-      final followStatus = await _checkFollowStatus();
-      if (followStatus != null) {
-        setState(() {
-          isFollowing = followStatus.isFollowing;
-          amFollowing = followStatus.amFollowing;
-        });
-      }
-    } else {
-      print('Failed to load user profile. Possibly due to session expiration.');
-      handleSessionExpired(context);
-    }
-  } catch (e) {
-    print("Error fetching user profile: $e");
-
-    if (e.toString().contains('401')) { 
-      handleSessionExpired(context);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("An unexpected error occurred."),
-          backgroundColor: Color(0xFFF45F65),
-        ),
-      );
-    }
-  } finally {
-    setState(() {
-      isLoading = false;
-    });
-  }
-}
-
-Future<void> _fetchUserPosts() async {
-  if (isPaginating || currentUserId == null) return; // Ensure currentUserId is set
-
-  try {
-    setState(() {
-      isPaginating = true;
-    });
-    
-    // Fetch the user posts
-    List<Post> newPosts = await _userpostService.fetchUserPosts(
-      widget.otherUserId, 
-      currentUserId!, 
-      currentPageNumber, 
-      pageSize
-    );
-    
-    setState(() {
-      userPosts.addAll(newPosts);
-      currentPageNumber++;
-      isPaginating = false;
-    });
-  } on SessionExpiredException {
-    print("SessionExpired detected in _fetchUserPosts (OtherUserProfile)");
-    // Handle session expiration
-    handleSessionExpired(context); // Trigger session expired dialog or UI
-  } catch (e) {
-    print("Error fetching posts: $e");
-    setState(() {
-      isPaginating = false;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('An error occurred while fetching user posts.'),
-      backgroundColor: Colors.red,
-    ));
-  }
-}
-
-
-
-Future<void> _fetchSharedPosts() async {
-  if (isPaginatingSharedPosts || currentUserId == null || !hasMoreSharedPosts) return;
-
-  try {
-    setState(() {
-      isPaginatingSharedPosts = true;
-    });
-
-    List<SharedPostDetails> newSharedPosts = await _userpostService.fetchSharedPosts(
-      widget.otherUserId,
-      currentUserId!,
-      currentSharedPageNumber,
-      pageSize,
-    );
-
-    setState(() {
-      sharedPosts.addAll(newSharedPosts);
-      currentSharedPageNumber++;
-      isPaginatingSharedPosts = false;
-      isPrivateAccount = false;
-
-      // Check if we've received fewer items than pageSize
-      if (newSharedPosts.length < pageSize) {
-        hasMoreSharedPosts = false;
-      }
-    });
-      } on SessionExpiredException {
-    print("SessionExpired detected in _fetchSharedPosts");
-    setState(() {
-      isPaginatingSharedPosts = false;
-    });
-    handleSessionExpired(context); // Display the session expired UI
-  } catch (e) {
-    print("Error fetching shared posts: $e");
-    setState(() {
-      isPaginatingSharedPosts = false;
-      if (e.toString().contains('Access denied')) {
-        isPrivateAccount = true;
-      }
-    });
-  }
-}
-
-void _scrollListener() {
-  if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
-    if (isPostsSelected && !isPaginating) {
-      _fetchUserPosts();
-    } else if (isSharedPostsSelected && !isPaginatingSharedPosts && hasMoreSharedPosts) {
-      _fetchSharedPosts();
     }
   }
-}
 
+  void _scrollListener() {
+    if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
+      if (isPostsSelected && !isPaginating) {
+        _fetchUserPosts();
+      } else if (isSharedPostsSelected && !isPaginatingSharedPosts && hasMoreSharedPosts) {
+        _fetchSharedPosts();
+      }
+    }
+  }
 
   Future<FollowStatusResponse?> _checkFollowStatus() async {
-    currentUserId ??= await _loginService.getUserId(); // Ensure currentUserId is set
+    currentUserId ??= await _loginService.getUserId(); 
     if (currentUserId == null) {
       return null;
     }
@@ -329,7 +390,6 @@ void _scrollListener() {
   void _toggleFollow() async {
     currentUserId ??= await _loginService.getUserId();
     if (currentUserId == null) {
-      // Handle user not logged in
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("You need to be logged in to follow users."),
@@ -343,16 +403,37 @@ void _scrollListener() {
       isFollowing = !isFollowing;
     });
 
-    if (isFollowing) {
-      await _followService.followUser(currentUserId!, widget.otherUserId);
-    } else {
-      await _followService.unfollowUser(currentUserId!, widget.otherUserId);
+    try {
+      if (isFollowing) {
+        await _followService.followUser(currentUserId!, widget.otherUserId);
+      } else {
+        await _followService.unfollowUser(currentUserId!, widget.otherUserId);
+      }
+    } catch (e) {
+      print("Error in _toggleFollow: $e");
+      final errStr = e.toString();
+      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+        String reason;
+        if (errStr.startsWith('Exception: BLOCKED:')) {
+          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+        } else {
+          reason = errStr;
+        }
+        showBlockSnackbar(context, reason);
+      } else if (errStr.contains('Session expired')) {
+        handleSessionExpired(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("An error occurred. Please try again."),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
-  // Adding refresh functionality
   Future<void> _refreshUserProfile() async {
-    // Reset the user profile data
     setState(() {
       userPosts.clear();
       sharedPosts.clear();
@@ -360,13 +441,13 @@ void _scrollListener() {
       currentSharedPageNumber = 1;
     });
 
-    await _loadUserProfile(); // Reload profile data
+    await _loadUserProfile();
   }
 
   void _showReportOptions() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white, 
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(20),
@@ -434,11 +515,11 @@ void _scrollListener() {
       MaterialPageRoute(
         builder: (context) => ProfilePostDetails(
           userPosts: userPosts,
-          bookmarkedPosts: [], // No bookmarks
+          bookmarkedPosts: [],
           initialIndex: index,
           userId: widget.otherUserId,
           isPostsSelected: true,
-          isCurrentUserProfile: false, // This is not the current user's profile
+          isCurrentUserProfile: false,
         ),
       ),
     );
@@ -451,7 +532,7 @@ void _scrollListener() {
         builder: (context) => SharedPostDetailsPage(
           sharedPosts: sharedPosts,
           initialIndex: index,
-          isCurrentUserProfile: false, // // This is not the current user's profile
+          isCurrentUserProfile: false,
         ),
       ),
     );
@@ -481,232 +562,36 @@ void _scrollListener() {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    double screenHeight = MediaQuery.of(context).size.height;
-    double screenWidth = MediaQuery.of(context).size.width;
+  Row buildStars(double rating, double screenWidth) {
+    rating = rating.clamp(0, 5);
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: RefreshIndicator(
-        onRefresh: _refreshUserProfile, // Pull-to-refresh functionality
-        color: Color(0xFFF45F67), // loading indicator
-        child: Stack(
-          children: [
-            Container(
-              height: screenHeight * 0.28,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFFF45F67), Color(0xFFF45F67).withOpacity(0.8)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-            ),
-            Positioned(
-              top: screenHeight * 0.18,
-              left: 0,
-              right: 0,
-              child: Container(
-                height: screenHeight * 0.8,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(60),
-                    topRight: Radius.circular(60),
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: 50,
-              left: 10,
-              child: IconButton(
-                icon: Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-              ),
-            ),
-            // Three dots menu (More options)
-            Positioned(
-              top: 50,
-              right: 10,
-              child: PopupMenuButton<String>(
-                icon: Icon(Icons.more_vert, color: Colors.white),
-                color: Colors.white,
-                onSelected: (value) {
-                  if (value == "report") {
-                    _showReportOptions();
-                  } else if (value == "block") {
-                    _blockUser();
-                  }
-                },
-                itemBuilder: (BuildContext context) {
-                  return [
-                    PopupMenuItem<String>(
-                      value: "report",
-                      child: Text("Report User", style: TextStyle(color: Color(0xFFF45F67))),
-                    ),
-                    PopupMenuItem<String>(
-                      value: "block",
-                      child: Text("Block User", style: TextStyle(color: Color(0xFFF45F67))),
-                    ),
-                    PopupMenuItem<String>(
-                      value: "share",
-                      child: Text("Share Profile", style: TextStyle(color: Color(0xFFF45F67))),
-                    ),
-                  ];
-                },
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.only(top: screenHeight * 0.09),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: <Widget>[
-                  CircleAvatar(
-                    radius: 60,
-                    backgroundImage: userProfile != null
-                        ? CachedNetworkImageProvider(userProfile!.profilePic)
-                        : AssetImage('assets/images/default.png') as ImageProvider,
-                  ),
-                  SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        username,
-                        style: TextStyle(
-                          fontSize: screenWidth * 0.06,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      SizedBox(width: 10),
+    List<Widget> stars = [];
+    int fullStars = rating.floor();
+    bool hasHalfStar = (rating - fullStars) >= 0.5;
 
-                      // QR Code Icon with onTap functionality
-                      GestureDetector(
-                        onTap: _showQRCode,
-                        child: Icon(
-                          Icons.qr_code,
-                          size: screenWidth * 0.07,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
+    for (int i = 0; i < fullStars; i++) {
+      stars.add(Icon(Icons.star, color: Color(0xFFF45F67), size: screenWidth * 0.05));
+    }
 
-                  // Keep the remaining widgets intact:
-                  SizedBox(height: 10),
-                  _buildFollowAndMessageButtons(screenWidth),
-                  SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Color(0xFFF45F67).withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          rating.toStringAsFixed(1),
-                          style: TextStyle(
-                            fontSize: screenWidth * 0.05,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFFF45F67),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 10),
-                      buildStars(rating, screenWidth),
-                    ],
-                  ),
-                  SizedBox(height: 10),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
-                    child: Container(
-                      height: screenHeight * 0.07, // Set max height for scrollable area
-                      child: SingleChildScrollView(
-                        child: _buildBioText(screenWidth),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildStatItem(postNb.toString(), 'Posts', screenWidth),
-                      SizedBox(width: screenWidth * 0.08),
-                      _buildStatItem(followersNb.toString(), 'Followers', screenWidth),
-                      SizedBox(width: screenWidth * 0.08),
-                      _buildStatItem(followingNb.toString(), 'Following', screenWidth),
-                    ],
-                  ),
-                  SizedBox(height: 16),
-                  Divider(
-                    color: Color(0xFFF45F67),
-                    thickness: 2,
-                  ),
-                  // Grid Toggle Buttons
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            isPostsSelected = true;
-                            isSharedPostsSelected = false;
-                          });
-                        },
-                        child: Icon(Icons.grid_on,
-                            color: isPostsSelected ? Color(0xFFF45F67) : Colors.grey,
-                            size: screenWidth * 0.07),
-                      ),
-                      SizedBox(width: screenWidth * 0.2),
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            isPostsSelected = false;
-                            isSharedPostsSelected = true;
-                          });
-                        },
-                        child: Icon(Icons.near_me,
-                            color: isSharedPostsSelected ? Color(0xFFF45F67) : Colors.grey,
-                            size: screenWidth * 0.07),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 16),
-                  Expanded(
-                    child: isLoading
-                        ? _buildShimmerGrid()
-                        : isPostsSelected
-                            ? PostGrid(
-                              userPosts: userPosts,
-                              isPaginating: isPaginating,
-                              scrollController: _scrollController,
-                              screenWidth: screenWidth,
-                              openFullPost: _openFullPost,
-                              isPrivateAccount: isPrivateAccount, // Pass privacy status here
-                            )
-                            : SharedPostsGrid(
-                              sharedPosts: sharedPosts,
-                              isPaginatingSharedPosts: isPaginatingSharedPosts,
-                              hasMoreSharedPosts: hasMoreSharedPosts, // Pass the variable here
-                              scrollController: _scrollController,
-                              screenWidth: screenWidth,
-                              openSharedPost: _openSharedPostDetails,
-                              isPrivateAccount: isPrivateAccount,
-                            )
+    if (hasHalfStar) {
+      stars.add(Icon(Icons.star_half, color: Color(0xFFF45F67), size: screenWidth * 0.05));
+    }
 
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+    int emptyStars = 5 - stars.length;
+    for (int i = 0; i < emptyStars; i++) {
+      stars.add(Icon(Icons.star_border, color: Color(0xFFF45F67), size: screenWidth * 0.05));
+    }
+
+    return Row(children: stars);
+  }
+
+  Widget _buildBioText(double screenWidth) {
+    return Text(
+      bio,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: screenWidth * 0.04,
+        color: Colors.grey,
       ),
     );
   }
@@ -780,95 +665,283 @@ void _scrollListener() {
     );
   }
 
-  Row buildStars(double rating, double screenWidth) {
-    rating = rating.clamp(0, 5);
-
-    List<Widget> stars = [];
-    int fullStars = rating.floor();
-    bool hasHalfStar = (rating - fullStars) >= 0.5;
-
-    for (int i = 0; i < fullStars; i++) {
-      stars.add(Icon(Icons.star, color: Color(0xFFF45F67), size: screenWidth * 0.05));
-    }
-
-    if (hasHalfStar) {
-      stars.add(Icon(Icons.star_half, color: Color(0xFFF45F67), size: screenWidth * 0.05));
-    }
-
-    int emptyStars = 5 - stars.length;
-    for (int i = 0; i < emptyStars; i++) {
-      stars.add(Icon(Icons.star_border, color: Color(0xFFF45F67), size: screenWidth * 0.05));
-    }
-
-    return Row(children: stars);
-  }
-
-  Widget _buildBioText(double screenWidth) {
-    return Text(
-      bio,
-      textAlign: TextAlign.center,
-      style: TextStyle(
-        fontSize: screenWidth * 0.04,
-        color: Colors.grey,
+  Widget _buildStatItem(String count, String label, double screenWidth) {
+    return GestureDetector(
+      onTap: () {
+        if (label == 'Followers' && isFollowersPublic) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FollowersPage(
+                userId: widget.otherUserId,
+                viewerUserId: currentUserId ?? 0,
+              ),
+            ),
+          );
+        } else if (label == 'Following' && isFollowingPublic) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FollowingPage(
+                userId: widget.otherUserId,
+                viewerUserId: currentUserId ?? 0,
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("This list is private."),
+              backgroundColor: Color(0xFFF45F67),
+            ),
+          );
+        }
+      },
+      child: Column(
+        children: [
+          Text(
+            (label == 'Followers' && !isFollowersPublic) || (label == 'Following' && !isFollowingPublic)
+                ? '-'  
+                : count, 
+            style: TextStyle(
+              fontSize: screenWidth * 0.04,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          SizedBox(height: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: screenWidth * 0.03,
+              color: Colors.grey,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-Widget _buildStatItem(String count, String label, double screenWidth) {
-  return GestureDetector(
-    onTap: () {
-      if (label == 'Followers' && isFollowersPublic) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => FollowersPage(
-              userId: widget.otherUserId,
-              viewerUserId: currentUserId ?? 0,
-            ),
-          ),
-        );
-      } else if (label == 'Following' && isFollowingPublic) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => FollowingPage(
-              userId: widget.otherUserId,
-              viewerUserId: currentUserId ?? 0,
-            ),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("This list is private."),
-            backgroundColor: Color(0xFFF45F67),
-          ),
-        );
-      }
-    },
-    child: Column(
-      children: [
-        Text(
-          (label == 'Followers' && !isFollowersPublic) || (label == 'Following' && !isFollowingPublic)
-              ? '-'  // Display "-" if the list is private
-              : count, // Show the actual count if public
-          style: TextStyle(
-            fontSize: screenWidth * 0.04,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-        SizedBox(height: 5),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: screenWidth * 0.03,
-            color: Colors.grey,
-          ),
-        ),
-      ],
-    ),
-  );
-}
+  @override
+  Widget build(BuildContext context) {
+    double screenHeight = MediaQuery.of(context).size.height;
+    double screenWidth = MediaQuery.of(context).size.width;
 
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: RefreshIndicator(
+        onRefresh: _refreshUserProfile,
+        color: Color(0xFFF45F67),
+        child: Stack(
+          children: [
+            Container(
+              height: screenHeight * 0.28,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFFF45F67), Color(0xFFF45F67).withOpacity(0.8)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+            Positioned(
+              top: screenHeight * 0.18,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: screenHeight * 0.8,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(60),
+                    topRight: Radius.circular(60),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 50,
+              left: 10,
+              child: IconButton(
+                icon: Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+            Positioned(
+              top: 50,
+              right: 10,
+              child: PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert, color: Colors.white),
+                color: Colors.white,
+                onSelected: (value) {
+                  if (value == "report") {
+                    _showReportOptions();
+                  } else if (value == "block") {
+                    _blockUser();
+                  }
+                },
+                itemBuilder: (BuildContext context) {
+                  return [
+                    PopupMenuItem<String>(
+                      value: "report",
+                      child: Text("Report User", style: TextStyle(color: Color(0xFFF45F67))),
+                    ),
+                    PopupMenuItem<String>(
+                      value: "block",
+                      child: Text("Block User", style: TextStyle(color: Color(0xFFF45F67))),
+                    ),
+                    PopupMenuItem<String>(
+                      value: "share",
+                      child: Text("Share Profile", style: TextStyle(color: Color(0xFFF45F67))),
+                    ),
+                  ];
+                },
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.only(top: screenHeight * 0.09),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  CircleAvatar(
+                    radius: 60,
+                    backgroundImage: userProfile != null
+                        ? CachedNetworkImageProvider(userProfile!.profilePic)
+                        : AssetImage('assets/images/default.png') as ImageProvider,
+                  ),
+                  SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        username,
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.06,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      GestureDetector(
+                        onTap: _showQRCode,
+                        child: Icon(
+                          Icons.qr_code,
+                          size: screenWidth * 0.07,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 10),
+                  _buildFollowAndMessageButtons(screenWidth),
+                  SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Color(0xFFF45F67).withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          rating.toStringAsFixed(1),
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.05,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFF45F67),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      buildStars(rating, screenWidth),
+                    ],
+                  ),
+                  SizedBox(height: 10),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
+                    child: Container(
+                      height: MediaQuery.of(context).size.height * 0.07, 
+                      child: SingleChildScrollView(
+                        child: _buildBioText(screenWidth),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildStatItem(postNb.toString(), 'Posts', screenWidth),
+                      SizedBox(width: screenWidth * 0.08),
+                      _buildStatItem(followersNb.toString(), 'Followers', screenWidth),
+                      SizedBox(width: screenWidth * 0.08),
+                      _buildStatItem(followingNb.toString(), 'Following', screenWidth),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  Divider(
+                    color: Color(0xFFF45F67),
+                    thickness: 2,
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            isPostsSelected = true;
+                            isSharedPostsSelected = false;
+                          });
+                        },
+                        child: Icon(Icons.grid_on,
+                            color: isPostsSelected ? Color(0xFFF45F67) : Colors.grey,
+                            size: screenWidth * 0.07),
+                      ),
+                      SizedBox(width: screenWidth * 0.2),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            isPostsSelected = false;
+                            isSharedPostsSelected = true;
+                          });
+                        },
+                        child: Icon(Icons.near_me,
+                            color: isSharedPostsSelected ? Color(0xFFF45F67) : Colors.grey,
+                            size: screenWidth * 0.07),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  Expanded(
+                    child: isLoading
+                        ? _buildShimmerGrid()
+                        : isPostsSelected
+                            ? PostGrid(
+                                userPosts: userPosts,
+                                isPaginating: isPaginating,
+                                scrollController: _scrollController,
+                                screenWidth: screenWidth,
+                                openFullPost: _openFullPost,
+                                isPrivateAccount: isPrivateAccount,
+                              )
+                            : SharedPostsGrid(
+                                sharedPosts: sharedPosts,
+                                isPaginatingSharedPosts: isPaginatingSharedPosts,
+                                hasMoreSharedPosts: hasMoreSharedPosts,
+                                scrollController: _scrollController,
+                                screenWidth: screenWidth,
+                                openSharedPost: _openSharedPostDetails,
+                                isPrivateAccount: isPrivateAccount,
+                              ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

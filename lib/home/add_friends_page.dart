@@ -8,6 +8,27 @@ import 'package:cook/maintenance/expiredtoken.dart';
 import 'package:cook/profile/otheruserprofilepage.dart';
 import 'package:cook/profile/profile_page.dart';
 
+void showBlockSnackbar(BuildContext context, String reason) {
+  String message;
+  if (reason.contains('You are blocked by the post owner')) {
+    message = 'User blocked you';
+  } else if (reason.contains('You have blocked the post owner')) {
+    message = 'You blocked the user';
+  } else if (reason.toLowerCase().contains('blocked')) {
+    message = 'Action not allowed due to blocking';
+  } else {
+    message = 'Action not allowed.';
+  }
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.redAccent,
+      duration: const Duration(seconds: 3),
+    ),
+  );
+}
+
 class AddFriendsPage extends StatefulWidget {
   @override
   _AddFriendsPageState createState() => _AddFriendsPageState();
@@ -118,19 +139,31 @@ class _AddFriendsPageState extends State<AddFriendsPage>
   }
 
   void _handleError(dynamic e) {
-    if (e.toString().contains('Session expired')) {
+    final errStr = e.toString();
+    if (errStr.contains('Session expired')) {
       if (context.mounted) {
         handleSessionExpired(context);
       }
+    } else if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+      // Extract reason
+      String reason;
+      if (errStr.startsWith('Exception: BLOCKED:')) {
+        reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+      } else {
+        reason = errStr;
+      }
+      showBlockSnackbar(context, reason);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('An error occurred: ${e.toString()}')),
+      );
     }
+
     setState(() {
       isLoadingFollowRequests = false;
       isLoadingContentRequests = false;
       isLoadingMore = false;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('An error occurred: ${e.toString()}')),
-    );
     print("Error: $e");
   }
 
@@ -409,15 +442,13 @@ class _AddFriendsPageState extends State<AddFriendsPage>
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(80),
         child: AppBar(
-          backgroundColor:
-              Color(0xFFF45F67), // Set primary color as the background
+          backgroundColor: Color(0xFFF45F67),
           elevation: 4,
           shadowColor: Colors.grey.shade200,
           leading: Padding(
             padding: const EdgeInsets.only(top: 20, left: 10),
             child: IconButton(
-              icon: Icon(Icons.arrow_back,
-                  color: Colors.white, size: 28), // Icon color in white
+              icon: Icon(Icons.arrow_back, color: Colors.white, size: 28),
               onPressed: () {
                 Navigator.pop(context);
               },
@@ -431,7 +462,7 @@ class _AddFriendsPageState extends State<AddFriendsPage>
               style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
-                color: Colors.white, // Set the title text color to white
+                color: Colors.white,
               ),
             ),
           ),
@@ -439,8 +470,7 @@ class _AddFriendsPageState extends State<AddFriendsPage>
           actions: [
             Padding(
               padding: const EdgeInsets.only(top: 20, right: 15),
-              child: Icon(Icons.local_dining,
-                  color: Colors.white, size: 28), // Icon color in white
+              child: Icon(Icons.local_dining, color: Colors.white, size: 28),
             ),
           ],
         ),
