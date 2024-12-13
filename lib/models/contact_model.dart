@@ -12,6 +12,7 @@ class Contact {
   final String lastMessage;
   final DateTime lastMessageTime;
   final int unreadCount;
+  final bool isMuted;
 
   Contact({
     required this.chatId,
@@ -25,6 +26,7 @@ class Contact {
     required this.lastMessage,
     required this.lastMessageTime,
     required this.unreadCount,
+    this.isMuted = false,
   });
 
   Contact copyWith({
@@ -39,6 +41,7 @@ class Contact {
     String? lastMessage,
     DateTime? lastMessageTime,
     int? unreadCount,
+    bool? isMuted,
   }) {
     return Contact(
       chatId: chatId ?? this.chatId,
@@ -52,6 +55,7 @@ class Contact {
       lastMessage: lastMessage ?? this.lastMessage,
       lastMessageTime: lastMessageTime ?? this.lastMessageTime,
       unreadCount: unreadCount ?? this.unreadCount,
+      isMuted: isMuted ?? this.isMuted,
     );
   }
 
@@ -77,6 +81,7 @@ class Contact {
           ? _parseUtcThenLocal(json['lastMessageTime'])
           : DateTime.now().toLocal(),
       unreadCount: json['unreadCount'] ?? 0,
+      isMuted: json['isMuted'] ?? false,
     );
   }
 }
