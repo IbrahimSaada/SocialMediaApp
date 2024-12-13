@@ -22,7 +22,7 @@ class SignalRService {
 
     _hubConnection = HubConnectionBuilder()
         .withUrl(
-          '***REMOVED***/chatHub', // Replace with your actual URL
+          'https://6229-185-97-92-30.ngrok-free.app/chatHub', // Replace with your actual URL
           HttpConnectionOptions(
             accessTokenFactory: () async => accessToken,
           ),

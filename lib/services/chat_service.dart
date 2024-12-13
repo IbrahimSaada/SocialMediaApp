@@ -3,11 +3,10 @@ import '***REMOVED***/models/contact_model.dart';
 import '***REMOVED***/models/message_model.dart';
 import '***REMOVED***/models/deleteuserchat.dart';
 import '***REMOVED***/services/apiService.dart';
-
 import '../models/mute_user_dto.dart';
 
 class ChatService {
-  final String baseUrl = '***REMOVED***/api/Chat'; 
+  final String baseUrl = 'https://6229-185-97-92-30.ngrok-free.app/api/Chat';
   final ApiService _apiService = ApiService();
 
   // Fetch user chats with token & signature
@@ -21,6 +20,11 @@ class ChatService {
       dataToSign,
       'GET',
     );
+
+    if (response.statusCode == 403) {
+      final reason = response.body;
+      throw Exception('BLOCKED:$reason');
+    }
 
     if (response.statusCode == 200) {
       List<dynamic> data = json.decode(response.body);
@@ -43,14 +47,18 @@ class ChatService {
       body: deleteUserChat.toJson(),
     );
 
+    if (response.statusCode == 403) {
+      final reason = response.body;
+      throw Exception('BLOCKED:$reason');
+    }
+
     if (response.statusCode != 200) {
       throw Exception('Failed to delete chat: ${response.body}');
     }
   }
 
-    // Mute a user
+  // Mute a user
   Future<void> muteUser(MuteUserDto dto) async {
-    // dataToSign = "MutedByUserId:...|MutedUserId:..."
     final dataToSign = "MutedByUserId:${dto.mutedByUserId}|MutedUserId:${dto.mutedUserId}";
     final uri = Uri.parse('$baseUrl/mute-user');
 
@@ -60,6 +68,11 @@ class ChatService {
       'POST',
       body: dto.toJson(),
     );
+
+    if (response.statusCode == 403) {
+      final reason = response.body;
+      throw Exception('BLOCKED:$reason');
+    }
 
     if (response.statusCode != 200) {
       throw Exception('Failed to mute user: ${response.body}');
@@ -77,6 +90,11 @@ class ChatService {
       'POST',
       body: dto.toJson(),
     );
+
+    if (response.statusCode == 403) {
+      final reason = response.body;
+      throw Exception('BLOCKED:$reason');
+    }
 
     if (response.statusCode != 200) {
       throw Exception('Failed to unmute user: ${response.body}');

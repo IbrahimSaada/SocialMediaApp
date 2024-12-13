@@ -12,6 +12,28 @@ import '***REMOVED***/services/crypto/key_exchange_service.dart';
 import '***REMOVED***/services/crypto/encryption_service.dart';
 import '***REMOVED***/services/crypto/key_manager.dart' show UserKeyPair;
 import 'package:cryptography/cryptography.dart';
+import '../maintenance/expiredtoken.dart';
+
+void showBlockSnackbar(BuildContext context, String reason) {
+  String message;
+  if (reason.contains('You are blocked by the post owner')) {
+    message = 'User blocked you';
+  } else if (reason.contains('You have blocked the post owner')) {
+    message = 'You blocked the user';
+  } else if (reason.toLowerCase().contains('blocked')) {
+    message = 'Action not allowed due to blocking';
+  } else {
+    message = 'Action not allowed.';
+  }
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.redAccent,
+      duration: const Duration(seconds: 3),
+    ),
+  );
+}
 
 class ChatPage extends StatefulWidget {
   final int chatId;
@@ -143,7 +165,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   }
 
   String _forceUtc(String dateStr) {
-    // If it doesn't end with Z, append Z to indicate UTC
     if (!dateStr.endsWith('Z')) {
       dateStr = dateStr + 'Z';
     }
@@ -170,7 +191,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         try {
           Map<String, dynamic> messageMap = Map<String, dynamic>.from(messageData);
 
-          // Force UTC then toLocal() in fromJson
           if (messageMap['createdAt'] is String) {
             messageMap['createdAt'] = _forceUtc(messageMap['createdAt']);
           }
@@ -198,7 +218,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
           fetchedMessages.add(message);
         } catch (e) {
           print('Error parsing message: $e');
-          print('Message data: $messageData');
         }
       }
 
@@ -206,7 +225,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
       setState(() {
         if (loadMore) {
-          print('Inserting fetched messages at the beginning...');
           double prevScrollHeight = _scrollController.position.extentAfter;
           double prevScrollOffset = _scrollController.offset;
           messages.insertAll(0, fetchedMessages);
@@ -239,6 +257,22 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       });
     } catch (e) {
       print('Error fetching messages via SignalR: $e');
+      final errStr = e.toString();
+      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+        String reason;
+        if (errStr.startsWith('Exception: BLOCKED:')) {
+          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+        } else {
+          reason = errStr;
+        }
+        showBlockSnackbar(context, reason);
+      } else if (errStr.contains('Session expired')) {
+        handleSessionExpired(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching messages.')),
+        );
+      }
       setState(() {
         _isLoading = false;
       });
@@ -263,7 +297,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       if (message.chatId == widget.chatId) {
         if (_sessionKeys != null && message.messageContent.isNotEmpty) {
           try {
-            // Decrypt message content
             final ciphertext = base64Decode(message.messageContent);
             final encryptionService = EncryptionService();
             final decryptedBytes = await encryptionService.decryptMessage(
@@ -458,6 +491,22 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       _scrollToBottom();
     } catch (e) {
       print('Error sending message: $e');
+      final errStr = e.toString();
+      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+        String reason;
+        if (errStr.startsWith('Exception: BLOCKED:')) {
+          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+        } else {
+          reason = errStr;
+        }
+        showBlockSnackbar(context, reason);
+      } else if (errStr.contains('Session expired')) {
+        handleSessionExpired(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send message')),
+        );
+      }
     }
   }
 
@@ -491,6 +540,22 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       FocusScope.of(context).unfocus();
     } catch (e) {
       print('Error editing message: $e');
+      final errStr = e.toString();
+      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+        String reason;
+        if (errStr.startsWith('Exception: BLOCKED:')) {
+          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+        } else {
+          reason = errStr;
+        }
+        showBlockSnackbar(context, reason);
+      } else if (errStr.contains('Session expired')) {
+        handleSessionExpired(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to edit message')),
+        );
+      }
     }
   }
 
@@ -500,6 +565,22 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       FocusScope.of(context).unfocus();
     } catch (e) {
       print('Error deleting message: $e');
+      final errStr = e.toString();
+      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+        String reason;
+        if (errStr.startsWith('Exception: BLOCKED:')) {
+          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+        } else {
+          reason = errStr;
+        }
+        showBlockSnackbar(context, reason);
+      } else if (errStr.contains('Session expired')) {
+        handleSessionExpired(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete message')),
+        );
+      }
     }
   }
 

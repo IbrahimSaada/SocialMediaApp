@@ -14,7 +14,29 @@ import '../chat/chat_page.dart';
 import 'pluscontact.dart';
 import 'package:intl/intl.dart';
 import 'package:cryptography/cryptography.dart';
-import '***REMOVED***/models/mute_user_dto.dart'; // Import the MuteUserDto
+import '***REMOVED***/models/mute_user_dto.dart';
+import '../maintenance/expiredtoken.dart';
+
+void showBlockSnackbar(BuildContext context, String reason) {
+  String message;
+  if (reason.contains('You are blocked by the post owner')) {
+    message = 'User blocked you';
+  } else if (reason.contains('You have blocked the post owner')) {
+    message = 'You blocked the user';
+  } else if (reason.toLowerCase().contains('blocked')) {
+    message = 'Action not allowed due to blocking';
+  } else {
+    message = 'Action not allowed.';
+  }
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.redAccent,
+      duration: const Duration(seconds: 3),
+    ),
+  );
+}
 
 class ContactsPage extends StatefulWidget {
   final String fullname;
@@ -34,7 +56,6 @@ class _ContactsPageState extends State<ContactsPage> {
   String _searchQuery = '';
   bool _isLoading = true;
 
-  // Map to track typing status by chatId
   Map<int, bool> _isTypingMap = {};
   Map<int, Timer?> _typingTimers = {};
 
@@ -67,7 +88,6 @@ class _ContactsPageState extends State<ContactsPage> {
 
   void _onUserTyping(int senderId) {
     if (senderId != widget.userId) {
-      // Find the chat associated with this senderId
       final chat = _chats.firstWhere(
           (c) =>
               (c.initiatorUserId == senderId && c.recipientUserId == widget.userId) ||
@@ -90,10 +110,8 @@ class _ContactsPageState extends State<ContactsPage> {
           _isTypingMap[chat.chatId] = true;
         });
 
-        // Reset any existing timer
         _typingTimers[chat.chatId]?.cancel();
 
-        // Typing status should disappear after 3 seconds if no further typing events
         _typingTimers[chat.chatId] = Timer(Duration(seconds: 3), () {
           setState(() {
             _isTypingMap[chat.chatId] = false;
@@ -114,9 +132,14 @@ class _ContactsPageState extends State<ContactsPage> {
   }
 
   void _onError(String errorMessage) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(errorMessage)),
-    );
+    final errStr = errorMessage.toLowerCase();
+    if (errStr.contains('blocked')) {
+      showBlockSnackbar(context, errorMessage);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    }
   }
 
   void _onChatUpdate() {
@@ -127,7 +150,6 @@ class _ContactsPageState extends State<ContactsPage> {
     try {
       final chats = await _chatService.fetchUserChats(widget.userId);
 
-      // Decrypt last messages if session keys are available
       if (_sessionKeys != null) {
         final encryptionService = EncryptionService();
         for (int i = 0; i < chats.length; i++) {
@@ -143,7 +165,6 @@ class _ContactsPageState extends State<ContactsPage> {
               chats[i] = chat.copyWith(lastMessage: decryptedText);
             } catch (e) {
               print('Error decrypting lastMessage for chatId=${chat.chatId}: $e');
-              // If decryption fails, leave as is or show placeholder
             }
           }
         }
@@ -160,6 +181,22 @@ class _ContactsPageState extends State<ContactsPage> {
       });
     } catch (e) {
       print('Error fetching chats: $e');
+      final errStr = e.toString();
+      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+        String reason;
+        if (errStr.startsWith('Exception: BLOCKED:')) {
+          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+        } else {
+          reason = errStr;
+        }
+        showBlockSnackbar(context, reason);
+      } else if (errStr.contains('Session expired')) {
+        handleSessionExpired(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('An error occurred while fetching chats.')),
+        );
+      }
       setState(() {
         _isLoading = false;
       });
@@ -200,14 +237,11 @@ class _ContactsPageState extends State<ContactsPage> {
 
   Future<void> _toggleMute(int index) async {
     final chat = _filteredChats[index];
-    // Determine the other userId
     int otherUserId = chat.initiatorUserId == widget.userId
         ? chat.recipientUserId
         : chat.initiatorUserId;
 
     final currentlyMuted = muteStatus[index] ?? false;
-
-    // We'll call the appropriate API
     final dto = MuteUserDto(
       mutedByUserId: widget.userId,
       mutedUserId: otherUserId,
@@ -215,13 +249,11 @@ class _ContactsPageState extends State<ContactsPage> {
 
     try {
       if (!currentlyMuted) {
-        // Mute the user
         await _chatService.muteUser(dto);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('User muted successfully.')),
         );
       } else {
-        // Unmute the user
         await _chatService.unmuteUser(dto);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('User unmuted successfully.')),
@@ -233,9 +265,22 @@ class _ContactsPageState extends State<ContactsPage> {
       });
     } catch (e) {
       print('Error toggling mute: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to toggle mute.')),
-      );
+      final errStr = e.toString();
+      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+        String reason;
+        if (errStr.startsWith('Exception: BLOCKED:')) {
+          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+        } else {
+          reason = errStr;
+        }
+        showBlockSnackbar(context, reason);
+      } else if (errStr.contains('Session expired')) {
+        handleSessionExpired(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to toggle mute.')),
+        );
+      }
     }
   }
 
@@ -261,7 +306,7 @@ class _ContactsPageState extends State<ContactsPage> {
                 _filteredChats.add(chat);
               }
             });
-            shouldDelete = false; 
+            shouldDelete = false;
           },
         ),
         duration: Duration(seconds: 3),
@@ -278,9 +323,23 @@ class _ContactsPageState extends State<ContactsPage> {
         ));
       } catch (e) {
         print('Error deleting chat: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete chat')),
-        );
+        final errStr = e.toString();
+        if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+          String reason;
+          if (errStr.startsWith('Exception: BLOCKED:')) {
+            reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+          } else {
+            reason = errStr;
+          }
+          showBlockSnackbar(context, reason);
+        } else if (errStr.contains('Session expired')) {
+          handleSessionExpired(context);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete chat')),
+          );
+        }
+
         setState(() {
           if (!_chats.any((c) => c.chatId == chat.chatId)) {
             _chats.add(chat);
@@ -332,22 +391,13 @@ class _ContactsPageState extends State<ContactsPage> {
     });
   }
 
-  @override
-  void dispose() {
-    _signalRService.hubConnection.stop();
-    for (var timer in _typingTimers.values) {
-      timer?.cancel();
-    }
-    super.dispose();
-  }
-
   Future<void> _initE2EE() async {
     print('Initializing E2EE in ContactsPage...');
     final myKeyPair = await _loadMyUserKeyPair();
-    print('My private key length: ${myKeyPair.privateKey.length}, public key length: ${myKeyPair.publicKey.length}');
+    print('My private key length (ContactsPage): ${myKeyPair.privateKey.length}, public key length: ${myKeyPair.publicKey.length}');
 
     final recipientPublicKey = await _fetchRecipientPublicKeyFromServer();
-    print('Mock recipient public key length: ${recipientPublicKey.length}');
+    print('Mock recipient public key length (ContactsPage): ${recipientPublicKey.length}');
 
     final keyExchangeService = KeyExchangeService();
     final sharedSecret = await keyExchangeService.deriveSharedSecret(
@@ -385,7 +435,6 @@ class _ContactsPageState extends State<ContactsPage> {
 
   Future<List<int>> _fetchRecipientPublicKeyFromServer() async {
     print('Fetching recipient public key (mock, stable) for ContactsPage');
-    // Using stable approach:
     final seed = List<int>.filled(32, 2);
     final algo = X25519();
     final kp = await algo.newKeyPairFromSeed(seed);
