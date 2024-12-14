@@ -362,16 +362,26 @@ appBar: PreferredSize(
                           itemBuilder: (context, index) {
                             final user = savedUsers[index];
                             return ListTile(
-                              leading: CircleAvatar(
-                                backgroundImage: NetworkImage(user.profilePic),
-                              ),
-                              title: Text(user.username),
-                              subtitle: Text(user.fullName),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () => removeSavedUser(index),
-                              ),
-                            );
+                                    leading: CircleAvatar(
+                                      backgroundImage: NetworkImage(user.profilePic),
+                                    ),
+                                    title: Text(user.username),
+                                    subtitle: Text(user.fullName),
+                                    trailing: IconButton(
+                                      icon: const Icon(Icons.clear),
+                                      onPressed: () => removeSavedUser(index),
+                                    ),
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => OtherUserProfilePage(
+                                            otherUserId: user.userId,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  );
                           },
                         ),
                       ),

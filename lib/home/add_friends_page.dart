@@ -167,25 +167,89 @@ class _AddFriendsPageState extends State<AddFriendsPage>
     print("Error: $e");
   }
 
-  Widget _shimmerLoading() {
-    return ListView.builder(
-      itemCount: 5,
-      itemBuilder: (context, index) {
-        return Shimmer.fromColors(
-          baseColor: Colors.grey[300]!,
-          highlightColor: Colors.grey[100]!,
-          child: Container(
-            margin: EdgeInsets.symmetric(vertical: 8, horizontal: 15),
-            height: 70,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-            ),
+Widget _shimmerLoading() {
+  return ListView.builder(
+    itemCount: 5, // Number of shimmer cards
+    itemBuilder: (context, index) {
+      return Shimmer.fromColors(
+        baseColor: Colors.grey[300]!,
+        highlightColor: Colors.grey[100]!,
+        child: Container(
+          margin: EdgeInsets.symmetric(vertical: 8, horizontal: 15),
+          padding: EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
           ),
-        );
-      },
-    );
-  }
+          child: Column(
+            children: [
+              // Profile Picture and Username
+              Row(
+                children: [
+                  // Circular shimmer for profile picture
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  // Shimmer for username
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 150,
+                          height: 12,
+                          color: Colors.white,
+                        ),
+                        SizedBox(height: 6),
+                        Container(
+                          width: 100,
+                          height: 10,
+                          color: Colors.white,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 10),
+              // Shimmer for buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Primary action button shimmer
+                  Container(
+                    width: 120,
+                    height: 35,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  // Secondary action button shimmer
+                  Container(
+                    width: 120,
+                    height: 35,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
 
   Widget _friendRequestCard({
     required String fullName,
@@ -436,80 +500,55 @@ class _AddFriendsPageState extends State<AddFriendsPage>
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(80),
-        child: AppBar(
-          backgroundColor: Color(0xFFF45F67),
-          elevation: 4,
-          shadowColor: Colors.grey.shade200,
-          leading: Padding(
-            padding: const EdgeInsets.only(top: 20, left: 10),
-            child: IconButton(
-              icon: Icon(Icons.arrow_back, color: Colors.white, size: 28),
-              onPressed: () {
-                Navigator.pop(context);
-              },
-            ),
-          ),
-          title: Padding(
-            padding: const EdgeInsets.only(top: 20),
-            child: Text(
-              'Friends Request ',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          centerTitle: true,
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(top: 20, right: 15),
-              child: Icon(Icons.local_dining, color: Colors.white, size: 28),
-            ),
-          ],
+ @override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: Text(
+        'Friends Request',
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 22,
         ),
       ),
-      body: Column(
-        children: [
-          // Tab Bar
-          Container(
-            color: Colors.white,
-            child: TabBar(
-              controller: _tabController,
-              labelColor: Color(0xFFF45F67),
-              unselectedLabelColor: Colors.grey,
-              indicatorColor: Color(0xFFF45F67),
-              labelPadding: EdgeInsets.symmetric(vertical: 8.0),
-              tabs: [
-                Text(
-                  'Follow Requests',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  'Content Requests',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
+      backgroundColor: Color(0xFFF45F67),
+    ),
+    body: Column(
+      children: [
+        // Tab Bar
+        Container(
+          color: Colors.white,
+          child: TabBar(
+            controller: _tabController,
+            labelColor: Color(0xFFF45F67),
+            unselectedLabelColor: Colors.grey,
+            indicatorColor: Color(0xFFF45F67),
+            labelPadding: EdgeInsets.symmetric(vertical: 8.0),
+            tabs: [
+              Text(
+                'Follow Requests',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                'Content Requests',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
-          // Tab Views
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildFollowRequestsTab(),
-                _buildContentRequestsTab(),
-              ],
-            ),
+        ),
+        // Tab Views
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildFollowRequestsTab(),
+              _buildContentRequestsTab(),
+            ],
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 }
