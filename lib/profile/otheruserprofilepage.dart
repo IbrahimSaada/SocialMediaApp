@@ -606,74 +606,50 @@ Future<void> _fetchSharedPosts() async {
     );
   }
 
-  Widget _buildFollowAndMessageButtons(double screenWidth) {
-    String followButtonText = "FOLLOW";
-    Color followButtonColor = Color(0xFFF45F67);
+  Widget _buildFollowButton(double screenWidth) {
+  String followButtonText = "FOLLOW";
+  Color followButtonColor = Color(0xFFF45F67);
 
-    if (amFollowing && !isFollowing) {
-      followButtonText = "FOLLOW BACK";
-      followButtonColor = Color(0xFFF45F67);
-    } else if (isFollowing && !amFollowing) {
-      followButtonText = "FOLLOWING";
-      followButtonColor = Colors.grey.shade400;
-    } else if (!amFollowing && !isFollowing) {
-      followButtonText = "FOLLOW";
-      followButtonColor = Color(0xFFF45F67);
-    } else if (amFollowing && isFollowing) {
-      followButtonText = "FOLLOWING";
-      followButtonColor = Colors.grey.shade300;
-    }
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        ElevatedButton(
-          onPressed: _toggleFollow,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: followButtonColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
-            ),
-            padding: EdgeInsets.symmetric(
-              horizontal: screenWidth * 0.07,
-              vertical: screenWidth * 0.025,
-            ),
-            elevation: 8,
-          ),
-          child: Text(
-            followButtonText,
-            style: TextStyle(
-              fontWeight: FontWeight.w500,
-              fontSize: screenWidth * 0.038,
-              color: Colors.white,
-            ),
-          ),
-        ),
-        SizedBox(width: screenWidth * 0.05),
-        OutlinedButton(
-          onPressed: () {},
-          style: OutlinedButton.styleFrom(
-            side: BorderSide(color: Color(0xFFF45F67), width: 1.5),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
-            ),
-            padding: EdgeInsets.symmetric(
-              horizontal: screenWidth * 0.07,
-              vertical: screenWidth * 0.025,
-            ),
-          ),
-          child: Text(
-            "MESSAGE",
-            style: TextStyle(
-              fontWeight: FontWeight.w500,
-              fontSize: screenWidth * 0.038,
-              color: Color(0xFFF45F67),
-            ),
-          ),
-        ),
-      ],
-    );
+  if (amFollowing && !isFollowing) {
+    followButtonText = "FOLLOW BACK";
+    followButtonColor = Color(0xFFF45F67);
+  } else if (isFollowing && !amFollowing) {
+    followButtonText = "FOLLOWING";
+    followButtonColor = Colors.grey.shade400;
+  } else if (!amFollowing && !isFollowing) {
+    followButtonText = "FOLLOW";
+    followButtonColor = Color(0xFFF45F67);
+  } else if (amFollowing && isFollowing) {
+    followButtonText = "FOLLOWING";
+    followButtonColor = Colors.grey.shade300;
   }
+
+  return Center(
+    child: ElevatedButton(
+      onPressed: _toggleFollow,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: followButtonColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: screenWidth * 0.07,
+          vertical: screenWidth * 0.025,
+        ),
+        elevation: 8,
+      ),
+      child: Text(
+        followButtonText,
+        style: TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: screenWidth * 0.038,
+          color: Colors.white,
+        ),
+      ),
+    ),
+  );
+}
+
 
   Widget _buildStatItem(String count, String label, double screenWidth) {
     return GestureDetector(
@@ -845,7 +821,7 @@ Future<void> _fetchSharedPosts() async {
                     ],
                   ),
                   SizedBox(height: 10),
-                  _buildFollowAndMessageButtons(screenWidth),
+                  _buildFollowButton(screenWidth),
                   SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
