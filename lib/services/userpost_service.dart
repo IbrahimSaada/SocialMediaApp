@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'blocked_user_exception.dart';
 import '../models/post_model.dart';
 import '../models/sharedpost_model.dart';
 import 'SessionExpiredException.dart';
@@ -33,6 +33,16 @@ class UserpostService {
       } else if (response.statusCode == 204) {
         // No content; return an empty list
         return [];
+      } else if (response.statusCode ==403){
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        final isBlockedBy = jsonData['blockedBy'] as bool? ?? false;
+        final isUserBlocked = jsonData['blockedUser'] as bool? ?? false;
+        // Throw a custom exception with details
+        throw BlockedUserException(
+        reason: jsonData['message'],
+        isBlockedBy: isBlockedBy,
+        isUserBlocked: isUserBlocked,
+      );
       } else if (response.statusCode == 403) {
         throw Exception('Access denied. You are not allowed to view these posts.');
       } else if (response.statusCode == 404) {
@@ -43,10 +53,7 @@ class UserpostService {
     } on SessionExpiredException {
       print('SessionExpired detected in fetchUserPosts');
       rethrow; // Re-throw to be caught in the UI layer
-    } catch (e) {
-      print('Error fetching user posts: $e');
-      throw Exception('Failed to load user posts');
-    }
+    } 
   }
 
 
@@ -108,6 +115,16 @@ class UserpostService {
       } else if (response.statusCode == 204) {
         // No content; return an empty list
         return [];
+      } else if (response.statusCode ==403){
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        final isBlockedBy = jsonData['blockedBy'] as bool? ?? false;
+        final isUserBlocked = jsonData['blockedUser'] as bool? ?? false;
+        // Throw a custom exception with details
+        throw BlockedUserException(
+        reason: jsonData['message'],
+        isBlockedBy: isBlockedBy,
+        isUserBlocked: isUserBlocked,
+      );
       } else if (response.statusCode == 403) {
         throw Exception('Access denied. You are not allowed to view these shared posts.');
       } else if (response.statusCode == 404) {
@@ -120,10 +137,7 @@ class UserpostService {
     } on SessionExpiredException {
       print('SessionExpired detected in fetchSharedPosts');
       rethrow; // Re-throw to be caught in the UI layer
-    } catch (e) {
-      print('Error fetching shared posts: $e');
-      throw Exception('Failed to load shared posts');
-    }
+    } 
   }
 
 }

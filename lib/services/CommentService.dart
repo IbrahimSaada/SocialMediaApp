@@ -8,7 +8,7 @@ import 'LoginService.dart';
 import 'SignatureService.dart';
 
 class CommentService {
-  static const String apiUrl = 'https://6229-185-97-92-30.ngrok-free.app/api/Posts';
+  static const String apiUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Posts';
   static final LoginService _loginService = LoginService();
   static final SignatureService _signatureService = SignatureService();
 

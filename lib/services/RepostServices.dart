@@ -8,7 +8,7 @@ import 'SignatureService.dart';
 
 class RepostService {
   static const String baseUrl =
-      'https://af4a-185-97-92-30.ngrok-free.app/api';
+      'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api';
 
   final LoginService _loginService = LoginService();
   final SignatureService _signatureService = SignatureService();

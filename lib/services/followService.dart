@@ -5,7 +5,7 @@ import 'SignatureService.dart';
 import 'package:cook/models/followRequestModel.dart';
 
 class FollowService {
-  static const String baseUrl = 'https://af4a-185-97-92-30.ngrok-free.app/api/UserConnections';
+  static const String baseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/UserConnections';
 
   final LoginService _loginService = LoginService();
   final SignatureService _signatureService = SignatureService();

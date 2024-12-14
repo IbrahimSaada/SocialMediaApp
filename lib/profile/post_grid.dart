@@ -9,6 +9,8 @@ class PostGrid extends StatelessWidget {
   final double screenWidth;
   final Function(int) openFullPost;
   final bool isPrivateAccount;
+  final bool isBlockedBy;
+  final bool isUserBlocked;
 
   const PostGrid({
     Key? key,
@@ -18,66 +20,94 @@ class PostGrid extends StatelessWidget {
     required this.screenWidth,
     required this.openFullPost,
     required this.isPrivateAccount,
+    required this.isBlockedBy,
+    required this.isUserBlocked,
   }) : super(key: key);
 
-  @override
-  Widget build(BuildContext context) {
-    if (isPrivateAccount) {
-      // Display lock icon and private account message
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.lock, color: Colors.grey, size: 50),
-            SizedBox(height: 10),
-            Text(
-              "This account is private.",
-              style: TextStyle(color: Colors.grey, fontSize: 18),
-            ),
-          ],
-        ),
-      );
-    } else if (userPosts.isEmpty && !isPaginating) {
-      // Display "No posts yet" message for empty list
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.photo_library, color: Colors.grey, size: 50),
-            SizedBox(height: 10),
-            Text(
-              "No posts yet.",
-              style: TextStyle(color: Colors.grey, fontSize: 18),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Display the grid of posts if not private and posts are available
-    return GridView.builder(
-      controller: scrollController,
-      padding: EdgeInsets.all(10.0),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: screenWidth * 0.02,
-        mainAxisSpacing: screenWidth * 0.02,
-      ),
-      itemCount: userPosts.length + (isPaginating ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == userPosts.length) {
-          return Center(child: CircularProgressIndicator(color: Color(0xFFF45F67)));
-        }
-        final post = userPosts[index];
-        return GestureDetector(
-          onTap: () {
-            openFullPost(index);
-          },
-          child: _buildPostThumbnail(post, screenWidth),
-        );
-      },
-    );
+@override
+Widget build(BuildContext context) {
+  if (isBlockedBy) {
+    return _buildBlockedMessage("You are blocked by this user.");
+  } else if (isUserBlocked) {
+    return _buildBlockedMessage("You have blocked this user.");
   }
+
+  if (isPrivateAccount) {
+    return _buildPrivateAccountMessage();
+  } else if (userPosts.isEmpty && !isPaginating) {
+    return _buildEmptyMessage("No posts yet.");
+  }
+
+  return GridView.builder(
+    controller: scrollController,
+    padding: EdgeInsets.all(10.0),
+    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 3,
+      crossAxisSpacing: screenWidth * 0.02,
+      mainAxisSpacing: screenWidth * 0.02,
+    ),
+    itemCount: userPosts.length + (isPaginating ? 1 : 0),
+    itemBuilder: (context, index) {
+      if (index == userPosts.length) {
+        return Center(child: CircularProgressIndicator(color: Color(0xFFF45F67)));
+      }
+      final post = userPosts[index];
+      return GestureDetector(
+        onTap: () => openFullPost(index),
+        child: _buildPostThumbnail(post, screenWidth),
+      );
+    },
+  );
+}
+
+Widget _buildBlockedMessage(String message) {
+  return Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.block, color: Colors.red, size: 50),
+        SizedBox(height: 10),
+        Text(
+          message,
+          style: TextStyle(color: Colors.grey, fontSize: 18),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildPrivateAccountMessage() {
+  return Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.lock, color: Colors.grey, size: 50),
+        SizedBox(height: 10),
+        Text(
+          "This account is private.",
+          style: TextStyle(color: Colors.grey, fontSize: 18),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildEmptyMessage(String message) {
+  return Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.photo_library, color: Colors.grey, size: 50),
+        SizedBox(height: 10),
+        Text(
+          message,
+          style: TextStyle(color: Colors.grey, fontSize: 18),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildPostThumbnail(Post post, double screenWidth) {
     if (post.media.isNotEmpty) {
