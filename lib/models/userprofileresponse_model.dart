@@ -24,15 +24,15 @@ class UserProfile {
   // Factory method to create an instance of UserProfile from JSON
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
-      userId: json['user_id'],
-      profilePic: json['profile_pic'],
-      fullName: json['fullname'],
-      qrCode: json['qr_code'],
-      rating: (json['rating'] as num).toDouble(),
-      bio: json['bio'],
-      postNb: json['post_nb'],
-      followersNb: json['followers_nb'],
-      followingNb: json['following_nb'],
+      userId: json['user_id'] ?? 0, // Provide default value for userId
+      profilePic: json['profile_pic'] ?? '', // Default to an empty string if null
+      fullName: json['fullname'] ?? '', // Default to an empty string if null
+      qrCode: json['qr_code'] ?? '', // Default to an empty string if null
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0, // Default to 0.0 if null
+      bio: json['bio'] ?? '', // Default to an empty string if null
+      postNb: json['post_nb'] ?? 0, // Default to 0 if null
+      followersNb: json['followers_nb'] ?? 0, // Default to 0 if null
+      followingNb: json['following_nb'] ?? 0, // Default to 0 if null
     );
   }
 
