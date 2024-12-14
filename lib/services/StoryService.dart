@@ -10,9 +10,9 @@ import '***REMOVED***/services/SignatureService.dart'; // Import SignatureServic
 class StoryService {
   // Define the base URLs for GET and POST requests
   final String getUrl =
-      'https://af4a-185-97-92-30.ngrok-free.app/api/Stories/user/';
+      '***REMOVED***/api/Stories/user/';
   final String postUrl =
-      'https://af4a-185-97-92-30.ngrok-free.app/api/Stories';
+      '***REMOVED***/api/Stories';
 
   final LoginService _loginService = LoginService();
   final SignatureService _signatureService = SignatureService();

@@ -32,6 +32,9 @@ class _ProfilePageState extends State<ProfilePage> {
   bool isLoading = false;
   bool isPaginatingSharedPosts = false; // New state variable
   bool isPrivateAccount = false; // New state variable to track privacy status
+
+  bool isBlockedBy = false;
+  bool isUserBlocked = false;
   
   int currentSharedPostsPageNumber = 1; // New state variable
   List<SharedPostDetails> sharedPosts = []; // New state variable
@@ -587,6 +590,8 @@ void _openFullPost(int index) {
               screenWidth: screenWidth,
               openFullPost: _openFullPost,
               isPrivateAccount: isPrivateAccount,
+              isBlockedBy: isBlockedBy,
+              isUserBlocked: isUserBlocked,
             )
           : isSharedPostsSelected
               ? SharedPostsGrid(
@@ -597,6 +602,8 @@ void _openFullPost(int index) {
                   screenWidth: screenWidth,
                   openSharedPost: _openSharedPostDetails,
                   isPrivateAccount: isPrivateAccount,
+                  isBlockedBy: isBlockedBy,
+                  isUserBlocked: isUserBlocked,
                 )
               : BookmarkedGrid(
                   bookmarkedPosts: bookmarkedPosts,

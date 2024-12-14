@@ -21,6 +21,8 @@ import '***REMOVED***/maintenance/expiredtoken.dart';
 import '***REMOVED***/services/SessionExpiredException.dart';
 import '***REMOVED***/profile/qr_code.dart';
 
+import '../services/blocked_user_exception.dart';
+
 void showBlockSnackbar(BuildContext context, String reason) {
   String message;
   if (reason.contains('You are blocked by the post owner')) {
@@ -81,6 +83,8 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   bool hasMoreSharedPosts = true;
   bool isFollowing = false;
   bool amFollowing = false;
+  bool isBlockedBy = false;
+  bool isUserBlocked = false;
 
   int? currentUserId; // To store the ID of the currently logged-in user
 
@@ -265,109 +269,115 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     }
   }
 
-  Future<void> _fetchUserPosts() async {
-    if (isPaginating || currentUserId == null) return; 
-    try {
+Future<void> _fetchUserPosts() async {
+  if (isPaginating || currentUserId == null) return;
+
+  try {
+    setState(() {
+      isPaginating = true;
+    });
+
+    List<Post> newPosts = await _userpostService.fetchUserPosts(
+      widget.otherUserId,
+      currentUserId!,
+      currentPageNumber,
+      pageSize,
+    );
+
+    setState(() {
+      userPosts.addAll(newPosts);
+      currentPageNumber++;
+      isPaginating = false;
+    });
+  } on BlockedUserException catch (e) {
+    // Handle blocked user scenario
+    if (e.isBlockedBy) {
       setState(() {
-        isPaginating = true;
-      });
-      List<Post> newPosts = await _userpostService.fetchUserPosts(
-          widget.otherUserId, currentUserId!, currentPageNumber, pageSize);
-      setState(() {
-        userPosts.addAll(newPosts);
-        currentPageNumber++;
+        isBlockedBy = true; // Update state to reflect "Blocked by this user"
         isPaginating = false;
       });
-    } on SessionExpiredException {
-      print("SessionExpired detected in _fetchUserPosts (OtherUserProfile)");
-      handleSessionExpired(context);
-    } catch (e) {
-      print("Error fetching posts: $e");
-      final errStr = e.toString();
-      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
-        String reason;
-        if (errStr.startsWith('Exception: BLOCKED:')) {
-          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
-        } else {
-          reason = errStr;
-        }
-        showBlockSnackbar(context, reason);
-      } else if (errStr.contains('Session expired')) {
-        handleSessionExpired(context);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('An error occurred while fetching user posts.'),
-          backgroundColor: Colors.red,
-        ));
-      }
+      showBlockSnackbar(context, e.reason);
+    } else if (e.isUserBlocked) {
       setState(() {
+        isUserBlocked = true; // Update state to reflect "You have blocked this user"
         isPaginating = false;
       });
+      showBlockSnackbar(context, e.reason);
     }
+  } on SessionExpiredException {
+    print("SessionExpired detected in _fetchUserPosts");
+    setState(() {
+      isPaginating = false;
+    });
+    handleSessionExpired(context);
+  } catch (e) {
+    print("Error fetching posts: $e");
+    setState(() {
+      isPaginating = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('An error occurred while fetching user posts.'),
+      backgroundColor: Colors.red,
+    ));
   }
+}
 
-  Future<void> _fetchSharedPosts() async {
-    if (isPaginatingSharedPosts || currentUserId == null || !hasMoreSharedPosts) return;
+Future<void> _fetchSharedPosts() async {
+  if (isPaginatingSharedPosts || currentUserId == null || !hasMoreSharedPosts) return;
 
-    try {
-      setState(() {
-        isPaginatingSharedPosts = true;
-      });
+  try {
+    setState(() {
+      isPaginatingSharedPosts = true;
+    });
 
-      List<SharedPostDetails> newSharedPosts = await _userpostService.fetchSharedPosts(
-        widget.otherUserId,
-        currentUserId!,
-        currentSharedPageNumber,
-        pageSize,
-      );
+    List<SharedPostDetails> newSharedPosts = await _userpostService.fetchSharedPosts(
+      widget.otherUserId,
+      currentUserId!,
+      currentSharedPageNumber,
+      pageSize,
+    );
 
-      setState(() {
-        sharedPosts.addAll(newSharedPosts);
-        currentSharedPageNumber++;
-        isPaginatingSharedPosts = false;
-        isPrivateAccount = false;
+    setState(() {
+      sharedPosts.addAll(newSharedPosts);
+      currentSharedPageNumber++;
+      isPaginatingSharedPosts = false;
 
-        if (newSharedPosts.length < pageSize) {
-          hasMoreSharedPosts = false;
-        }
-      });
-    } on SessionExpiredException {
-      print("SessionExpired detected in _fetchSharedPosts");
-      setState(() {
-        isPaginatingSharedPosts = false;
-      });
-      handleSessionExpired(context);
-    } catch (e) {
-      print("Error fetching shared posts: $e");
-      final errStr = e.toString();
-      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
-        String reason;
-        if (errStr.startsWith('Exception: BLOCKED:')) {
-          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
-        } else {
-          reason = errStr;
-        }
-        showBlockSnackbar(context, reason);
-      } else if (errStr.contains('Session expired')) {
-        handleSessionExpired(context);
-      } else if (errStr.contains('Access denied')) {
-        setState(() {
-          isPrivateAccount = true;
-        });
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('An error occurred while fetching shared posts.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      if (newSharedPosts.length < pageSize) {
+        hasMoreSharedPosts = false;
       }
-
+    });
+  } on BlockedUserException catch (e) {
+    // Handle blocked user scenario
+    if (e.isBlockedBy) {
       setState(() {
+        //isBlockedBy = true; // Update state to reflect "Blocked by this user"
         isPaginatingSharedPosts = false;
       });
+      showBlockSnackbar(context, e.reason);
+    } else if (e.isUserBlocked) {
+      setState(() {
+        //isUserBlocked = true; // Update state to reflect "You have blocked this user"
+        isPaginatingSharedPosts = false;
+      });
+      showBlockSnackbar(context, e.reason);
     }
+  } on SessionExpiredException {
+    print("SessionExpired detected in _fetchSharedPosts");
+    setState(() {
+      isPaginatingSharedPosts = false;
+    });
+    handleSessionExpired(context);
+  } catch (e) {
+    print("Error fetching shared posts: $e");
+    setState(() {
+      isPaginatingSharedPosts = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('An error occurred while fetching shared posts.'),
+      backgroundColor: Colors.red,
+    ));
   }
+}
 
   void _scrollListener() {
     if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
@@ -925,6 +935,9 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                                 screenWidth: screenWidth,
                                 openFullPost: _openFullPost,
                                 isPrivateAccount: isPrivateAccount,
+                                isBlockedBy: isBlockedBy,
+                                isUserBlocked: isUserBlocked,
+
                               )
                             : SharedPostsGrid(
                                 sharedPosts: sharedPosts,
@@ -934,6 +947,9 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                                 screenWidth: screenWidth,
                                 openSharedPost: _openSharedPostDetails,
                                 isPrivateAccount: isPrivateAccount,
+                                isBlockedBy: isBlockedBy,
+                                isUserBlocked: isUserBlocked,
+                                
                               ),
                   ),
                 ],
