@@ -5,25 +5,26 @@ import '../models/sharedpost_model.dart';
 import 'SessionExpiredException.dart';
 import 'apiService.dart';
 
+class PrivacyException implements Exception {
+  final String message;
+  PrivacyException(this.message);
+
+  @override
+  String toString() => 'PrivacyException: $message';
+}
+
 class UserpostService {
   static const String baseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api';
   final ApiService _apiService = ApiService();
-  // Fetch User Posts
+
   Future<List<Post>> fetchUserPosts(int currentUserId, int viewerUserId, int pageNumber, int pageSize) async {
     final Uri url = Uri.parse('$baseUrl/UserProfile/userposts?userId=$currentUserId&viewerUserId=$viewerUserId&pageNumber=$pageNumber&pageSize=$pageSize');
-    final String signatureData = '$currentUserId:$viewerUserId:$pageNumber:$pageSize'; // Data to sign
+    final String signatureData = '$currentUserId:$viewerUserId:$pageNumber:$pageSize';
 
     try {
-      print("Calling user posts API: $url"); // Debug statement
+      print("Calling user posts API: $url");
+      final response = await _apiService.makeRequestWithToken(url, signatureData, 'GET');
 
-      // Use ApiService to make the signed request
-      final response = await _apiService.makeRequestWithToken(
-        url,
-        signatureData,
-        'GET',
-      );
-
-      // Debugging information
       print("User posts API response status: ${response.statusCode}");
       print("User posts API response body: ${response.body}");
 
@@ -31,20 +32,26 @@ class UserpostService {
         final List<dynamic> jsonData = json.decode(response.body);
         return jsonData.map((json) => Post.fromJson(json)).toList();
       } else if (response.statusCode == 204) {
-        // No content; return an empty list
         return [];
-      } else if (response.statusCode ==403){
-        final Map<String, dynamic> jsonData = json.decode(response.body);
-        final isBlockedBy = jsonData['blockedBy'] as bool? ?? false;
-        final isUserBlocked = jsonData['blockedUser'] as bool? ?? false;
-        // Throw a custom exception with details
-        throw BlockedUserException(
-        reason: jsonData['message'],
-        isBlockedBy: isBlockedBy,
-        isUserBlocked: isUserBlocked,
-      );
       } else if (response.statusCode == 403) {
-        throw Exception('Access denied. You are not allowed to view these posts.');
+        // Try to parse as JSON first
+        try {
+          final Map<String, dynamic> jsonData = json.decode(response.body);
+          final isBlockedBy = jsonData['blockedBy'] as bool? ?? false;
+          final isUserBlocked = jsonData['blockedUser'] as bool? ?? false;
+          if (isBlockedBy || isUserBlocked) {
+            throw BlockedUserException(
+              reason: jsonData['message'],
+              isBlockedBy: isBlockedBy,
+              isUserBlocked: isUserBlocked,
+            );
+          } else {
+            throw PrivacyException(jsonData['message'] ?? 'This account is private.');
+          }
+        } catch (e) {
+          // If parsing fails, use raw text as message
+          throw PrivacyException(response.body);
+        }
       } else if (response.statusCode == 404) {
         throw Exception('No posts found for this user.');
       } else {
@@ -52,27 +59,18 @@ class UserpostService {
       }
     } on SessionExpiredException {
       print('SessionExpired detected in fetchUserPosts');
-      rethrow; // Re-throw to be caught in the UI layer
-    } 
+      rethrow;
+    }
   }
 
-
-  // Fetch Bookmarked Posts
   Future<List<Post>> fetchBookmarkedPosts(int userId, int pageNumber, int pageSize) async {
     final Uri url = Uri.parse('$baseUrl/UserProfile/bookmarked?userId=$userId&pageNumber=$pageNumber&pageSize=$pageSize');
-    final String signatureData = '$userId:$pageNumber:$pageSize'; // Data to sign
+    final String signatureData = '$userId:$pageNumber:$pageSize';
 
     try {
-      print("Calling bookmarked posts API: $url"); // Debug statement
+      print("Calling bookmarked posts API: $url");
+      final response = await _apiService.makeRequestWithToken(url, signatureData, 'GET');
 
-      // Use ApiService to make the signed request
-      final response = await _apiService.makeRequestWithToken(
-        url,
-        signatureData,
-        'GET',
-      );
-
-      // Debugging information
       print("Bookmarked posts API response status: ${response.statusCode}");
       print("Bookmarked posts API response body: ${response.body}");
 
@@ -84,28 +82,21 @@ class UserpostService {
       }
     } on SessionExpiredException {
       print('SessionExpired detected in fetchBookmarkedPosts');
-      rethrow; // Re-throw to be caught in the UI layer
+      rethrow;
     } catch (e) {
       print('Error fetching bookmarked posts: $e');
       throw Exception('Failed to load bookmarked posts');
     }
   }
-  // Fetch Shared Posts
+
   Future<List<SharedPostDetails>> fetchSharedPosts(int currentUserId, int viewerUserId, int pageNumber, int pageSize) async {
     final Uri url = Uri.parse('$baseUrl/UserProfile/sharedposts/$currentUserId?viewerUserId=$viewerUserId&pageNumber=$pageNumber&pageSize=$pageSize');
-    final String signatureData = '$currentUserId:$viewerUserId:$pageNumber:$pageSize'; // Data to sign
+    final String signatureData = '$currentUserId:$viewerUserId:$pageNumber:$pageSize';
 
     try {
-      print("Calling shared posts API: $url"); // Debug statement
+      print("Calling shared posts API: $url");
+      final response = await _apiService.makeRequestWithToken(url, signatureData, 'GET');
 
-      // Use ApiService to make the signed request
-      final response = await _apiService.makeRequestWithToken(
-        url,
-        signatureData,
-        'GET',
-      );
-
-      // Debugging information
       print("Shared posts API response status: ${response.statusCode}");
       print("Shared posts API response body: ${response.body}");
 
@@ -113,20 +104,26 @@ class UserpostService {
         final List<dynamic> jsonData = json.decode(response.body);
         return jsonData.map((json) => SharedPostDetails.fromJson(json)).toList();
       } else if (response.statusCode == 204) {
-        // No content; return an empty list
         return [];
-      } else if (response.statusCode ==403){
-        final Map<String, dynamic> jsonData = json.decode(response.body);
-        final isBlockedBy = jsonData['blockedBy'] as bool? ?? false;
-        final isUserBlocked = jsonData['blockedUser'] as bool? ?? false;
-        // Throw a custom exception with details
-        throw BlockedUserException(
-        reason: jsonData['message'],
-        isBlockedBy: isBlockedBy,
-        isUserBlocked: isUserBlocked,
-      );
       } else if (response.statusCode == 403) {
-        throw Exception('Access denied. You are not allowed to view these shared posts.');
+        // Try to parse as JSON first
+        try {
+          final Map<String, dynamic> jsonData = json.decode(response.body);
+          final isBlockedBy = jsonData['blockedBy'] as bool? ?? false;
+          final isUserBlocked = jsonData['blockedUser'] as bool? ?? false;
+          if (isBlockedBy || isUserBlocked) {
+            throw BlockedUserException(
+              reason: jsonData['message'],
+              isBlockedBy: isBlockedBy,
+              isUserBlocked: isUserBlocked,
+            );
+          } else {
+            throw PrivacyException(jsonData['message'] ?? 'This account is private.');
+          }
+        } catch (e) {
+          // If parsing fails, use raw text as message
+          throw PrivacyException(response.body);
+        }
       } else if (response.statusCode == 404) {
         throw Exception('No shared posts found for this user.');
       } else if (response.statusCode == 401) {
@@ -136,8 +133,7 @@ class UserpostService {
       }
     } on SessionExpiredException {
       print('SessionExpired detected in fetchSharedPosts');
-      rethrow; // Re-throw to be caught in the UI layer
-    } 
+      rethrow;
+    }
   }
-
 }

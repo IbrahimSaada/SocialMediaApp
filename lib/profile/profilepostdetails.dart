@@ -16,7 +16,6 @@ import 'package:cook/home/report_dialog.dart';
 import 'package:cook/maintenance/expiredtoken.dart';
 import 'package:cook/services/SessionExpiredException.dart';
 
-
 class ProfilePostDetails extends StatefulWidget {
   final List<Post> userPosts;
   final List<Post> bookmarkedPosts;
@@ -48,135 +47,128 @@ class _ProfilePostDetailsState extends State<ProfilePostDetails> {
   final int pageSize = 10;
   final UserpostService _userpostService = UserpostService();
 
- @override
-void initState() {
-  super.initState();
-  _scrollController = ScrollController(
-    initialScrollOffset: widget.initialIndex * 300.0,
-  );
-  _scrollController.addListener(_scrollListener);
-
-  displayedPosts = widget.isPostsSelected ? widget.userPosts : widget.bookmarkedPosts;
-
-  // Calculate the current page number based on the number of posts already loaded
-  currentPageNumber = 1 + (displayedPosts.length ~/ pageSize);
-}
-
-void _scrollListener() {
-  if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent &&
-      !isPaginating &&
-      hasMorePosts) {
-    _fetchMorePosts();
-  }
-}
-
-
-
-Future<void> _fetchMorePosts() async {
-  if (isPaginating || !hasMorePosts) return;
-
-  setState(() {
-    isPaginating = true;
-  });
-
-  try {
-    List<Post> newPosts = [];
-
-    if (widget.isPostsSelected) {
-      // Fetch user posts
-      newPosts = await _userpostService.fetchUserPosts(
-        widget.userId,
-        widget.userId, // Assuming the viewer is the user themselves
-        currentPageNumber,
-        pageSize,
-      );
-    } else {
-      // Fetch bookmarked posts
-      newPosts = await _userpostService.fetchBookmarkedPosts(
-        widget.userId,
-        currentPageNumber,
-        pageSize,
-      );
-    }
-
-    setState(() {
-      // Prevent duplicates
-      final existingPostIds = displayedPosts.map((post) => post.postId).toSet();
-      final uniqueNewPosts = newPosts.where((post) => !existingPostIds.contains(post.postId)).toList();
-
-      displayedPosts.addAll(uniqueNewPosts);
-      currentPageNumber++;
-
-if (newPosts.length == pageSize) {
-  currentPageNumber++;
-} else {
-  hasMorePosts = false; // No more posts to load
-}
-
-      isPaginating = false;
-    });
-  } on SessionExpiredException {
-    print("SessionExpired detected in _fetchMorePosts");
-    handleSessionExpired(context);
-    setState(() {
-      isPaginating = false;
-    });
-  } catch (e) {
-    print('Error fetching more posts: $e');
-    setState(() {
-      isPaginating = false;
-    });
-  }
-}
-
-
- @override
-void dispose() {
-  _scrollController.removeListener(_scrollListener);
-  _scrollController.dispose();
-  super.dispose();
-}
-
-
- @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: _buildCustomAppBar(),
-    backgroundColor: Colors.grey[100],
-    body: displayedPosts.isEmpty
-        ? Center(
-            child: Text(
-              'No posts available',
-              style: TextStyle(fontSize: 18.0, color: Colors.grey[600]),
-            ),
-          )
-        : ListView.builder(
-  controller: _scrollController,
-  itemCount: displayedPosts.length + (hasMorePosts ? 1 : 0),
-  padding: EdgeInsets.zero,
-  itemBuilder: (context, index) {
-    if (index == displayedPosts.length) {
-      // Loading indicator at the end of the list
-      return Center(child: CircularProgressIndicator(color: Color(0xFFF45F67)));
-    }
-
-    final post = displayedPosts[index];
-    return PostCard(
-      post: post,
-      isPostsSelected: widget.isPostsSelected,
-      isCurrentUserProfile: widget.isCurrentUserProfile,
-      onDelete: () {
-        setState(() {
-          displayedPosts.remove(post);
-        });
-      },
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController(
+      initialScrollOffset: widget.initialIndex * 300.0,
     );
-  },
-)
+    _scrollController.addListener(_scrollListener);
 
-  );
-}
+    displayedPosts = widget.isPostsSelected ? widget.userPosts : widget.bookmarkedPosts;
 
+    // Calculate the current page number based on the number of posts already loaded
+    currentPageNumber = 1 + (displayedPosts.length ~/ pageSize);
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent &&
+        !isPaginating &&
+        hasMorePosts) {
+      _fetchMorePosts();
+    }
+  }
+
+  Future<void> _fetchMorePosts() async {
+    if (isPaginating || !hasMorePosts) return;
+
+    setState(() {
+      isPaginating = true;
+    });
+
+    try {
+      List<Post> newPosts = [];
+
+      if (widget.isPostsSelected) {
+        // Fetch user posts
+        newPosts = await _userpostService.fetchUserPosts(
+          widget.userId,
+          widget.userId, // Assuming the viewer is the user themselves
+          currentPageNumber,
+          pageSize,
+        );
+      } else {
+        // Fetch bookmarked posts
+        newPosts = await _userpostService.fetchBookmarkedPosts(
+          widget.userId,
+          currentPageNumber,
+          pageSize,
+        );
+      }
+
+      setState(() {
+        // Prevent duplicates
+        final existingPostIds = displayedPosts.map((post) => post.postId).toSet();
+        final uniqueNewPosts = newPosts.where((post) => !existingPostIds.contains(post.postId)).toList();
+
+        displayedPosts.addAll(uniqueNewPosts);
+
+        if (newPosts.length == pageSize) {
+          currentPageNumber++;
+        } else {
+          hasMorePosts = false; // No more posts to load
+        }
+
+        isPaginating = false;
+      });
+    } on SessionExpiredException {
+      print("SessionExpired detected in _fetchMorePosts");
+      handleSessionExpired(context);
+      setState(() {
+        isPaginating = false;
+      });
+    } catch (e) {
+      print('Error fetching more posts: $e');
+      setState(() {
+        isPaginating = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: _buildCustomAppBar(),
+      backgroundColor: Colors.grey[100],
+      body: displayedPosts.isEmpty
+          ? Center(
+              child: Text(
+                'No posts available',
+                style: TextStyle(fontSize: 18.0, color: Colors.grey[600]),
+              ),
+            )
+          : ListView.builder(
+              controller: _scrollController,
+              itemCount: displayedPosts.length + (hasMorePosts ? 1 : 0),
+              padding: EdgeInsets.zero,
+              itemBuilder: (context, index) {
+                if (index == displayedPosts.length) {
+                  // Loading indicator at the end of the list
+                  return Center(child: CircularProgressIndicator(color: Color(0xFFF45F67)));
+                }
+
+                final post = displayedPosts[index];
+                return PostCard(
+                  post: post,
+                  isPostsSelected: widget.isPostsSelected,
+                  isCurrentUserProfile: widget.isCurrentUserProfile,
+                  onDelete: () {
+                    setState(() {
+                      displayedPosts.remove(post);
+                    });
+                  },
+                );
+              },
+            ),
+    );
+  }
 
   AppBar _buildCustomAppBar() {
     return AppBar(
@@ -211,7 +203,7 @@ class PostCard extends StatefulWidget {
     required this.post,
     required this.isPostsSelected,
     required this.isCurrentUserProfile,
-    required this.onDelete, // Add this line
+    required this.onDelete,
   }) : super(key: key);
 
   @override
@@ -221,8 +213,8 @@ class PostCard extends StatefulWidget {
 class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin {
   bool _isLiked = false;
   bool _isBookmarked = false;
-  bool _isEditing = false; // New variable to track if we're editing
-  String _newCaption = ""; // New variable to hold the new caption
+  bool _isEditing = false;
+  String _newCaption = "";
   late int _likeCount;
   late AnimationController _bookmarkAnimationController;
   final UserProfileService _userProfileService = UserProfileService();
@@ -287,311 +279,255 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
       ),
     );
   }
-void _showDeleteConfirmation(BuildContext context) {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text('Confirm Deletion'),
-        content: Text('Are you sure you want to delete this post?'),
-        actions: <Widget>[
-          TextButton(
-            child: Text('Cancel'),
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-          ),
-          TextButton(
-            child: Text('Delete'),
-            onPressed: () async {
-              Navigator.of(context).pop();
-              await _deletePost(); // <-- Call the delete method
-            },
-          ),
-        ],
-      );
-    },
-  );
-}
 
-
-Future<void> _deletePost() async {
-  final userId = await LoginService().getUserId();
-  if (userId == null) return;
-
-  try {
-    bool success = await _userProfileService.deletePost(widget.post.postId, userId);
-
-    if (success) {
-      widget.onDelete(); // Call the callback to handle the immediate UI update
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Post deleted successfully!'),
-        backgroundColor: Colors.green,
-      ));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Failed to delete the post'),
-        backgroundColor: Colors.red,
-      ));
-    }
-  } on SessionExpiredException {
-    print('SessionExpired detected in _deletePost');
-    // Handle the session expiration here
-    handleSessionExpired(context); // Trigger session expired dialog or navigation
-  } catch (e) {
-    print('Error occurred while deleting post: $e');
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('An error occurred while deleting the post'),
-      backgroundColor: Colors.red,
-    ));
-  }
-}
-
-
-
-
-Future<void> _editPostCaption() async {
-  final userId = await LoginService().getUserId();
-  if (userId == null) return;
-
-  try {
-    bool success = await _userProfileService.editPostCaption(
-      widget.post.postId,
-      _newCaption,
-      userId,
+  void _showDeleteConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Confirm Deletion'),
+          content: Text('Are you sure you want to delete this post?'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Delete'),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _deletePost();
+              },
+            ),
+          ],
+        );
+      },
     );
+  }
 
-    if (success) {
-      setState(() {
-        widget.post.caption = _newCaption; // Update the UI with the new caption
-        _isEditing = false; // Exit edit mode
-      });
+  Future<void> _deletePost() async {
+    final userId = await LoginService().getUserId();
+    if (userId == null) return;
+
+    try {
+      bool success = await _userProfileService.deletePost(widget.post.postId, userId);
+
+      if (success) {
+        widget.onDelete(); // Update UI immediately
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Post deleted successfully!'),
+          backgroundColor: Colors.green,
+        ));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Failed to delete the post'),
+          backgroundColor: Colors.red,
+        ));
+      }
+    } on SessionExpiredException {
+      print('SessionExpired detected in _deletePost');
+      handleSessionExpired(context);
+    } catch (e) {
+      print('Error occurred while deleting post: $e');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Post updated successfully!'),
-        backgroundColor: Colors.green,
-      ));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Failed to update the post'),
+        content: Text('An error occurred while deleting the post'),
         backgroundColor: Colors.red,
       ));
     }
-  } on SessionExpiredException {
-    // Handle session expired by triggering the session expired UI
-    print('SessionExpired detected in _editPostCaption');
-    handleSessionExpired(context); // Trigger session expired dialog
-  } catch (e) {
-    print('Error updating post caption: $e');
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('An error occurred while updating the post'),
-      backgroundColor: Colors.red,
-    ));
   }
-}
 
+  Future<void> _editPostCaption() async {
+    final userId = await LoginService().getUserId();
+    if (userId == null) return;
 
+    try {
+      bool success = await _userProfileService.editPostCaption(
+        widget.post.postId,
+        _newCaption,
+        userId,
+      );
 
+      if (success) {
+        setState(() {
+          widget.post.caption = _newCaption;
+          _isEditing = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Post updated successfully!'),
+          backgroundColor: Colors.green,
+        ));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Failed to update the post'),
+          backgroundColor: Colors.red,
+        ));
+      }
+    } on SessionExpiredException {
+      print('SessionExpired detected in _editPostCaption');
+      handleSessionExpired(context);
+    } catch (e) {
+      print('Error updating post caption: $e');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('An error occurred while updating the post'),
+        backgroundColor: Colors.red,
+      ));
+    }
+  }
 
-void _showPostOptions(BuildContext context) {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.0), // Rounded corners
-        ),
-        backgroundColor: Colors.white, // Background color for the dialog
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0), // Padding for the content
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                "Choose an Action",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18.0,
-                  color: Color(0xFFF45F67), // Primary color for the title
-                ),
-              ),
-              const SizedBox(height: 16.0),
-              Divider(color: Colors.grey[300], thickness: 1.0), // Divider for separation
-              const SizedBox(height: 12.0),
-
-              // If it's the current user's profile, show Edit and Delete options
-              if (widget.isCurrentUserProfile) ...[
-                ListTile(
-                  leading: Icon(Icons.edit, color: Color(0xFFF45F67)),
-                  title: Text(
-                    'Edit Post',
-                    style: TextStyle(color: Color(0xFFF45F67)), // Text color for Edit
+  void _showPostOptions(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20.0),
+          ),
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "Choose an Action",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18.0,
+                    color: Color(0xFFF45F67),
                   ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    setState(() {
-                      _isEditing = true; // Enable edit mode
-                      _newCaption = widget.post.caption; // Initialize the caption with the existing one
-                    });
-                  },
-
                 ),
-                ListTile(
-                  leading: Icon(Icons.delete, color: Colors.red[400]),
-                  title: Text(
-                    'Delete Post',
-                    style: TextStyle(color: Colors.red[400]), // Text color for Delete
+                const SizedBox(height: 16.0),
+                Divider(color: Colors.grey[300], thickness: 1.0),
+                const SizedBox(height: 12.0),
+                if (widget.isCurrentUserProfile) ...[
+                  ListTile(
+                    leading: Icon(Icons.edit, color: Color(0xFFF45F67)),
+                    title: Text(
+                      'Edit Post',
+                      style: TextStyle(color: Color(0xFFF45F67)),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() {
+                        _isEditing = true;
+                        _newCaption = widget.post.caption;
+                      });
+                    },
                   ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showDeleteConfirmation(context); // Show confirmation dialog before deleting
-                  },
-
-                ),
-              ]
-              // If it's another user's profile, show the Report option
-              else ...[
-                ListTile(
-                  leading: Icon(Icons.report, color: Colors.red[400]),
-                  title: Text(
-                    'Report Post',
-                    style: TextStyle(color: Colors.red[400]), // Text color for Report
+                  ListTile(
+                    leading: Icon(Icons.delete, color: Colors.red[400]),
+                    title: Text(
+                      'Delete Post',
+                      style: TextStyle(color: Colors.red[400]),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showDeleteConfirmation(context);
+                    },
                   ),
-                onTap: () {
-                    Navigator.pop(context); // Close the action dialog
-                      // Display the report dialog
+                ] else ...[
+                  ListTile(
+                    leading: Icon(Icons.report, color: Colors.red[400]),
+                    title: Text(
+                      'Report Post',
+                      style: TextStyle(color: Colors.red[400]),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
                       showReportDialog(
                         context: context,
                         reportedUser: widget.post.userId,
                         contentId: widget.post.postId,
                       );
-                },
-                ),
+                    },
+                  ),
+                ],
               ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCaptionEditor() {
+    if (_isEditing) {
+      return Column(
+        children: [
+          TextField(
+            onChanged: (value) {
+              _newCaption = value;
+            },
+            controller: TextEditingController(text: _newCaption),
+            maxLines: 3,
+            decoration: InputDecoration(
+              hintText: "Edit caption...",
+              border: OutlineInputBorder(),
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              ElevatedButton(
+                onPressed: _editPostCaption,
+                child: Text("Save"),
+              ),
+              SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _isEditing = false;
+                  });
+                },
+                child: Text("Cancel"),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.white),
+              ),
             ],
           ),
-        ),
+        ],
       );
-    },
-  );
-}
-
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    return Container(
-      width: screenWidth,
-      margin: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 8.0),
-      padding: const EdgeInsets.all(12.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildHeader(),
-          const SizedBox(height: 8.0),
-          if (widget.post.caption.isNotEmpty)
-            _buildCaptionEditor(),
-          if (widget.post.media.isNotEmpty) ...[
-            const SizedBox(height: 8.0),
-            _buildMedia(screenWidth),
-          ],
-          const SizedBox(height: 8.0),
-          _buildPostActions(),
-        ],
-      ),
-    );
+    } else {
+      return Text(
+        widget.post.caption,
+        style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600),
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
   }
-
-Widget _buildCaptionEditor() {
-  if (_isEditing) {
-    return Column(
-      children: [
-        TextField(
-          onChanged: (value) {
-            _newCaption = value; // Update the new caption as the user types
-          },
-          controller: TextEditingController(text: _newCaption),
-          maxLines: 3,
-          decoration: InputDecoration(
-            hintText: "Edit caption...",
-            border: OutlineInputBorder(),
-          ),
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            ElevatedButton(
-              onPressed: _editPostCaption, // Save the caption
-              child: Text("Save"),
-            ),
-            SizedBox(width: 8),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _isEditing = false; // Cancel editing
-                });
-              },
-              child: Text("Cancel"),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.white),
-            ),
-          ],
-        ),
-      ],
-    );
-  } else {
-    return Text(
-      widget.post.caption,
-      style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600),
-      maxLines: 3,
-      overflow: TextOverflow.ellipsis,
-    );
-  }
-}
-
 
   Widget _buildHeader() {
-  return Row(
-    children: [
-      CircleAvatar(
-        backgroundImage: NetworkImage(widget.post.profilePic),
-        radius: 18,
-      ),
-      const SizedBox(width: 8.0),
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            widget.post.fullName,
-            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
-          ),
-          Text(
-            timeago.format(widget.post.localCreatedAt),
-            style: const TextStyle(color: Colors.grey, fontSize: 12.0),
-          ),
-        ],
-      ),
-      Spacer(),
-      // Always show the three dots, but show different options based on the profile
-      if (widget.isPostsSelected) // Always check if it's a post and not a bookmark
-        IconButton(
-          icon: Icon(Icons.more_vert),
-          onPressed: () => _showPostOptions(context), // Show the options menu
-        )
-            ],
-  );
-}
+    return Row(
+      children: [
+        CircleAvatar(
+          backgroundImage: NetworkImage(widget.post.profilePic),
+          radius: 18,
+        ),
+        const SizedBox(width: 8.0),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.post.fullName,
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+            ),
+            Text(
+              timeago.format(widget.post.localCreatedAt),
+              style: const TextStyle(color: Colors.grey, fontSize: 12.0),
+            ),
+          ],
+        ),
+        Spacer(),
+        if (widget.isPostsSelected)
+          IconButton(
+            icon: Icon(Icons.more_vert),
+            onPressed: () => _showPostOptions(context),
+          )
+      ],
+    );
+  }
 
   Widget _buildMedia(double screenWidth) {
     return LayoutBuilder(
@@ -664,6 +600,45 @@ Widget _buildCaptionEditor() {
           ),
         ),
       ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Container(
+      width: screenWidth,
+      margin: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 8.0),
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildHeader(),
+          const SizedBox(height: 8.0),
+          if (widget.post.caption.isNotEmpty)
+            _buildCaptionEditor(),
+          if (widget.post.media.isNotEmpty) ...[
+            const SizedBox(height: 8.0),
+            _buildMedia(screenWidth),
+          ],
+          const SizedBox(height: 8.0),
+          _buildPostActions(),
+        ],
+      ),
     );
   }
 }

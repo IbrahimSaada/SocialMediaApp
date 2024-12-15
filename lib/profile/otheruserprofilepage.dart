@@ -23,27 +23,6 @@ import 'package:cook/profile/qr_code.dart';
 
 import '../services/blocked_user_exception.dart';
 
-void showBlockSnackbar(BuildContext context, String reason) {
-  String message;
-  if (reason.contains('You are blocked by the post owner')) {
-    message = 'User blocked you';
-  } else if (reason.contains('You have blocked the post owner')) {
-    message = 'You blocked the user';
-  } else if (reason.toLowerCase().contains('blocked')) {
-    message = 'Action not allowed due to blocking';
-  } else {
-    message = 'Action not allowed.';
-  }
-
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(message),
-      backgroundColor: Colors.redAccent,
-      duration: const Duration(seconds: 3),
-    ),
-  );
-}
-
 class OtherUserProfilePage extends StatefulWidget {
   final int otherUserId;
 
@@ -86,7 +65,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   bool isBlockedBy = false;
   bool isUserBlocked = false;
 
-  int? currentUserId; // To store the ID of the currently logged-in user
+  int? currentUserId;
 
   @override
   void initState() {
@@ -101,93 +80,112 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     super.dispose();
   }
 
-void _blockOrUnblockUser() async {
-  final bool isCurrentlyBlocked = isUserBlocked;
+  void showBlockSnackbar(BuildContext context, String reason) {
+    String message;
+    if (reason.contains('You are blocked by the post owner')) {
+      message = 'User blocked you';
+    } else if (reason.contains('You have blocked the post owner')) {
+      message = 'You blocked the user';
+    } else if (reason.toLowerCase().contains('blocked')) {
+      message = 'Action not allowed due to blocking';
+    } else {
+      message = 'Action not allowed.';
+    }
 
-  String dialogTitle = isCurrentlyBlocked ? "Unblock User" : "Block User";
-  String dialogContent = isCurrentlyBlocked
-      ? "Are you sure you want to unblock this user? They will be able to interact with you and view your profile again."
-      : "Are you sure you want to block this user? They will no longer be able to interact with you or view your profile.";
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.redAccent,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
 
-  bool confirmAction = await showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text(
-          dialogTitle,
-          style: TextStyle(color: Color(0xFFF45F67)),
-        ),
-        content: Text(dialogContent),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(
-              "Cancel",
-              style: TextStyle(color: Colors.grey),
-            ),
+  void _blockOrUnblockUser() async {
+    final bool isCurrentlyBlocked = isUserBlocked;
+
+    String dialogTitle = isCurrentlyBlocked ? "Unblock User" : "Block User";
+    String dialogContent = isCurrentlyBlocked
+        ? "Are you sure you want to unblock this user? They will be able to interact with you and view your profile again."
+        : "Are you sure you want to block this user? They will no longer be able to interact with you or view your profile.";
+
+    bool confirmAction = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            dialogTitle,
+            style: TextStyle(color: Color(0xFFF45F67)),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(
-              isCurrentlyBlocked ? "Unblock" : "Block",
-              style: TextStyle(color: Color(0xFFF45F67)),
+          content: Text(dialogContent),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                "Cancel",
+                style: TextStyle(color: Colors.grey),
+              ),
             ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(
+                isCurrentlyBlocked ? "Unblock" : "Block",
+                style: TextStyle(color: Color(0xFFF45F67)),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmAction) {
+      try {
+        final userId = currentUserId!;
+        final otherUserId = widget.otherUserId;
+        bool success;
+
+        if (isCurrentlyBlocked) {
+          success = await _userProfileService.unblockUser(userId, otherUserId);
+          if (success) {
+            setState(() {
+              isUserBlocked = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("User unblocked successfully."),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } else {
+            throw Exception("Failed to unblock user.");
+          }
+        } else {
+          success = await _userProfileService.blockUser(userId, otherUserId);
+          if (success) {
+            setState(() {
+              isUserBlocked = true;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("User blocked successfully."),
+                backgroundColor: Colors.redAccent,
+              ),
+            );
+          } else {
+            throw Exception("Failed to block user.");
+          }
+        }
+      } catch (e) {
+        print("Error in block/unblock operation: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("An error occurred. Please try again later."),
+            backgroundColor: Colors.red,
           ),
-        ],
-      );
-    },
-  );
-
-  if (confirmAction) {
-    try {
-      final userId = currentUserId!;
-      final otherUserId = widget.otherUserId;
-      bool success;
-
-      if (isCurrentlyBlocked) {
-        // Unblocking logic
-        success = await _userProfileService.unblockUser(userId, otherUserId);
-        if (success) {
-          setState(() {
-            isUserBlocked = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("User unblocked successfully."),
-              backgroundColor: Colors.green,
-            ),
-          );
-        } else {
-          throw Exception("Failed to unblock user.");
-        }
-      } else {
-        // Blocking logic
-        success = await _userProfileService.blockUser(userId, otherUserId);
-        if (success) {
-          setState(() {
-            isUserBlocked = true;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("User blocked successfully."),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
-        } else {
-          throw Exception("Failed to block user.");
-        }
+        );
       }
-    } catch (e) {
-      print("Error in block/unblock operation: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("An error occurred. Please try again later."),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
-}
 
   void _showQRCode() {
     if (userProfile?.qrCode != null) {
@@ -207,208 +205,219 @@ void _blockOrUnblockUser() async {
     }
   }
 
- Future<void> _loadUserProfile() async {
-  setState(() {
-    isLoading = true;
-  });
+  Future<void> _loadUserProfile() async {
+    setState(() {
+      isLoading = true;
+    });
 
-  currentUserId = await _loginService.getUserId();
+    currentUserId = await _loginService.getUserId();
 
-  try {
-    // Fetch user profile
-    userProfile = await _userProfileService.fetchUserProfile(widget.otherUserId);
+    try {
+      userProfile = await _userProfileService.fetchUserProfile(widget.otherUserId);
 
-    if (userProfile != null) {
-      setState(() {
-        username = userProfile!.fullName;
-        bio = userProfile!.bio;
-        rating = userProfile!.rating;
-        postNb = userProfile!.postNb;
-        followersNb = userProfile!.followersNb;
-        followingNb = userProfile!.followingNb;
-      });
-
-      // Check privacy settings
-      Map<String, bool> privacySettings = await _userProfileService.checkProfilePrivacy(widget.otherUserId);
-      setState(() {
-        isProfilePublic = privacySettings['isPublic'] ?? false;
-        isFollowersPublic = privacySettings['isFollowersPublic'] ?? false;
-        isFollowingPublic = privacySettings['isFollowingPublic'] ?? false;
-      });
-
-      // Fetch posts and shared posts
-      await _fetchUserPosts();
-      await _fetchSharedPosts();
-
-      // Check follow status
-      final followStatus = await _checkFollowStatus();
-      if (followStatus != null) {
+      if (userProfile != null) {
         setState(() {
-          isFollowing = followStatus.isFollowing;
-          amFollowing = followStatus.amFollowing;
+          username = userProfile!.fullName;
+          bio = userProfile!.bio;
+          rating = userProfile!.rating;
+          postNb = userProfile!.postNb;
+          followersNb = userProfile!.followersNb;
+          followingNb = userProfile!.followingNb;
         });
-      }
 
-      // Check block status directly through variables
-      if (isBlockedBy) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("You are blocked by this user."),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      } else if (isUserBlocked) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("You have blocked this user."),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-    } else {
-      print('Failed to load user profile. Possibly due to session expiration.');
-      handleSessionExpired(context);
-    }
-  } catch (e) {
-    print("Error fetching user profile: $e");
-    final errStr = e.toString();
-    if (errStr.contains('401')) {
-      handleSessionExpired(context);
-    } else if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
-      String reason;
-      if (errStr.startsWith('Exception: BLOCKED:')) {
-        reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+        Map<String, bool> privacySettings = await _userProfileService.checkProfilePrivacy(widget.otherUserId);
+        setState(() {
+          isProfilePublic = privacySettings['isPublic'] ?? false;
+          isFollowersPublic = privacySettings['isFollowersPublic'] ?? false;
+          isFollowingPublic = privacySettings['isFollowingPublic'] ?? false;
+        });
+
+        await _fetchUserPosts();
+        await _fetchSharedPosts();
+
+        final followStatus = await _checkFollowStatus();
+        if (followStatus != null) {
+          setState(() {
+            isFollowing = followStatus.isFollowing;
+            amFollowing = followStatus.amFollowing;
+          });
+        }
+
+        if (isBlockedBy) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("You are blocked by this user."),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        } else if (isUserBlocked) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("You have blocked this user."),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
       } else {
-        reason = errStr;
+        print('Failed to load user profile.');
+        handleSessionExpired(context);
       }
-      showBlockSnackbar(context, reason);
-    } else if (errStr.contains('Session expired')) {
+    } on SessionExpiredException {
+      print("Session expired in _loadUserProfile");
       handleSessionExpired(context);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("An unexpected error occurred."),
-          backgroundColor: Color(0xFFF45F65),
-        ),
-      );
-    }
-  } finally {
-    setState(() {
-      isLoading = false;
-    });
-  }
-}
-
-
-Future<void> _fetchUserPosts() async {
-  if (isPaginating || currentUserId == null) return;
-
-  try {
-    setState(() {
-      isPaginating = true;
-    });
-
-    List<Post> newPosts = await _userpostService.fetchUserPosts(
-      widget.otherUserId,
-      currentUserId!,
-      currentPageNumber,
-      pageSize,
-    );
-
-    setState(() {
-      userPosts.addAll(newPosts);
-      currentPageNumber++;
-      isPaginating = false;
-    });
-  } on BlockedUserException catch (e) {
-    // Handle blocked user scenario
-    if (e.isBlockedBy) {
-      setState(() {
-        isBlockedBy = true; // Update state to reflect "Blocked by this user"
-        isPaginating = false;
-      });
-      showBlockSnackbar(context, e.reason);
-    } else if (e.isUserBlocked) {
-      setState(() {
-        isUserBlocked = true; // Update state to reflect "You have blocked this user"
-        isPaginating = false;
-      });
-      showBlockSnackbar(context, e.reason);
-    }
-  } on SessionExpiredException {
-    print("SessionExpired detected in _fetchUserPosts");
-    setState(() {
-      isPaginating = false;
-    });
-    handleSessionExpired(context);
-  } catch (e) {
-    print("Error fetching posts: $e");
-    setState(() {
-      isPaginating = false;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('An error occurred while fetching user posts.'),
-      backgroundColor: Colors.red,
-    ));
-  }
-}
-
-Future<void> _fetchSharedPosts() async {
-  if (isPaginatingSharedPosts || currentUserId == null || !hasMoreSharedPosts) return;
-
-  try {
-    setState(() {
-      isPaginatingSharedPosts = true;
-    });
-
-    List<SharedPostDetails> newSharedPosts = await _userpostService.fetchSharedPosts(
-      widget.otherUserId,
-      currentUserId!,
-      currentSharedPageNumber,
-      pageSize,
-    );
-
-    setState(() {
-      sharedPosts.addAll(newSharedPosts);
-      currentSharedPageNumber++;
-      isPaginatingSharedPosts = false;
-
-      if (newSharedPosts.length < pageSize) {
-        hasMoreSharedPosts = false;
+    } catch (e) {
+      print("Error fetching user profile: $e");
+      final errStr = e.toString();
+      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+        String reason;
+        if (errStr.startsWith('Exception: BLOCKED:')) {
+          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+        } else {
+          reason = errStr;
+        }
+        showBlockSnackbar(context, reason);
+      } else if (errStr.contains('Session expired')) {
+        handleSessionExpired(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("An unexpected error occurred."),
+            backgroundColor: Color(0xFFF45F65),
+          ),
+        );
       }
-    });
-  } on BlockedUserException catch (e) {
-    // Handle blocked user scenario
-    if (e.isBlockedBy) {
+    } finally {
       setState(() {
-        //isBlockedBy = true; // Update state to reflect "Blocked by this user"
-        isPaginatingSharedPosts = false;
+        isLoading = false;
       });
-      showBlockSnackbar(context, e.reason);
-    } else if (e.isUserBlocked) {
-      setState(() {
-        //isUserBlocked = true; // Update state to reflect "You have blocked this user"
-        isPaginatingSharedPosts = false;
-      });
-      showBlockSnackbar(context, e.reason);
     }
-  } on SessionExpiredException {
-    print("SessionExpired detected in _fetchSharedPosts");
-    setState(() {
-      isPaginatingSharedPosts = false;
-    });
-    handleSessionExpired(context);
-  } catch (e) {
-    print("Error fetching shared posts: $e");
-    setState(() {
-      isPaginatingSharedPosts = false;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('An error occurred while fetching shared posts.'),
-      backgroundColor: Colors.red,
-    ));
   }
-}
+
+  Future<void> _fetchUserPosts() async {
+    if (isPaginating || currentUserId == null) return;
+
+    try {
+      setState(() {
+        isPaginating = true;
+      });
+
+      List<Post> newPosts = await _userpostService.fetchUserPosts(
+        widget.otherUserId,
+        currentUserId!,
+        currentPageNumber,
+        pageSize,
+      );
+
+      setState(() {
+        userPosts.addAll(newPosts);
+        currentPageNumber++;
+        isPaginating = false;
+      });
+    } on PrivacyException catch (e) {
+      print("PrivacyException: $e");
+      setState(() {
+        isPrivateAccount = true;
+        isPaginating = false;
+      });
+      // No snackbar for privacy scenario
+    } on BlockedUserException catch (e) {
+      if (e.isBlockedBy) {
+        setState(() {
+          isBlockedBy = true;
+          isPaginating = false;
+        });
+        showBlockSnackbar(context, e.reason);
+      } else if (e.isUserBlocked) {
+        setState(() {
+          isUserBlocked = true;
+          isPaginating = false;
+        });
+        showBlockSnackbar(context, e.reason);
+      }
+    } on SessionExpiredException {
+      print("SessionExpired detected in _fetchUserPosts");
+      setState(() {
+        isPaginating = false;
+      });
+      handleSessionExpired(context);
+    } catch (e) {
+      print("Error fetching posts: $e");
+      setState(() {
+        isPaginating = false;
+      });
+      // For other errors, show snackbar
+      if (e is! PrivacyException && e is! BlockedUserException) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('An error occurred while fetching user posts.'),
+          backgroundColor: Colors.red,
+        ));
+      }
+    }
+  }
+
+  Future<void> _fetchSharedPosts() async {
+    if (isPaginatingSharedPosts || currentUserId == null || !hasMoreSharedPosts) return;
+
+    try {
+      setState(() {
+        isPaginatingSharedPosts = true;
+      });
+
+      List<SharedPostDetails> newSharedPosts = await _userpostService.fetchSharedPosts(
+        widget.otherUserId,
+        currentUserId!,
+        currentSharedPageNumber,
+        pageSize,
+      );
+
+      setState(() {
+        sharedPosts.addAll(newSharedPosts);
+        currentSharedPageNumber++;
+        isPaginatingSharedPosts = false;
+
+        if (newSharedPosts.length < pageSize) {
+          hasMoreSharedPosts = false;
+        }
+      });
+    } on PrivacyException catch (e) {
+      print("PrivacyException: $e");
+      setState(() {
+        isPrivateAccount = true;
+        isPaginatingSharedPosts = false;
+      });
+      // No snackbar for privacy scenario
+    } on BlockedUserException catch (e) {
+      if (e.isBlockedBy) {
+        setState(() {
+          isPaginatingSharedPosts = false;
+        });
+        showBlockSnackbar(context, e.reason);
+      } else if (e.isUserBlocked) {
+        setState(() {
+          isPaginatingSharedPosts = false;
+        });
+        showBlockSnackbar(context, e.reason);
+      }
+    } on SessionExpiredException {
+      print("SessionExpired detected in _fetchSharedPosts");
+      setState(() {
+        isPaginatingSharedPosts = false;
+      });
+      handleSessionExpired(context);
+    } catch (e) {
+      print("Error fetching shared posts: $e");
+      setState(() {
+        isPaginatingSharedPosts = false;
+      });
+      // For other errors
+      if (e is! PrivacyException && e is! BlockedUserException) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('An error occurred while fetching shared posts.'),
+          backgroundColor: Colors.red,
+        ));
+      }
+    }
+  }
 
   void _scrollListener() {
     if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
@@ -421,7 +430,7 @@ Future<void> _fetchSharedPosts() async {
   }
 
   Future<FollowStatusResponse?> _checkFollowStatus() async {
-    currentUserId ??= await _loginService.getUserId(); 
+    currentUserId ??= await _loginService.getUserId();
     if (currentUserId == null) {
       return null;
     }
@@ -480,6 +489,7 @@ Future<void> _fetchSharedPosts() async {
       sharedPosts.clear();
       currentPageNumber = 1;
       currentSharedPageNumber = 1;
+      isPrivateAccount = false;
     });
 
     await _loadUserProfile();
@@ -637,80 +647,76 @@ Future<void> _fetchSharedPosts() async {
     );
   }
 
- Widget _buildFollowButton(double screenWidth) {
-  if (isUserBlocked) {
-    // Show unblock button
-    return Center(
-      child: ElevatedButton(
-        onPressed: _blockOrUnblockUser, // Trigger unblock action
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.redAccent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
+  Widget _buildFollowButton(double screenWidth) {
+    if (isUserBlocked) {
+      return Center(
+        child: ElevatedButton(
+          onPressed: _blockOrUnblockUser,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.redAccent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+            padding: EdgeInsets.symmetric(
+              horizontal: screenWidth * 0.07,
+              vertical: screenWidth * 0.025,
+            ),
+            elevation: 8,
           ),
-          padding: EdgeInsets.symmetric(
-            horizontal: screenWidth * 0.07,
-            vertical: screenWidth * 0.025,
+          child: Text(
+            "UNBLOCK",
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: screenWidth * 0.038,
+              color: Colors.white,
+            ),
           ),
-          elevation: 8,
         ),
-        child: Text(
-          "UNBLOCK",
-          style: TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: screenWidth * 0.038,
-            color: Colors.white,
-          ),
-        ),
-      ),
-    );
-  } else {
-    // Show follow button
-    String followButtonText = "FOLLOW";
-    Color followButtonColor = Color(0xFFF45F67);
+      );
+    } else {
+      String followButtonText = "FOLLOW";
+      Color followButtonColor = Color(0xFFF45F67);
 
-    if (amFollowing && !isFollowing) {
-      followButtonText = "FOLLOW BACK";
-      followButtonColor = Color(0xFFF45F67);
-    } else if (isFollowing && !amFollowing) {
-      followButtonText = "FOLLOWING";
-      followButtonColor = Colors.grey.shade400;
-    } else if (!amFollowing && !isFollowing) {
-      followButtonText = "FOLLOW";
-      followButtonColor = Color(0xFFF45F67);
-    } else if (amFollowing && isFollowing) {
-      followButtonText = "FOLLOWING";
-      followButtonColor = Colors.grey.shade300;
+      if (amFollowing && !isFollowing) {
+        followButtonText = "FOLLOW BACK";
+        followButtonColor = Color(0xFFF45F67);
+      } else if (isFollowing && !amFollowing) {
+        followButtonText = "FOLLOWING";
+        followButtonColor = Colors.grey.shade400;
+      } else if (!amFollowing && !isFollowing) {
+        followButtonText = "FOLLOW";
+        followButtonColor = Color(0xFFF45F67);
+      } else if (amFollowing && isFollowing) {
+        followButtonText = "FOLLOWING";
+        followButtonColor = Colors.grey.shade300;
+      }
+
+      return Center(
+        child: ElevatedButton(
+          onPressed: _toggleFollow,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: followButtonColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+            padding: EdgeInsets.symmetric(
+              horizontal: screenWidth * 0.07,
+              vertical: screenWidth * 0.025,
+            ),
+            elevation: 8,
+          ),
+          child: Text(
+            followButtonText,
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: screenWidth * 0.038,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      );
     }
-
-    return Center(
-      child: ElevatedButton(
-        onPressed: _toggleFollow,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: followButtonColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
-          ),
-          padding: EdgeInsets.symmetric(
-            horizontal: screenWidth * 0.07,
-            vertical: screenWidth * 0.025,
-          ),
-          elevation: 8,
-        ),
-        child: Text(
-          followButtonText,
-          style: TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: screenWidth * 0.038,
-            color: Colors.white,
-          ),
-        ),
-      ),
-    );
   }
-}
-
-
 
   Widget _buildStatItem(String count, String label, double screenWidth) {
     return GestureDetector(
@@ -748,8 +754,8 @@ Future<void> _fetchSharedPosts() async {
         children: [
           Text(
             (label == 'Followers' && !isFollowersPublic) || (label == 'Following' && !isFollowingPublic)
-                ? '-'  
-                : count, 
+                ? '-'
+                : count,
             style: TextStyle(
               fontSize: screenWidth * 0.04,
               fontWeight: FontWeight.bold,
@@ -913,7 +919,7 @@ Future<void> _fetchSharedPosts() async {
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
                     child: Container(
-                      height: MediaQuery.of(context).size.height * 0.07, 
+                      height: MediaQuery.of(context).size.height * 0.07,
                       child: SingleChildScrollView(
                         child: _buildBioText(screenWidth),
                       ),
@@ -977,7 +983,6 @@ Future<void> _fetchSharedPosts() async {
                                 isPrivateAccount: isPrivateAccount,
                                 isBlockedBy: isBlockedBy,
                                 isUserBlocked: isUserBlocked,
-
                               )
                             : SharedPostsGrid(
                                 sharedPosts: sharedPosts,
@@ -989,7 +994,6 @@ Future<void> _fetchSharedPosts() async {
                                 isPrivateAccount: isPrivateAccount,
                                 isBlockedBy: isBlockedBy,
                                 isUserBlocked: isUserBlocked,
-                                
                               ),
                   ),
                 ],

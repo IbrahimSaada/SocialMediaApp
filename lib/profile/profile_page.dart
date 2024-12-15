@@ -10,14 +10,14 @@ import 'package:cook/models/post_model.dart';
 import 'package:cook/profile/profilepostdetails.dart';
 import 'package:cook/profile/editprofilepage.dart';
 import 'package:cook/settings/settings_page.dart';
-import 'package:cook/profile/post_grid.dart';         // Import the new PostGrid class
-import 'package:cook/profile/bookmarked_grid.dart';   // Import the new BookmarkedGrid class
+import 'package:cook/profile/post_grid.dart';
+import 'package:cook/profile/bookmarked_grid.dart';
 import 'package:cook/models/sharedpost_model.dart';
 import 'shared_posts_grid.dart';
 import 'shared_post_details_page.dart';
 import 'package:cook/profile/followerspage.dart';
 import 'package:cook/profile/followingpage.dart';
-import 'qr_code.dart'; // Import the QRCodeModal
+import 'qr_code.dart';
 import 'package:cook/maintenance/expiredtoken.dart';
 import 'package:cook/services/SessionExpiredException.dart';
 
@@ -30,14 +30,14 @@ class _ProfilePageState extends State<ProfilePage> {
   bool isPostsSelected = true;
   bool isSharedPostsSelected = false;
   bool isLoading = false;
-  bool isPaginatingSharedPosts = false; // New state variable
-  bool isPrivateAccount = false; // New state variable to track privacy status
+  bool isPaginatingSharedPosts = false;
+  bool isPrivateAccount = false;
 
   bool isBlockedBy = false;
   bool isUserBlocked = false;
-  
-  int currentSharedPostsPageNumber = 1; // New state variable
-  List<SharedPostDetails> sharedPosts = []; // New state variable
+
+  int currentSharedPostsPageNumber = 1;
+  List<SharedPostDetails> sharedPosts = [];
   bool isPaginating = false;
   bool isPaginatingBookmarks = false;
   int currentBookmarkedPageNumber = 1;
@@ -57,7 +57,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final ScrollController _scrollController = ScrollController();
   final LoginService _loginService = LoginService();
   final UserProfileService _userProfileService = UserProfileService();
-  final UserpostService _userpostService = UserpostService(); 
+  final UserpostService _userpostService = UserpostService();
   bool hasMoreSharedPosts = true;
   bool showFullBio = false;
 
@@ -73,139 +73,154 @@ class _ProfilePageState extends State<ProfilePage> {
     _scrollController.dispose();
     super.dispose();
   }
-void _openSharedPostDetails(int index) {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => SharedPostDetailsPage(
-        sharedPosts: sharedPosts, // The list of shared posts
-        initialIndex: index,      // The index of the selected shared post
-        isCurrentUserProfile: true, // This is the user's own profile
+
+  void _openSharedPostDetails(int index) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SharedPostDetailsPage(
+          sharedPosts: sharedPosts,
+          initialIndex: index,
+          isCurrentUserProfile: true,
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-Future<void> _loadUserProfile() async {
-  setState(() {
-    isLoading = true;
-  });
+  Future<void> _loadUserProfile() async {
+    setState(() {
+      isLoading = true;
+    });
 
-  try {
-    final isLoggedIn = await _loginService.isLoggedIn();
-    if (isLoggedIn) {
-      final userId = await _loginService.getUserId();
-      if (userId != null) {
-        userProfile = await _userProfileService.fetchUserProfile(userId);
-        if (userProfile != null) {
-          setState(() {
-            this.userId = userId;
-            username = userProfile!.fullName;
-            bio = userProfile!.bio;
-            rating = userProfile!.rating;
-            postNb = userProfile!.postNb;
-            followersNb = userProfile!.followersNb;
-            followingNb = userProfile!.followingNb;
-          });
+    try {
+      final isLoggedIn = await _loginService.isLoggedIn();
+      if (isLoggedIn) {
+        final userId = await _loginService.getUserId();
+        if (userId != null) {
+          userProfile = await _userProfileService.fetchUserProfile(userId);
+          if (userProfile != null) {
+            setState(() {
+              this.userId = userId;
+              username = userProfile!.fullName;
+              bio = userProfile!.bio;
+              rating = userProfile!.rating;
+              postNb = userProfile!.postNb;
+              followersNb = userProfile!.followersNb;
+              followingNb = userProfile!.followingNb;
+            });
+          }
+
+          await _fetchUserPosts();
+          await _fetchBookmarkedPosts();
+          await _fetchSharedPosts();
         }
+      }
+    } on SessionExpiredException {
+      print("SessionExpired detected in this class");
+      handleSessionExpired(context);
+    } catch (e) {
+      print('Error loading user profile: $e');
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
 
-        await _fetchUserPosts();
-        await _fetchBookmarkedPosts();
-        await _fetchSharedPosts(); // Fetch shared posts
+  Future<void> _fetchSharedPosts() async {
+    if (isPaginatingSharedPosts || userId == null || !hasMoreSharedPosts) return;
+
+    try {
+      setState(() {
+        isPaginatingSharedPosts = true;
+      });
+
+      int currentUserId = userId!;
+      int viewerUserId = userId!;
+
+      List<SharedPostDetails> newSharedPosts = await _userpostService.fetchSharedPosts(
+          currentUserId, viewerUserId, currentSharedPostsPageNumber, pageSize);
+
+      setState(() {
+        sharedPosts.addAll(newSharedPosts);
+        currentSharedPostsPageNumber++;
+        isPaginatingSharedPosts = false;
+        isPrivateAccount = false;
+
+        if (newSharedPosts.length < pageSize) {
+          hasMoreSharedPosts = false;
+        }
+      });
+    } on PrivacyException catch (e) {
+      print("PrivacyException: $e");
+      setState(() {
+        isPrivateAccount = true;
+        isPaginatingSharedPosts = false;
+      });
+    } on SessionExpiredException {
+      print("SessionExpired detected in _fetchSharedPosts");
+      setState(() {
+        isPaginatingSharedPosts = false;
+      });
+      handleSessionExpired(context);
+    } catch (e) {
+      print("Error fetching shared posts: $e");
+      setState(() {
+        isPaginatingSharedPosts = false;
+      });
+      if (e is! PrivacyException) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('An error occurred while fetching user shared posts.'),
+          backgroundColor: Colors.red,
+        ));
       }
     }
-  } on SessionExpiredException {
-    print("SessionExpired detected in this class");
-    handleSessionExpired(context); // Trigger session expired dialog
-  } catch (e) {
-    print('Error loading user profile: $e');
-  } finally {
-    setState(() {
-      isLoading = false;
-    });
   }
-}
-  
-Future<void> _fetchSharedPosts() async {
-  if (isPaginatingSharedPosts || userId == null || !hasMoreSharedPosts) return;
 
-  try {
-    setState(() {
-      isPaginatingSharedPosts = true;
-    });
+  Future<void> _fetchUserPosts() async {
+    try {
+      if (userId != null) {
+        setState(() {
+          isPaginating = true;
+        });
+        int viewerUserId = userId!;
+        print("UserId is: $userId");
 
-    int currentUserId = userId!;
-    int viewerUserId = userId!; // Adjust if necessary
+        List<Post> newPosts = await _userpostService.fetchUserPosts(
+          userId!,
+          viewerUserId,
+          currentPageNumber,
+          pageSize,
+        );
 
-    List<SharedPostDetails> newSharedPosts = await _userpostService.fetchSharedPosts(
-        currentUserId, viewerUserId, currentSharedPostsPageNumber, pageSize);
-
-    setState(() {
-      sharedPosts.addAll(newSharedPosts);
-      currentSharedPostsPageNumber++;
-      isPaginatingSharedPosts = false;
-      isPrivateAccount = false; // Set to false since posts were fetched
-
-      // Check if fewer posts were returned than the page size
-      if (newSharedPosts.length < pageSize) {
-        hasMoreSharedPosts = false;
+        setState(() {
+          userPosts.addAll(newPosts);
+          currentPageNumber++;
+          isPaginating = false;
+        });
       }
-    });
-      } on SessionExpiredException {
-    print("SessionExpired detected in _fetchSharedPosts");
-    setState(() {
-      isPaginatingSharedPosts = false;
-    });
-    handleSessionExpired(context); // Display the session expired UI
-  } catch (e) {
-    print("Error fetching shared posts: $e");
-    setState(() {
-      isPaginatingSharedPosts = false;
-      if (e.toString().contains('Access denied')) {
-        isPrivateAccount = true; // Set to true on privacy error
-      }
-    });
-  }
-}
-
-Future<void> _fetchUserPosts() async {
-  try {
-    if (userId != null) {
+    } on PrivacyException catch (e) {
+      print("PrivacyException: $e");
       setState(() {
-        isPaginating = true;
-      });
-      int viewerUserId = userId!; // Use the logged-in user's ID as the viewerUserId
-      print("UserId is: $userId");
-      
-      List<Post> newPosts = await _userpostService.fetchUserPosts(
-        userId!, 
-        viewerUserId, 
-        currentPageNumber, 
-        pageSize
-      );
-
-      setState(() {
-        userPosts.addAll(newPosts);
-        currentPageNumber++;
+        isPrivateAccount = true;
         isPaginating = false;
       });
+    } on SessionExpiredException {
+      print("SessionExpired detected in _fetchUserPosts");
+      handleSessionExpired(context);
+    } catch (e) {
+      print("Error fetching posts: $e");
+      setState(() {
+        isPaginating = false;
+      });
+      if (e is! PrivacyException) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('An error occurred while fetching user posts.'),
+          backgroundColor: Colors.red,
+        ));
+      }
     }
-  } on SessionExpiredException {
-    print("SessionExpired detected in _fetchUserPosts");
-    // Handle session expiration
-    handleSessionExpired(context); // Trigger session expired dialog or UI
-  } catch (e) {
-    print("Error fetching posts: $e");
-    setState(() {
-      isPaginating = false;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('An error occurred while fetching user posts.'),
-      backgroundColor: Colors.red,
-    ));
   }
-}
-
 
   Future<void> _fetchBookmarkedPosts() async {
     if (isPaginatingBookmarks || userId == null) return;
@@ -221,43 +236,48 @@ Future<void> _fetchUserPosts() async {
         currentBookmarkedPageNumber++;
         isPaginatingBookmarks = false;
       });
-        } on SessionExpiredException {
-    print("SessionExpired detected in _fetchBookmarkedPosts");
-    setState(() {
-      isPaginatingBookmarks = false;
-    });
-    handleSessionExpired(context); // Display the session expired UI
+    } on SessionExpiredException {
+      print("SessionExpired detected in _fetchBookmarkedPosts");
+      setState(() {
+        isPaginatingBookmarks = false;
+      });
+      handleSessionExpired(context);
     } catch (e) {
       print("Error fetching bookmarks: $e");
       setState(() {
         isPaginatingBookmarks = false;
       });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('An error occurred while fetching bookmarked posts.'),
+        backgroundColor: Colors.red,
+      ));
     }
   }
 
-void _scrollListener() {
-  if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
-    if (isPostsSelected && !isPaginating) {
-      _fetchUserPosts();
-    } else if (!isPostsSelected && !isSharedPostsSelected && !isPaginatingBookmarks) {
-      _fetchBookmarkedPosts();
-    } else if (isSharedPostsSelected && !isPaginatingSharedPosts && hasMoreSharedPosts) {
-      _fetchSharedPosts();
+  void _scrollListener() {
+    if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
+      if (isPostsSelected && !isPaginating) {
+        _fetchUserPosts();
+      } else if (!isPostsSelected && !isSharedPostsSelected && !isPaginatingBookmarks) {
+        _fetchBookmarkedPosts();
+      } else if (isSharedPostsSelected && !isPaginatingSharedPosts && hasMoreSharedPosts) {
+        _fetchSharedPosts();
+      }
     }
   }
-}
-
 
   Future<void> _refreshUserProfile() async {
-    // Reset the user profile data
     setState(() {
       userPosts.clear();
       bookmarkedPosts.clear();
+      sharedPosts.clear();
       currentPageNumber = 1;
       currentBookmarkedPageNumber = 1;
+      currentSharedPostsPageNumber = 1;
+      hasMoreSharedPosts = true;
     });
 
-    await _loadUserProfile(); // Reload profile data
+    await _loadUserProfile();
   }
 
   void _openEditProfilePage() async {
@@ -338,22 +358,21 @@ void _scrollListener() {
     );
   }
 
-void _openFullPost(int index) {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => ProfilePostDetails(
-        userPosts: userPosts,
-        bookmarkedPosts: bookmarkedPosts,
-        initialIndex: index,
-        userId: userId!,
-        isPostsSelected: isPostsSelected,
-        isCurrentUserProfile: true, // This is the user's own profile
+  void _openFullPost(int index) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfilePostDetails(
+          userPosts: userPosts,
+          bookmarkedPosts: bookmarkedPosts,
+          initialIndex: index,
+          userId: userId!,
+          isPostsSelected: isPostsSelected,
+          isCurrentUserProfile: true,
+        ),
       ),
-    ),
-  );
-}
-
+    );
+  }
 
   Widget _buildShimmerEffect() {
     return Shimmer.fromColors(
@@ -379,6 +398,56 @@ void _openFullPost(int index) {
     );
   }
 
+  Widget _buildStatItem(String count, String label, double screenWidth) {
+    return GestureDetector(
+      onTap: () {
+        if (userId != null) {
+          if (label == 'Followers') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => FollowersPage(
+                  userId: userId!,
+                  viewerUserId: userId!,
+                ),
+              ),
+            );
+          } else if (label == 'Following') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => FollowingPage(
+                  userId: userId!,
+                  viewerUserId: userId!,
+                ),
+              ),
+            );
+          }
+        }
+      },
+      child: Column(
+        children: [
+          Text(
+            count,
+            style: TextStyle(
+              fontSize: screenWidth * 0.04,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          SizedBox(height: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: screenWidth * 0.03,
+              color: Colors.grey,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     double screenHeight = MediaQuery.of(context).size.height;
@@ -388,14 +457,14 @@ void _openFullPost(int index) {
       backgroundColor: Colors.white,
       body: RefreshIndicator(
         onRefresh: _refreshUserProfile,
-        color: Color(0xFFF45F67), // Updated loading indicator color
+        color: Color(0xFFF45F67),
         child: Stack(
           children: [
             Container(
               height: screenHeight * 0.28,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFFF45F67), Color(0xFFF45F67).withOpacity(0.8)], // Using primary color
+                  colors: [Color(0xFFF45F67), Color(0xFFF45F67).withOpacity(0.8)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -472,21 +541,21 @@ void _openFullPost(int index) {
                         ),
                       ),
                       SizedBox(width: 10),
-                     GestureDetector(
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return QRCodeModal(qrCodeUrl: userProfile!.qrCode);
-                          },
-                        );
-                      },
-                      child: Icon(
-                        Icons.qr_code,
-                        size: screenWidth * 0.07,
-                        color: Colors.grey,
+                      GestureDetector(
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return QRCodeModal(qrCodeUrl: userProfile!.qrCode);
+                            },
+                          );
+                        },
+                        child: Icon(
+                          Icons.qr_code,
+                          size: screenWidth * 0.07,
+                          color: Colors.grey,
+                        ),
                       ),
-                    ),
                     ],
                   ),
                   SizedBox(height: 10),
@@ -515,13 +584,13 @@ void _openFullPost(int index) {
                   SizedBox(height: 10),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
-                    child:     Container(
-                    height: screenHeight * 0.15, // Adjust height as needed
-                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
-                    child: SingleChildScrollView(
-                      child: _buildBioText(screenWidth), // Scrollable bio
+                    child: Container(
+                      height: screenHeight * 0.15,
+                      padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
+                      child: SingleChildScrollView(
+                        child: _buildBioText(screenWidth),
+                      ),
                     ),
-                  ),
                   ),
                   SizedBox(height: 16),
                   Row(
@@ -579,41 +648,40 @@ void _openFullPost(int index) {
                     ],
                   ),
                   SizedBox(height: 16),
-                   Expanded(
-  child: isLoading
-      ? _buildShimmerGrid()
-      : isPostsSelected
-          ? PostGrid(
-              userPosts: userPosts,
-              isPaginating: isPaginating,
-              scrollController: _scrollController,
-              screenWidth: screenWidth,
-              openFullPost: _openFullPost,
-              isPrivateAccount: isPrivateAccount,
-              isBlockedBy: isBlockedBy,
-              isUserBlocked: isUserBlocked,
-            )
-          : isSharedPostsSelected
-              ? SharedPostsGrid(
-                  sharedPosts: sharedPosts,
-                  isPaginatingSharedPosts: isPaginatingSharedPosts,
-                  hasMoreSharedPosts: hasMoreSharedPosts, // Pass the variable here
-                  scrollController: _scrollController,
-                  screenWidth: screenWidth,
-                  openSharedPost: _openSharedPostDetails,
-                  isPrivateAccount: isPrivateAccount,
-                  isBlockedBy: isBlockedBy,
-                  isUserBlocked: isUserBlocked,
-                )
-              : BookmarkedGrid(
-                  bookmarkedPosts: bookmarkedPosts,
-                  isPaginatingBookmarks: isPaginatingBookmarks,
-                  scrollController: _scrollController,
-                  screenWidth: screenWidth,
-                  openFullPost: _openFullPost,
-                ),
-),
-
+                  Expanded(
+                    child: isLoading
+                        ? _buildShimmerGrid()
+                        : isPostsSelected
+                            ? PostGrid(
+                                userPosts: userPosts,
+                                isPaginating: isPaginating,
+                                scrollController: _scrollController,
+                                screenWidth: screenWidth,
+                                openFullPost: _openFullPost,
+                                isPrivateAccount: isPrivateAccount,
+                                isBlockedBy: isBlockedBy,
+                                isUserBlocked: isUserBlocked,
+                              )
+                            : isSharedPostsSelected
+                                ? SharedPostsGrid(
+                                    sharedPosts: sharedPosts,
+                                    isPaginatingSharedPosts: isPaginatingSharedPosts,
+                                    hasMoreSharedPosts: hasMoreSharedPosts,
+                                    scrollController: _scrollController,
+                                    screenWidth: screenWidth,
+                                    openSharedPost: _openSharedPostDetails,
+                                    isPrivateAccount: isPrivateAccount,
+                                    isBlockedBy: isBlockedBy,
+                                    isUserBlocked: isUserBlocked,
+                                  )
+                                : BookmarkedGrid(
+                                    bookmarkedPosts: bookmarkedPosts,
+                                    isPaginatingBookmarks: isPaginatingBookmarks,
+                                    scrollController: _scrollController,
+                                    screenWidth: screenWidth,
+                                    openFullPost: _openFullPost,
+                                  ),
+                  ),
                 ],
               ),
             ),
@@ -622,56 +690,4 @@ void _openFullPost(int index) {
       ),
     );
   }
-
-Widget _buildStatItem(String count, String label, double screenWidth) {
-  return GestureDetector(
-    onTap: () {
-      if (userId != null) { // Check if userId is not null
-        if (label == 'Followers') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => FollowersPage(
-                userId: userId!,
-                viewerUserId: userId!, // Assuming it's the user's own profile
-              ),
-            ),
-          );
-        } else if (label == 'Following') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => FollowingPage(
-                userId: userId!,
-                viewerUserId: userId!, // Same for following
-              ),
-            ),
-          );
-        }
-      }
-    },
-    child: Column(
-      children: [
-        Text(
-          count,
-          style: TextStyle(
-            fontSize: screenWidth * 0.04,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-        SizedBox(height: 5),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: screenWidth * 0.03,
-            color: Colors.grey,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-
 }
