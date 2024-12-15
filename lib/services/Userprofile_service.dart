@@ -146,7 +146,7 @@ Future<void> changeProfilePrivacy(int userId, PrivacySettings settings) async {
 
   // Construct the full URL with query parameters
   final Uri uri = Uri.parse(
-    'https://fbe0-185-97-92-30.ngrok-free.app/api/UserProfile/change-privacy'
+    'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/UserProfile/change-privacy'
   ).replace(queryParameters: queryParams);
 
   // Data to sign (userId + privacy settings)
@@ -531,14 +531,19 @@ final Uri url = Uri.parse('$baseUrl/block/$userId');
 
   // Method to unblock a user
   Future<bool> unblockUser(int userId, int targetUserId) async {
-    final Uri url = Uri.parse('$baseUrl/unblock');
+    final Uri url = Uri.parse('$baseUrl/unblock/$userId');
     final String signatureData = '$userId:$targetUserId';
+
+      print("Frontend Debug:");
+  print("userId (Frontend): $userId");
+  print("targetUserId: $targetUserId");
+  print("Signature Data: $signatureData");
 
     try {
       final response = await _apiService.makeRequestWithToken(
         url,
         signatureData,
-        'DELETE',
+        'POST',
         body: {'targetUserId': targetUserId}, // Pass the targetUserId in the request body
       );
 
