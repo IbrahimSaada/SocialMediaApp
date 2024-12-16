@@ -3,12 +3,11 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '***REMOVED***/models/storyview_response_model.dart';
-//import 'package:timeago/timeago.dart' as timeago;
 import '***REMOVED***/models/story_model.dart';
 import '***REMOVED***/services/LoginService.dart';
 import '***REMOVED***/models/storyview_request_model.dart';
 import '***REMOVED***/services/storyview_Service.dart';
-import 'package:shimmer/shimmer.dart'; // Import shimmer effect for visual appeal
+import 'package:shimmer/shimmer.dart';
 import '***REMOVED***/services/StoryService.dart';
 import '***REMOVED***/models/ReportRequest_model.dart';
 import '***REMOVED***/services/GenerateReportService.dart';
@@ -18,7 +17,6 @@ class FullScreenStoryView extends StatefulWidget {
   final List<Story> stories;
   final int initialIndex;
 
-  // ignore: prefer_const_constructors_in_immutables
   FullScreenStoryView({required this.stories, required this.initialIndex});
 
   @override
@@ -36,7 +34,6 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
   bool _hasNavigatedToHomePage = false;
   int? _lastViewedStoryId;
   List<StoryViewer> viewersList = [];
-  bool _isViewersListVisible = false; // To manage visibility of the viewers list
 
   @override
   void initState() {
@@ -45,14 +42,14 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
     _pageController = PageController(initialPage: _currentStoryIndex);
     _animationController = AnimationController(
       vsync: this,
-      duration: Duration(seconds: 7),
+      duration: const Duration(seconds: 7),
     );
 
     _fetchLoggedInUserId();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startStoryTimer();
-      _viewStory(widget.stories[_currentStoryIndex].storyId); // View the initial story
+      _viewStory(widget.stories[_currentStoryIndex].storyId);
     });
 
     _pageController.addListener(_handlePageChange);
@@ -70,49 +67,32 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
       setState(() {
         _currentStoryIndex = pageIndex;
         _currentMediaIndex = 0;
-        _resetStoryTimer(); // Reset story timer for each new story
-        _startStoryTimer(); // Automatically start the timer
+        _resetStoryTimer();
+        _startStoryTimer();
       });
       _viewStory(widget.stories[_currentStoryIndex].storyId);
     }
   }
-void _submitReport(String reportReason, int reportedUserId, int contentId) async {
-  // Check if the session is still valid
-  if (!await _checkSession(context)) return;
 
-  try {
+  Future<void> _fetchLoggedInUserId() async {
+    try {
+      final userId = await LoginService().getUserId();
+      setState(() {
+        _loggedInUserId = userId;
+      });
+    } catch (e) {
+      print('Failed to get logged in user ID: $e');
+    }
+  }
+
+  Future<bool> _checkSession(BuildContext context) async {
     final userId = await LoginService().getUserId();
     if (userId == null) {
-      _showSnackbar("You need to be logged in to report.");
-      return;
+      handleSessionExpired(context);
+      return false;
     }
-
-    final reportRequest = ReportRequest(
-      reportedBy: userId,
-      reportedUser: reportedUserId,
-      contentType: 'Stories',
-      contentId: contentId,
-      reportReason: reportReason,
-      resolutionDetails: '',
-    );
-
-    await ReportService().createReport(reportRequest);
-    _showSnackbar("Report submitted successfully.");
-  } catch (e) {
-    _showSnackbar("Failed to submit report: $e");
+    return true;
   }
-}
-
-
-
-Future<bool> _checkSession(BuildContext context) async {
-  final userId = await LoginService().getUserId();
-  if (userId == null) {
-    handleSessionExpired(context); // Show session expired dialog
-    return false; // Return false if the session is expired
-  }
-  return true; // Return true if the session is still valid
-}
 
   Future<void> _viewStory(int storyId) async {
     if (_loggedInUserId != null && storyId != _lastViewedStoryId) {
@@ -124,13 +104,7 @@ Future<bool> _checkSession(BuildContext context) async {
           await StoryServiceRequest().recordStoryView(request);
 
       if (response != null) {
-        print(response.message); // Handle the response message, if needed
-        _lastViewedStoryId = storyId; // Update the last viewed story ID
-
-        // If the logged-in user is the story owner, fetch the viewers
-        if (widget.stories[_currentStoryIndex].userId == _loggedInUserId) {
-          await _fetchStoryViewers(storyId);
-        }
+        _lastViewedStoryId = storyId;
       } else {
         print("Failed to record story view.");
       }
@@ -152,106 +126,17 @@ Future<bool> _checkSession(BuildContext context) async {
     }
   }
 
-  Future<void> _fetchLoggedInUserId() async {
-    try {
-      final userId = await LoginService().getUserId();
-      setState(() {
-        _loggedInUserId = userId;
-      });
-    } catch (e) {
-      print('Failed to get logged in user ID: $e');
-    }
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    _pageController.dispose();
-    super.dispose();
-  }
-
   void _startStoryTimer() {
-    _resetStoryTimer(); // Ensure the timer is reset before starting
+    _resetStoryTimer();
     if (!_isPaused) {
-      _animationController.forward(); // Automatically start the story
+      _animationController.forward();
     }
   }
 
   void _resetStoryTimer() {
-    _animationController.reset(); // Reset the animation controller
-    _isPaused = false; // Ensure paused state is reset
+    _animationController.reset();
+    _isPaused = false;
   }
-
-  void _nextMediaOrStory() async {
-  if (_hasNavigatedToHomePage) return;
-
-  // Check if the session is still valid
-  if (!await _checkSession(context)) return;
-
-  final currentStory = widget.stories[_currentStoryIndex];
-  if (_currentMediaIndex < currentStory.media.length - 1) {
-    setState(() {
-      _currentMediaIndex++;
-      _startStoryTimer(); // Automatically start the timer for the new media
-    });
-  } else {
-    _nextStory(); // Navigate to the next story
-  }
-}
-
-
-  void _nextStory() async {
-  if (_hasNavigatedToHomePage) return;
-
-  // Hide viewers list when navigating to the next story
-  setState(() {
-    _isViewersListVisible = false; // Reset viewers list visibility
-  });
-
-  // Check if the session is still valid
-  if (!await _checkSession(context)) return;
-
-  if (_currentStoryIndex < widget.stories.length - 1) {
-    setState(() {
-      _currentStoryIndex++;
-      _currentMediaIndex = 0;
-      _startStoryTimer(); // Automatically start the timer for the new story
-    });
-    _pageController.nextPage(
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeInOut,
-    );
-    _viewStory(widget.stories[_currentStoryIndex].storyId); // Log the story view
-  } else {
-    _hasNavigatedToHomePage = true;
-    Navigator.of(context).popUntil((route) => route.isFirst);
-  }
-}
-
-
-  void _previousMedia() async {
-  // Check if the session is still valid
-  if (!await _checkSession(context)) return;
-
-  if (_currentMediaIndex > 0) {
-    setState(() {
-      _currentMediaIndex--;
-      _startStoryTimer(); // Automatically start the timer for the previous media
-    });
-  } else if (_currentStoryIndex > 0) {
-    setState(() {
-      _currentStoryIndex--;
-      _currentMediaIndex = widget.stories[_currentStoryIndex].media.length - 1;
-      _startStoryTimer(); // Automatically start the timer for the previous story
-    });
-    _pageController.previousPage(
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeInOut,
-    );
-  } else {
-    Navigator.of(context).pop();
-  }
-}
 
   void _pauseStory() {
     setState(() {
@@ -267,251 +152,411 @@ Future<bool> _checkSession(BuildContext context) async {
     });
   }
 
-  void _toggleViewersList() async {
-  if (!await _checkSession(context)) return; // Check session before proceeding
-  
-  setState(() {
-    _isViewersListVisible = !_isViewersListVisible;
-    if (_isViewersListVisible) {
-      _pauseStory(); // Pause the story when showing the viewers list
+  void _nextMediaOrStory() async {
+    if (_hasNavigatedToHomePage) return;
+
+    if (!await _checkSession(context)) return;
+
+    final currentStory = widget.stories[_currentStoryIndex];
+    if (_currentMediaIndex < currentStory.media.length - 1) {
+      setState(() {
+        _currentMediaIndex++;
+        _startStoryTimer();
+      });
     } else {
-      _startStoryTimer(); // Automatically start the timer when closing the viewers list
+      _nextStory();
     }
-  });
-
-  // Fetch viewers immediately when the list is visible and hasn't been loaded yet
-  if (_isViewersListVisible && viewersList.isEmpty) {
-    await _fetchStoryViewers(widget.stories[_currentStoryIndex].storyId);
   }
-}
 
+  void _nextStory() async {
+    if (_hasNavigatedToHomePage) return;
 
-void _deleteStory(int storyId) async {
-  _pauseStory(); // Pause the story while confirmation dialog is open
+    if (!await _checkSession(context)) return;
 
-  bool confirmDelete = await showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15.0), // Modern rounded corners
-        ),
-        elevation: 16,
-        backgroundColor: Colors.white,
-        child: Container(
-          padding: const EdgeInsets.all(20.0), // Padding around the content
+    if (_currentStoryIndex < widget.stories.length - 1) {
+      setState(() {
+        _currentStoryIndex++;
+        _currentMediaIndex = 0;
+        _startStoryTimer();
+      });
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+      _viewStory(widget.stories[_currentStoryIndex].storyId);
+    } else {
+      _hasNavigatedToHomePage = true;
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
+  }
+
+  void _previousMedia() async {
+    if (!await _checkSession(context)) return;
+
+    if (_currentMediaIndex > 0) {
+      setState(() {
+        _currentMediaIndex--;
+        _startStoryTimer();
+      });
+    } else if (_currentStoryIndex > 0) {
+      setState(() {
+        _currentStoryIndex--;
+        _currentMediaIndex =
+            widget.stories[_currentStoryIndex].media.length - 1;
+        _startStoryTimer();
+      });
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+      _viewStory(widget.stories[_currentStoryIndex].storyId);
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _showViewersBottomSheet() async {
+    // Pause the story when showing viewers
+    _pauseStory();
+
+    // Fetch viewers if not fetched yet
+    await _fetchStoryViewers(widget.stories[_currentStoryIndex].storyId);
+
+    // Show a modal bottom sheet that can be swiped down to close
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return Container(
+          height: 300,
+          decoration: const BoxDecoration(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.grey,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                "Viewed by",
+                style: TextStyle(
+                  color: Colors.deepOrange,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Expanded(
+                child: viewersList.isEmpty
+                    ? Center(
+                        child: Text(
+                          "No views",
+                          style: TextStyle(
+                            color: Colors.black54,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: viewersList.length,
+                        itemBuilder: (context, index) {
+                          final viewer = viewersList[index];
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundImage: NetworkImage(viewer.profilePic),
+                              radius: 20,
+                            ),
+                            title: Text(
+                              viewer.fullname,
+                              style: const TextStyle(
+                                  color: Colors.black, fontSize: 14),
+                            ),
+                            subtitle: Text(
+                              _formatTime(viewer.localViewedAt),
+                              style: const TextStyle(
+                                  color: Colors.deepOrange, fontSize: 12),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    // Once bottom sheet is closed (swiped down), resume the story
+    _resumeStory();
+  }
+
+  void _deleteStory(int storyId) async {
+    _pauseStory();
+    bool confirmDelete = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15.0),
+          ),
+          elevation: 16,
+          backgroundColor: Colors.white,
+          child: Container(
+            padding: const EdgeInsets.all(20.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(15.0),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  spreadRadius: 5,
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.delete_outline,
+                  color: Color(0xFFD32F2F),
+                  size: 40,
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Confirm Deletion',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF4B3F72),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Are you sure you want to delete this story? This action cannot be undone.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 30),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop(false);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                        backgroundColor: Colors.grey.shade300,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop(true);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                        backgroundColor: Color(0xFFD32F2F),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      child: const Text(
+                        'Delete',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!confirmDelete) {
+      _resumeStory();
+      return;
+    }
+
+    if (!await _checkSession(context)) {
+      _resumeStory();
+      return;
+    }
+
+    try {
+      final mediaId =
+          widget.stories[_currentStoryIndex].media[_currentMediaIndex].mediaId;
+      final userId = _loggedInUserId;
+
+      if (userId != null) {
+        bool isDeleted = await StoryService().deleteStoryMedia(mediaId, userId);
+
+        if (isDeleted) {
+          setState(() {
+            widget.stories.removeWhere((story) => story.storyId == storyId);
+          });
+
+          if (widget.stories.isEmpty) {
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          } else {
+            // If current index is out of range after deletion, adjust it
+            if (_currentStoryIndex >= widget.stories.length) {
+              _currentStoryIndex = widget.stories.length - 1;
+            }
+            // Jump to the adjusted story
+            _pageController.jumpToPage(_currentStoryIndex);
+            _viewStory(widget.stories[_currentStoryIndex].storyId);
+            _startStoryTimer();
+          }
+        } else {
+          _showSnackbar("Failed to delete story.");
+        }
+      }
+    } catch (e) {
+      _showSnackbar("Error occurred while deleting story: $e");
+    }
+
+    _resumeStory();
+  }
+
+  void _submitReport(String reportReason, int reportedUserId, int contentId) async {
+    if (!await _checkSession(context)) return;
+
+    try {
+      final userId = await LoginService().getUserId();
+      if (userId == null) {
+        _showSnackbar("You need to be logged in to report.");
+        return;
+      }
+
+      final reportRequest = ReportRequest(
+        reportedBy: userId,
+        reportedUser: reportedUserId,
+        contentType: 'Stories',
+        contentId: contentId,
+        reportReason: reportReason,
+        resolutionDetails: '',
+      );
+
+      await ReportService().createReport(reportRequest);
+      _showSnackbar("Report submitted successfully.");
+    } catch (e) {
+      _showSnackbar("Failed to submit report: $e");
+    }
+  }
+
+  void _showReportOptions(int reportedUserId, int contentId) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          padding: const EdgeInsets.all(16.0),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(15.0), // Rounded corners
+            color: const Color(0xFF4B3F72),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(25.0),
+              topRight: Radius.circular(25.0),
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1), // Light shadow for depth
-                spreadRadius: 5,
-                blurRadius: 15,
-                offset: Offset(0, 5), // Shadow position
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, -5),
               ),
             ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                Icons.delete_outline, // Trash icon
-                color: Color(0xFFD32F2F), // Red color for the delete icon
-                size: 40,
-              ),
-              const SizedBox(height: 20), // Space between icon and text
-              const Text(
-                'Confirm Deletion',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF4B3F72), // Deep purple text color
+              Center(
+                child: Container(
+                  width: 50,
+                  height: 5,
+                  margin: const EdgeInsets.only(bottom: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD4AF37),
+                    borderRadius: BorderRadius.circular(2.5),
+                  ),
                 ),
               ),
-              const SizedBox(height: 10),
-              const Text(
-                'Are you sure you want to delete this story? This action cannot be undone.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.black87,
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 10.0),
+                child: Text(
+                  'Report Story',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
-              const SizedBox(height: 30), // Space between text and buttons
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop(false); // Cancel deletion
-                    },
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      backgroundColor: Colors.grey.shade300, // Grey cancel button
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20), // Rounded button
-                      ),
-                    ),
-                    child: const Text(
-                      'Cancel',
-                      style: TextStyle(
-                        color: Colors.black87, // Dark text on grey background
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop(true); // Confirm deletion
-                    },
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      backgroundColor: Color(0xFFD32F2F), // Red delete button
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20), // Rounded button
-                      ),
-                    ),
-                    child: const Text(
-                      'Delete',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
+              ListTile(
+                leading: const Icon(Icons.flag, color: Color(0xFFD4AF37)),
+                title: const Text(
+                  'Spam',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+                onTap: () async {
+                  Navigator.pop(context);
+                  if (await _checkSession(context)) {
+                    _submitReport('Spam', reportedUserId, contentId);
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.block, color: Color(0xFFD4AF37)),
+                title: const Text(
+                  'Inappropriate',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+                onTap: () async {
+                  Navigator.pop(context);
+                  if (await _checkSession(context)) {
+                    _submitReport('Inappropriate', reportedUserId, contentId);
+                  }
+                },
               ),
             ],
           ),
-        ),
-      );
-    },
-  );
-
-  if (!confirmDelete) {
-    _resumeStory(); // Resume story if delete was not confirmed
-    return;
+        );
+      },
+    );
   }
-
-  if (!await _checkSession(context)) {
-    _resumeStory();
-    return; // Show session expired dialog if needed
-  }
-
-  try {
-    final mediaId = widget.stories[_currentStoryIndex].media[_currentMediaIndex].mediaId;
-    final userId = _loggedInUserId;
-
-    if (userId != null) {
-      bool isDeleted = await StoryService().deleteStoryMedia(mediaId, userId);
-
-      if (isDeleted) {
-        setState(() {
-          widget.stories.removeWhere((story) => story.storyId == storyId);
-        });
-
-        if (widget.stories.isEmpty) {
-          Navigator.of(context).popUntil((route) => route.isFirst);
-        } else {
-          _nextStory();
-        }
-      } else {
-        _showSnackbar("Failed to delete story.");
-      }
-    }
-  } catch (e) {
-    _showSnackbar("Error occurred while deleting story: $e");
-  }
-
-  _resumeStory(); // Resume the story after deleting
-}
-
-
-
- void _showReportOptions(int reportedUserId, int contentId) {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: Colors.transparent,
-    builder: (BuildContext context) {
-      return Container(
-        padding: const EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          color: const Color(0xFF4B3F72), // Set background color
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(25.0),
-            topRight: Radius.circular(25.0),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, -5), // Shadow for the box
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Center(
-              child: Container(
-                width: 50,
-                height: 5,
-                margin: const EdgeInsets.only(bottom: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD4AF37), // Bronze color for the divider
-                  borderRadius: BorderRadius.circular(2.5),
-                ),
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 10.0),
-              child: Text(
-                'Report Story',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white, // Text color
-                ),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.flag, color: Color(0xFFD4AF37)), // Bronze icon
-              title: const Text(
-                'Spam',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-              onTap: () async {
-                Navigator.pop(context);
-                // Session check when "Spam" is pressed
-                if (await _checkSession(context)) {
-                  _submitReport('Spam', reportedUserId, contentId); // Proceed to submit the report
-                }
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.block, color: Color(0xFFD4AF37)),
-              title: const Text(
-                'Inappropriate',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-              onTap: () async {
-                Navigator.pop(context);
-                // Session check when "Inappropriate" is pressed
-                if (await _checkSession(context)) {
-                  _submitReport('Inappropriate', reportedUserId, contentId); // Proceed to submit the report
-                }
-              },
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
-
-
 
   void _showSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -530,121 +575,6 @@ void _deleteStory(int storyId) async {
     }
   }
 
-  Widget _buildShimmerPlaceholder() {
-    return Shimmer.fromColors(
-      baseColor: Colors.grey.shade300,
-      highlightColor: Colors.white,
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-        margin: EdgeInsets.symmetric(vertical: 5, horizontal: 15),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.grey,
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ),
-            SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 100,
-                  height: 10,
-                  color: Colors.grey,
-                ),
-                SizedBox(height: 5),
-                Container(
-                  width: 50,
-                  height: 10,
-                  color: Colors.grey,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildViewersListBox(List<StoryViewer> viewers) {
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: AnimatedContainer(
-        duration: Duration(milliseconds: 300),
-        height: _isViewersListVisible
-            ? 300
-            : 0, // Show viewers list if visible, increased height
-        decoration: BoxDecoration(
-          color: Colors.white, // Set background color to white
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 10.0,
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: EdgeInsets.only(top: 10),
-                decoration: BoxDecoration(
-                  color: Colors.grey,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            SizedBox(height: 10),
-            Text(
-              "Viewed by",
-              style: TextStyle(
-                color: Colors.deepOrange, // Reddish orangey color
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Expanded(
-              child: viewers.isEmpty
-                  ? ListView.builder(
-                      itemCount: 5, // Example placeholder count
-                      itemBuilder: (context, index) =>
-                          _buildShimmerPlaceholder(),
-                    )
-                  : ListView.builder(
-                      itemCount: viewers.length,
-                      itemBuilder: (context, index) {
-                        final viewer = viewers[index];
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundImage: NetworkImage(viewer.profilePic),
-                            radius: 20,
-                          ),
-                          title: Text(
-                            viewer.fullname,
-                            style: TextStyle(color: Colors.black, fontSize: 14),
-                          ),
-                          subtitle: Text(
-                          _formatTime(viewer.localViewedAt), // Real-time, short format time
-                            style: TextStyle(
-                                color: Colors.deepOrange, fontSize: 12),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildMedia(Story story, int mediaIndex) {
     final mediaItem = story.media[mediaIndex];
     return CachedNetworkImage(
@@ -659,7 +589,7 @@ void _deleteStory(int storyId) async {
           ),
         ),
       ),
-      placeholder: (context, url) => Center(
+      placeholder: (context, url) => const Center(
         child: CircularProgressIndicator(color: Colors.white),
       ),
       errorWidget: (context, url, error) => Center(
@@ -696,7 +626,7 @@ void _deleteStory(int storyId) async {
                           ? _animationController.value
                           : 0.0),
                   backgroundColor: Colors.white.withOpacity(0.3),
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                 );
               },
             ),
@@ -708,22 +638,21 @@ void _deleteStory(int storyId) async {
 
   @override
   Widget build(BuildContext context) {
+    final story = widget.stories[_currentStoryIndex];
+    final isOwner = (story.userId == _loggedInUserId);
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: GestureDetector(
         onTapUp: (details) {
           final screenWidth = MediaQuery.of(context).size.width;
-
           final isLastStory = _currentStoryIndex == widget.stories.length - 1;
-          final isLastMedia = _currentMediaIndex ==
-              widget.stories[_currentStoryIndex].media.length - 1;
+          final isLastMedia =
+              _currentMediaIndex == widget.stories[_currentStoryIndex].media.length - 1;
 
-          // Navigate to previous media/story if tap is on the left 33% of the screen
           if (details.globalPosition.dx < screenWidth / 3) {
             _previousMedia();
-          }
-          // Navigate to next media/story if tap is on the right 33% of the screen
-          else if (details.globalPosition.dx > 2 * screenWidth / 3) {
+          } else if (details.globalPosition.dx > 2 * screenWidth / 3) {
             if (isLastStory && isLastMedia) {
               _hasNavigatedToHomePage = true;
               Navigator.of(context).popUntil((route) => route.isFirst);
@@ -732,18 +661,13 @@ void _deleteStory(int storyId) async {
             }
           }
         },
-        onLongPressStart: (_) => _pauseStory(), // Pause story on long press anywhere
-        onLongPressEnd: (_) => _resumeStory(), // Resume story on release
+        onLongPressStart: (_) => _pauseStory(),
+        onLongPressEnd: (_) => _resumeStory(),
         child: PageView.builder(
           controller: _pageController,
           itemCount: widget.stories.length,
           itemBuilder: (context, index) {
             final story = widget.stories[index];
-
-            // Hide viewers list if the story is not the user's
-            if (story.userId != _loggedInUserId) {
-              _isViewersListVisible = false;
-            }
 
             return Stack(
               children: [
@@ -756,38 +680,34 @@ void _deleteStory(int storyId) async {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildProgressIndicator(),
-                      SizedBox(height: 10.0),
+                      const SizedBox(height: 10.0),
                       Row(
                         children: [
                           GestureDetector(
-                            onTap: () {
-                              // Do nothing on tap (prevent next/previous navigation)
-                            },
+                            onTap: () {},
                             child: CircleAvatar(
-                              backgroundImage:
-                                  NetworkImage(story.profilePicUrl),
+                              backgroundImage: NetworkImage(story.profilePicUrl),
                               radius: 20,
                             ),
                           ),
-                          SizedBox(width: 10),
+                          const SizedBox(width: 10),
                           GestureDetector(
-                            onTap: () {
-                              // Do nothing on tap (prevent next/previous navigation)
-                            },
+                            onTap: () {},
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   story.fullName,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold),
                                 ),
-                                SizedBox(height: 3),
+                                const SizedBox(height: 3),
                                 Text(
-                                  _formatTime(story.media[_currentMediaIndex].localCreatedAt),
-                                  style: TextStyle(
+                                  _formatTime(
+                                      story.media[_currentMediaIndex].localCreatedAt),
+                                  style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold),
@@ -795,65 +715,39 @@ void _deleteStory(int storyId) async {
                               ],
                             ),
                           ),
-                          Spacer(),
-                          if (story.userId == _loggedInUserId) ...[
-                            ElevatedButton(
-                              onPressed: _toggleViewersList, // Viewers list toggle
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.deepOrange, // Reddish orangey button color
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                    vertical: 8, horizontal: 16), // Smaller size
-                              ),
-                              child: Text(
-                                'View',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14, // Smaller font size for button
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                          const Spacer(),
+                          if (!isOwner)
+                            IconButton(
+                              icon: const Icon(Icons.more_vert, color: Colors.white),
+                              onPressed: () =>
+                                  _showReportOptions(story.userId, story.storyId),
                             ),
-                            SizedBox(width: 10),
-                            ElevatedButton(
-                              onPressed: () => _deleteStory(widget.stories[index].storyId), // Delete action
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                    vertical: 8, horizontal: 16),
-                              ),
-                              child: Text(
-                                'Delete',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ] else ...[
-IconButton(
-  icon: Icon(Icons.more_vert, color: Colors.white),
-  onPressed: () => _showReportOptions(story.userId, story.storyId), // Pass the IDs
-),
-                          ],
                         ],
                       ),
                     ],
                   ),
                 ),
-                if (_isViewersListVisible)
+                if (isOwner)
                   Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: _buildViewersListBox(viewersList),
-                  ), // Show viewers list if visible
+                    bottom: 100.0,
+                    right: 20.0,
+                    child: Column(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.visibility, color: Colors.white),
+                          onPressed: () => _showViewersBottomSheet(),
+                          tooltip: 'Viewers',
+                        ),
+                        const SizedBox(height: 15),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.white),
+                          onPressed: () =>
+                              _deleteStory(widget.stories[_currentStoryIndex].storyId),
+                          tooltip: 'Delete',
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             );
           },
