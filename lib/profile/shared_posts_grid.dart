@@ -24,95 +24,93 @@ class SharedPostsGrid extends StatelessWidget {
     required this.isPrivateAccount,
     required this.isBlockedBy,
     required this.isUserBlocked,
-    
   }) : super(key: key);
 
   @override
-@override
-Widget build(BuildContext context) {
-  if (isBlockedBy) {
-    return _buildBlockedMessage("You are blocked by this user.");
-  } else if (isUserBlocked) {
-    return _buildBlockedMessage("You have blocked this user.");
+  Widget build(BuildContext context) {
+    if (isBlockedBy) {
+      return _buildBlockedMessage("You are blocked by this user.");
+    } else if (isUserBlocked) {
+      return _buildBlockedMessage("You have blocked this user.");
+    }
+
+    // Check private account before empty
+    if (isPrivateAccount) {
+      return _buildPrivateAccountMessage();
+    } else if (sharedPosts.isEmpty && !isPaginatingSharedPosts) {
+      return _buildEmptyMessage("No shared posts yet.");
+    }
+
+    return GridView.builder(
+      controller: scrollController,
+      padding: EdgeInsets.all(10.0),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: screenWidth * 0.02,
+        mainAxisSpacing: screenWidth * 0.02,
+      ),
+      itemCount: sharedPosts.length + (isPaginatingSharedPosts ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == sharedPosts.length) {
+          return Center(child: CircularProgressIndicator(color: Color(0xFFF45F67)));
+        }
+        final sharedPost = sharedPosts[index];
+        return GestureDetector(
+          onTap: () => openSharedPost(index),
+          child: _buildSharedPostThumbnail(sharedPost, screenWidth),
+        );
+      },
+    );
   }
 
-  if (isPrivateAccount) {
-    return _buildPrivateAccountMessage();
-  } else if (sharedPosts.isEmpty && !isPaginatingSharedPosts) {
-    return _buildEmptyMessage("No shared posts yet.");
+  Widget _buildBlockedMessage(String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.block, color: Colors.red, size: 50),
+          SizedBox(height: 10),
+          Text(
+            message,
+            style: TextStyle(color: Colors.grey, fontSize: 18),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
   }
 
-  return GridView.builder(
-    controller: scrollController,
-    padding: EdgeInsets.all(10.0),
-    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: 3,
-      crossAxisSpacing: screenWidth * 0.02,
-      mainAxisSpacing: screenWidth * 0.02,
-    ),
-    itemCount: sharedPosts.length + (isPaginatingSharedPosts ? 1 : 0),
-    itemBuilder: (context, index) {
-      if (index == sharedPosts.length) {
-        return Center(child: CircularProgressIndicator(color: Color(0xFFF45F67)));
-      }
-      final sharedPost = sharedPosts[index];
-      return GestureDetector(
-        onTap: () => openSharedPost(index),
-        child: _buildSharedPostThumbnail(sharedPost, screenWidth),
-      );
-    },
-  );
-}
+  Widget _buildPrivateAccountMessage() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.lock, color: Colors.grey, size: 50),
+          SizedBox(height: 10),
+          Text(
+            "This account is private.",
+            style: TextStyle(color: Colors.grey, fontSize: 18),
+          ),
+        ],
+      ),
+    );
+  }
 
-Widget _buildBlockedMessage(String message) {
-  return Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.block, color: Colors.red, size: 50),
-        SizedBox(height: 10),
-        Text(
-          message,
-          style: TextStyle(color: Colors.grey, fontSize: 18),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    ),
-  );
-}
-
-Widget _buildPrivateAccountMessage() {
-  return Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.lock, color: Colors.grey, size: 50),
-        SizedBox(height: 10),
-        Text(
-          "This account is private.",
-          style: TextStyle(color: Colors.grey, fontSize: 18),
-        ),
-      ],
-    ),
-  );
-}
-
-Widget _buildEmptyMessage(String message) {
-  return Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.photo_library, color: Colors.grey, size: 50),
-        SizedBox(height: 10),
-        Text(
-          message,
-          style: TextStyle(color: Colors.grey, fontSize: 18),
-        ),
-      ],
-    ),
-  );
-}
-
+  Widget _buildEmptyMessage(String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.photo_library, color: Colors.grey, size: 50),
+          SizedBox(height: 10),
+          Text(
+            message,
+            style: TextStyle(color: Colors.grey, fontSize: 18),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildSharedPostThumbnail(SharedPostDetails sharedPost, double screenWidth) {
     if (sharedPost.media.isNotEmpty) {
