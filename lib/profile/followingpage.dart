@@ -185,65 +185,6 @@ Future<void> _fetchFollowing({int page = 1}) async {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            OutlinedButton(
-                              onPressed: () {
-                                // Implement message functionality
-                              },
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: Theme.of(context).primaryColor),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                              ),
-                              child: Text(
-                                'Message',
-                                style: TextStyle(
-                                  color: Theme.of(context).primaryColor,
-                                  fontSize: screenWidth * 0.035,
-                                ),
-                              ),
-                            ),
-                            PopupMenuButton<String>(
-                              icon: Icon(Icons.more_vert, color: Theme.of(context).primaryColor),
-                              itemBuilder: (BuildContext context) {
-                                return [
-                                  PopupMenuItem<String>(
-                                    value: 'block',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.block, color: Colors.redAccent),
-                                        SizedBox(width: 8),
-                                        Text('Block'),
-                                      ],
-                                    ),
-                                  ),
-                                  PopupMenuItem<String>(
-                                    value: 'unfollow',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.person_remove, color: Colors.orange),
-                                        SizedBox(width: 8),
-                                        Text('Unfollow'),
-                                      ],
-                                    ),
-                                  ),
-                                  PopupMenuItem<String>(
-                                    value: 'mute',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.volume_off, color: Colors.blueAccent),
-                                        SizedBox(width: 8),
-                                        Text('Mute'),
-                                      ],
-                                    ),
-                                  ),
-                                ];
-                              },
-                              onSelected: (value) {
-                                // Handle each menu action
-                              },
-                            ),
                           ],
                         ),
                       );
