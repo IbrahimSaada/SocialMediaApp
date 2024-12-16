@@ -20,6 +20,8 @@ import '***REMOVED***/profile/followingpage.dart';
 import 'qr_code.dart';
 import '***REMOVED***/maintenance/expiredtoken.dart';
 import '***REMOVED***/services/SessionExpiredException.dart';
+import '../services/blocked_user_exception.dart';
+
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -127,9 +129,11 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _fetchSharedPosts() async {
+  // Reorder exceptions: BlockedUserException before PrivacyException
+     Future<void> _fetchSharedPosts() async {
     if (isPaginatingSharedPosts || userId == null || !hasMoreSharedPosts) return;
 
+    print("[DEBUG] _fetchSharedPosts in ProfilePage started. userId=$userId");
     try {
       setState(() {
         isPaginatingSharedPosts = true;
@@ -139,56 +143,67 @@ class _ProfilePageState extends State<ProfilePage> {
       int viewerUserId = userId!;
 
       List<SharedPostDetails> newSharedPosts = await _userpostService.fetchSharedPosts(
-          currentUserId, viewerUserId, currentSharedPostsPageNumber, pageSize);
+        currentUserId,
+        viewerUserId,
+        currentSharedPostsPageNumber,
+        pageSize
+      );
 
       setState(() {
         sharedPosts.addAll(newSharedPosts);
         currentSharedPostsPageNumber++;
         isPaginatingSharedPosts = false;
-        isPrivateAccount = false;
 
         if (newSharedPosts.length < pageSize) {
           hasMoreSharedPosts = false;
         }
       });
+      print("[DEBUG] _fetchSharedPosts in ProfilePage success. Loaded ${newSharedPosts.length} shared posts.");
+    } on BlockedUserException catch (e) {
+      print("[DEBUG] BlockedUserException caught in ProfilePage _fetchSharedPosts: reason=${e.reason}, isBlockedBy=${e.isBlockedBy}, isUserBlocked=${e.isUserBlocked}");
+      setState(() {
+        isPaginatingSharedPosts = false;
+        isBlockedBy = e.isBlockedBy;
+        isUserBlocked = e.isUserBlocked;
+      });
+      print("[DEBUG] After BlockedUserException in ProfilePage _fetchSharedPosts: isBlockedBy=$isBlockedBy, isUserBlocked=$isUserBlocked, isPrivateAccount=$isPrivateAccount");
     } on PrivacyException catch (e) {
-      print("PrivacyException: $e");
+      print("[DEBUG] PrivacyException caught in ProfilePage _fetchSharedPosts: message=${e.message}");
       setState(() {
         isPrivateAccount = true;
         isPaginatingSharedPosts = false;
       });
+      print("[DEBUG] After PrivacyException in ProfilePage _fetchSharedPosts: isBlockedBy=$isBlockedBy, isUserBlocked=$isUserBlocked, isPrivateAccount=$isPrivateAccount");
     } on SessionExpiredException {
-      print("SessionExpired detected in _fetchSharedPosts");
+      print("[DEBUG] SessionExpiredException caught in ProfilePage _fetchSharedPosts");
       setState(() {
         isPaginatingSharedPosts = false;
       });
       handleSessionExpired(context);
     } catch (e) {
-      print("Error fetching shared posts: $e");
+      print("[DEBUG] Unknown exception in ProfilePage _fetchSharedPosts: $e");
       setState(() {
         isPaginatingSharedPosts = false;
       });
-      if (e is! PrivacyException) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('An error occurred while fetching user shared posts.'),
-          backgroundColor: Colors.red,
-        ));
-      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('An error occurred while fetching shared posts.'),
+        backgroundColor: Colors.red,
+      ));
     }
   }
 
-  Future<void> _fetchUserPosts() async {
+  // Reorder exceptions: BlockedUserException before PrivacyException
+      Future<void> _fetchUserPosts() async {
+    print("[DEBUG] _fetchUserPosts in ProfilePage started. userId=$userId");
     try {
       if (userId != null) {
         setState(() {
           isPaginating = true;
         });
-        int viewerUserId = userId!;
-        print("UserId is: $userId");
 
         List<Post> newPosts = await _userpostService.fetchUserPosts(
           userId!,
-          viewerUserId,
+          userId!,
           currentPageNumber,
           pageSize,
         );
@@ -198,29 +213,41 @@ class _ProfilePageState extends State<ProfilePage> {
           currentPageNumber++;
           isPaginating = false;
         });
+        print("[DEBUG] _fetchUserPosts in ProfilePage success. Loaded ${newPosts.length} posts.");
       }
+    } on BlockedUserException catch (e) {
+      print("[DEBUG] BlockedUserException caught in ProfilePage _fetchUserPosts: reason=${e.reason}, isBlockedBy=${e.isBlockedBy}, isUserBlocked=${e.isUserBlocked}");
+      setState(() {
+        isPaginating = false;
+        isBlockedBy = e.isBlockedBy;
+        isUserBlocked = e.isUserBlocked;
+      });
+      print("[DEBUG] After BlockedUserException in ProfilePage _fetchUserPosts: isBlockedBy=$isBlockedBy, isUserBlocked=$isUserBlocked, isPrivateAccount=$isPrivateAccount");
     } on PrivacyException catch (e) {
-      print("PrivacyException: $e");
+      print("[DEBUG] PrivacyException caught in ProfilePage _fetchUserPosts: message=${e.message}");
       setState(() {
         isPrivateAccount = true;
         isPaginating = false;
       });
+      print("[DEBUG] After PrivacyException in ProfilePage _fetchUserPosts: isBlockedBy=$isBlockedBy, isUserBlocked=$isUserBlocked, isPrivateAccount=$isPrivateAccount");
     } on SessionExpiredException {
-      print("SessionExpired detected in _fetchUserPosts");
-      handleSessionExpired(context);
-    } catch (e) {
-      print("Error fetching posts: $e");
+      print("[DEBUG] SessionExpiredException caught in ProfilePage _fetchUserPosts");
       setState(() {
         isPaginating = false;
       });
-      if (e is! PrivacyException) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('An error occurred while fetching user posts.'),
-          backgroundColor: Colors.red,
-        ));
-      }
+      handleSessionExpired(context);
+    } catch (e) {
+      print("[DEBUG] Unknown exception in ProfilePage _fetchUserPosts: $e");
+      setState(() {
+        isPaginating = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('An error occurred while fetching user posts.'),
+        backgroundColor: Colors.red,
+      ));
     }
   }
+
 
   Future<void> _fetchBookmarkedPosts() async {
     if (isPaginatingBookmarks || userId == null) return;
@@ -375,12 +402,8 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildShimmerEffect() {
-    return Shimmer.fromColors(
-      baseColor: Colors.grey[300]!,
-      highlightColor: Colors.grey[100]!,
-      child: Container(
-        color: Colors.grey[300],
-      ),
+    return Container(
+      color: Colors.grey[300],
     );
   }
 
@@ -543,12 +566,14 @@ class _ProfilePageState extends State<ProfilePage> {
                       SizedBox(width: 10),
                       GestureDetector(
                         onTap: () {
-                          showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return QRCodeModal(qrCodeUrl: userProfile!.qrCode);
-                            },
-                          );
+                          if (userProfile != null && userProfile!.qrCode.isNotEmpty) {
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return QRCodeModal(qrCodeUrl: userProfile!.qrCode);
+                              },
+                            );
+                          }
                         },
                         child: Icon(
                           Icons.qr_code,

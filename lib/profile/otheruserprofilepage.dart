@@ -1,5 +1,3 @@
-// otheruserprofilepage.dart
-
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
@@ -156,6 +154,8 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                 backgroundColor: Colors.green,
               ),
             );
+            // After unblocking, refresh the profile to show correct posts/status
+            _refreshUserProfile();
           } else {
             throw Exception("Failed to unblock user.");
           }
@@ -296,6 +296,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   Future<void> _fetchUserPosts() async {
     if (isPaginating || currentUserId == null) return;
 
+    print("[DEBUG] _fetchUserPosts started. otherUserId=${widget.otherUserId}, currentUserId=$currentUserId");
     try {
       setState(() {
         isPaginating = true;
@@ -313,51 +314,45 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
         currentPageNumber++;
         isPaginating = false;
       });
+      print("[DEBUG] _fetchUserPosts success. Loaded ${newPosts.length} posts.");
+    } on BlockedUserException catch (e) {
+      print("[DEBUG] BlockedUserException caught in _fetchUserPosts: reason=${e.reason} isBlockedBy=${e.isBlockedBy}, isUserBlocked=${e.isUserBlocked}");
+      setState(() {
+        isPaginating = false;
+        isBlockedBy = e.isBlockedBy;
+        isUserBlocked = e.isUserBlocked;
+      });
+      print("[DEBUG] After BlockedUserException in _fetchUserPosts: isBlockedBy=$isBlockedBy, isUserBlocked=$isUserBlocked, isPrivateAccount=$isPrivateAccount");
+      showBlockSnackbar(context, e.reason);
     } on PrivacyException catch (e) {
-      print("PrivacyException: $e");
+      print("[DEBUG] PrivacyException caught in _fetchUserPosts: message=${e.message}");
       setState(() {
         isPrivateAccount = true;
         isPaginating = false;
       });
-      // No snackbar for privacy scenario
-    } on BlockedUserException catch (e) {
-      if (e.isBlockedBy) {
-        setState(() {
-          isBlockedBy = true;
-          isPaginating = false;
-        });
-        showBlockSnackbar(context, e.reason);
-      } else if (e.isUserBlocked) {
-        setState(() {
-          isUserBlocked = true;
-          isPaginating = false;
-        });
-        showBlockSnackbar(context, e.reason);
-      }
+      print("[DEBUG] After PrivacyException in _fetchUserPosts: isBlockedBy=$isBlockedBy, isUserBlocked=$isUserBlocked, isPrivateAccount=$isPrivateAccount");
     } on SessionExpiredException {
-      print("SessionExpired detected in _fetchUserPosts");
+      print("[DEBUG] SessionExpiredException caught in _fetchUserPosts");
       setState(() {
         isPaginating = false;
       });
       handleSessionExpired(context);
     } catch (e) {
-      print("Error fetching posts: $e");
+      print("[DEBUG] Unknown exception in _fetchUserPosts: $e");
       setState(() {
         isPaginating = false;
       });
-      // For other errors, show snackbar
-      if (e is! PrivacyException && e is! BlockedUserException) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('An error occurred while fetching user posts.'),
-          backgroundColor: Colors.red,
-        ));
-      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('An error occurred while fetching user posts.'),
+        backgroundColor: Colors.red,
+      ));
     }
   }
 
   Future<void> _fetchSharedPosts() async {
     if (isPaginatingSharedPosts || currentUserId == null || !hasMoreSharedPosts) return;
 
+    print("[DEBUG] _fetchSharedPosts started. otherUserId=${widget.otherUserId}, currentUserId=$currentUserId");
     try {
       setState(() {
         isPaginatingSharedPosts = true;
@@ -379,43 +374,38 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
           hasMoreSharedPosts = false;
         }
       });
+      print("[DEBUG] _fetchSharedPosts success. Loaded ${newSharedPosts.length} shared posts.");
+    } on BlockedUserException catch (e) {
+      print("[DEBUG] BlockedUserException caught in _fetchSharedPosts: reason=${e.reason} isBlockedBy=${e.isBlockedBy}, isUserBlocked=${e.isUserBlocked}");
+      setState(() {
+        isPaginatingSharedPosts = false;
+        isBlockedBy = e.isBlockedBy;
+        isUserBlocked = e.isUserBlocked;
+      });
+      print("[DEBUG] After BlockedUserException in _fetchSharedPosts: isBlockedBy=$isBlockedBy, isUserBlocked=$isUserBlocked, isPrivateAccount=$isPrivateAccount");
+      showBlockSnackbar(context, e.reason);
     } on PrivacyException catch (e) {
-      print("PrivacyException: $e");
+      print("[DEBUG] PrivacyException caught in _fetchSharedPosts: message=${e.message}");
       setState(() {
         isPrivateAccount = true;
         isPaginatingSharedPosts = false;
       });
-      // No snackbar for privacy scenario
-    } on BlockedUserException catch (e) {
-      if (e.isBlockedBy) {
-        setState(() {
-          isPaginatingSharedPosts = false;
-        });
-        showBlockSnackbar(context, e.reason);
-      } else if (e.isUserBlocked) {
-        setState(() {
-          isPaginatingSharedPosts = false;
-        });
-        showBlockSnackbar(context, e.reason);
-      }
+      print("[DEBUG] After PrivacyException in _fetchSharedPosts: isBlockedBy=$isBlockedBy, isUserBlocked=$isUserBlocked, isPrivateAccount=$isPrivateAccount");
     } on SessionExpiredException {
-      print("SessionExpired detected in _fetchSharedPosts");
+      print("[DEBUG] SessionExpiredException caught in _fetchSharedPosts");
       setState(() {
         isPaginatingSharedPosts = false;
       });
       handleSessionExpired(context);
     } catch (e) {
-      print("Error fetching shared posts: $e");
+      print("[DEBUG] Unknown exception in _fetchSharedPosts: $e");
       setState(() {
         isPaginatingSharedPosts = false;
       });
-      // For other errors
-      if (e is! PrivacyException && e is! BlockedUserException) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('An error occurred while fetching shared posts.'),
-          backgroundColor: Colors.red,
-        ));
-      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('An error occurred while fetching shared posts.'),
+        backgroundColor: Colors.red,
+      ));
     }
   }
 
@@ -490,6 +480,8 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
       currentPageNumber = 1;
       currentSharedPageNumber = 1;
       isPrivateAccount = false;
+      isBlockedBy = false;
+      isUserBlocked = false;
     });
 
     await _loadUserProfile();
