@@ -4,10 +4,10 @@ import '***REMOVED***/home/home.dart';
 import '***REMOVED***/login/forgotpasswrod.dart';
 import '../login/register.dart';
 import '../services/LoginService.dart';
+import '../services/BannedException.dart'; // Import BannedException
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
-
   @override
   _LoginPageState createState() => _LoginPageState();
 }
@@ -27,6 +27,7 @@ class _LoginPageState extends State<LoginPage> {
         _errorMessage = null;
       });
 
+      // Quick admin login check (optional)
       if (_emailOrPhoneController.text.trim() == 'admin@gmail.com' &&
           _passwordController.text.trim() == 'admin') {
         Navigator.of(context).pushReplacement(
@@ -45,14 +46,25 @@ class _LoginPageState extends State<LoginPage> {
           _passwordController.text.trim(),
         );
 
+        // If successful and not banned
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => HomePage()),
+        );
+      } on BannedException catch (bex) {
+        // Navigate to BannedScreen
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => BannedScreen(
+              banReason: bex.reason,
+              banExpiresAt: bex.expiresAt,
+            ),
+          ),
         );
       } catch (e) {
         setState(() {
           _errorMessage = e.toString().contains("Unauthorized")
               ? "The password you’ve entered is incorrect"
-              : "The password you’ve entered is incorrect.";
+              : "Login failed. ${e.toString()}";
         });
       } finally {
         setState(() {
@@ -272,6 +284,127 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// BannedScreen widget to show ban info
+class BannedScreen extends StatelessWidget {
+  final String banReason;
+  final String banExpiresAt;
+
+  const BannedScreen({
+    required this.banReason,
+    required this.banExpiresAt,
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF45F67), // Main background
+      body: SafeArea(
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Icon at the top
+                const Icon(
+                  Icons.block,
+                  color: Colors.red,
+                  size: 60,
+                ),
+                const SizedBox(height: 16),
+                
+                // Banned Text
+                const Text(
+                  'Account Banned',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.red,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                
+                // Ban Reason
+                Text(
+                  'Reason: $banReason',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                
+                // Ban Expiry Date
+                Text(
+                  'Ban Expires At: $banExpiresAt',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      // Replace this with your logout logic
+                      Navigator.pushReplacementNamed(context, '/login');
+                    },
+                    icon: const Icon(Icons.logout, color: Colors.white, size: 24),
+                    label: const Text(
+                      'Logout',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: Colors.redAccent,
+                      foregroundColor: Colors.white, // Text/Icon color
+                      shadowColor: Colors.black45,
+                      elevation: 6,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30), // Rounded edges
+                      ),
+                    ).copyWith(
+                      backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                        (states) {
+                          if (states.contains(WidgetState.pressed)) {
+                            return Colors.deepOrange; // Change color on press
+                          }
+                          return Colors.redAccent; // Default color
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

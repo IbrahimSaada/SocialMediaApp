@@ -11,6 +11,8 @@ class PostGrid extends StatelessWidget {
   final bool isPrivateAccount;
   final bool isBlockedBy;
   final bool isUserBlocked;
+  // NEW:
+  final bool isUserBanned; // Add this as a parameter
 
   const PostGrid({
     Key? key,
@@ -22,17 +24,22 @@ class PostGrid extends StatelessWidget {
     required this.isPrivateAccount,
     required this.isBlockedBy,
     required this.isUserBlocked,
+    this.isUserBanned = false, // default false
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    // Check banned first
+    if (isUserBanned) {
+      return _buildBannedMessage();
+    }
+
     if (isBlockedBy) {
       return _buildBlockedMessage("You are blocked by this user.");
     } else if (isUserBlocked) {
       return _buildBlockedMessage("You have blocked this user.");
     }
 
-    // Check if private account before checking if empty
     if (isPrivateAccount) {
       return _buildPrivateAccountMessage();
     } else if (userPosts.isEmpty && !isPaginating) {
@@ -58,6 +65,23 @@ class PostGrid extends StatelessWidget {
           child: _buildPostThumbnail(post, screenWidth),
         );
       },
+    );
+  }
+
+  Widget _buildBannedMessage() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.gavel, color: Colors.red, size: 50),
+          SizedBox(height: 10),
+          Text(
+            "This user is banned.",
+            style: TextStyle(color: Colors.grey, fontSize: 18),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 

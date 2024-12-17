@@ -12,6 +12,8 @@ class SharedPostsGrid extends StatelessWidget {
   final bool isPrivateAccount;
   final bool isBlockedBy;
   final bool isUserBlocked;
+  // NEW:
+  final bool isUserBanned; // Add this as a parameter
 
   const SharedPostsGrid({
     Key? key,
@@ -24,17 +26,22 @@ class SharedPostsGrid extends StatelessWidget {
     required this.isPrivateAccount,
     required this.isBlockedBy,
     required this.isUserBlocked,
+    this.isUserBanned = false, // default false
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    // Check banned first
+    if (isUserBanned) {
+      return _buildBannedMessage();
+    }
+
     if (isBlockedBy) {
       return _buildBlockedMessage("You are blocked by this user.");
     } else if (isUserBlocked) {
       return _buildBlockedMessage("You have blocked this user.");
     }
 
-    // Check private account before empty
     if (isPrivateAccount) {
       return _buildPrivateAccountMessage();
     } else if (sharedPosts.isEmpty && !isPaginatingSharedPosts) {
@@ -60,6 +67,23 @@ class SharedPostsGrid extends StatelessWidget {
           child: _buildSharedPostThumbnail(sharedPost, screenWidth),
         );
       },
+    );
+  }
+
+  Widget _buildBannedMessage() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.gavel, color: Colors.red, size: 50),
+          SizedBox(height: 10),
+          Text(
+            "This user is banned.",
+            style: TextStyle(color: Colors.grey, fontSize: 18),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 
