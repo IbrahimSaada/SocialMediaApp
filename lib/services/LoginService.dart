@@ -1,134 +1,130 @@
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
-import 'SignatureService.dart';  // Import the SignatureService class
+import 'SignatureService.dart';  
 import 'SessionExpiredException.dart';
 import 'pushnotificationservice.dart';
+import 'BannedException.dart';
 
 class LoginService {
   final String baseUrl =
-      'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api'; // Base URL for API
-  final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
-  final SignatureService _signatureService = SignatureService();  // Using SignatureService for HMAC
+      'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api';
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  final SignatureService _signatureService = SignatureService();
 
   // Singleton pattern
   static final LoginService _instance = LoginService._internal();
   factory LoginService() => _instance;
   LoginService._internal();
 
-  // Login function
   Future<void> loginUser(String emailOrPhoneNumber, String password) async {
-    // Get the FCM token
     String? fcmToken = await PushNotificationService().getFcmToken();
-
-    // Prepare the data for HMAC signature
     String dataToSign = '$emailOrPhoneNumber:$password';
-
-    // Generate HMAC signature using SignatureService
     String signature = await _signatureService.generateHMAC(dataToSign);
 
-    // Perform login API request
     final response = await http.post(
       Uri.parse('$baseUrl/Login'),
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
-        'X-Signature': signature,  // Include signature in headers
+        'X-Signature': signature,
       },
       body: jsonEncode(<String, dynamic>{
         'EmailOrPhoneNumber': emailOrPhoneNumber,
         'Password': password,
-        'FcmToken': fcmToken, // Include FCM token in the request body
+        'FcmToken': fcmToken,
       }),
     );
 
-    // Check if login is successful
     if (response.statusCode == 200) {
       var data = jsonDecode(response.body);
-      var token = data['token']; // Access token
-      var refreshToken = data['refreshToken']; // Refresh token
-      var userId = data['userId']; // Get user ID from the response
-      var fullname = data['fullname']; // Fullname from response
+
+      // Check if user is banned
+      if (data['isBanned'] == true) {
+        final banReason = data['banReason'] ?? 'Violation of the rules.';
+        final banExpiresAt = data['banExpiresAt'] ?? 'N/A';
+        throw BannedException(banReason, banExpiresAt);
+      }
+
+      var token = data['token'];
+      var refreshToken = data['refreshToken'];
+      var userId = data['userId'];
+      var fullname = data['fullname'];
       var profilePic = data['profilePic'];
-      var expiration = DateTime.now().add(Duration(minutes: 2)); // Set token expiration time
+      var expiration = DateTime.now().add(const Duration(minutes: 2));
       await _storeTokenAndUserId(token, refreshToken, userId, expiration, profilePic);
-      await _secureStorage.write(key: 'fullname', value: fullname); // Save fullname
+      await _secureStorage.write(key: 'fullname', value: fullname);
+    } else if (response.statusCode == 401) {
+      // Check if body indicates ban
+      final responseBody = response.body.toLowerCase();
+      if (responseBody.contains('banned')) {
+        // When 401 indicates a ban, no expiry given, so use 'N/A'
+        throw BannedException('You have been banned', 'N/A');
+      } else {
+        throw Exception('Unauthorized: ${response.body}');
+      }
     } else {
       throw Exception('Failed to login: ${response.body}');
     }
   }
 
-  // Refresh Access Token
   Future<void> refreshAccessToken() async {
     var refreshToken = await getRefreshToken();
-
     if (refreshToken == null) {
       throw Exception('Refresh token not found');
     }
 
-    // Generate signature using the refresh token
     String signature = await _signatureService.generateHMAC(refreshToken);
-
     try {
-      // Perform token refresh API request
       final response = await http.post(
         Uri.parse('$baseUrl/Login/RefreshToken'),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
-          'X-Signature': signature,  // Include signature in headers
+          'X-Signature': signature,
         },
         body: jsonEncode(<String, dynamic>{
           'Token': refreshToken,
         }),
       );
 
-      // Check if refresh is successful
       if (response.statusCode == 200) {
         var data = jsonDecode(response.body);
-        var token = data['accessToken']; // New access token
-        var newRefreshToken = data['refreshToken']; // New refresh token
-        var expiration = DateTime.now().add(Duration(minutes: 1)); // Set new expiration time
-
-        // Retrieve the user ID from secure storage
+        var token = data['accessToken'];
+        var newRefreshToken = data['refreshToken'];
+        var expiration = DateTime.now().add(const Duration(minutes: 1));
         final userId = await getUserId();
-
-        // Ensure userId is not null before storing
         if (userId != null) {
           await _storeTokenAndUserId(token, newRefreshToken, userId, expiration);
         } else {
           throw Exception('User ID not found');
         }
       } else if (response.statusCode == 401) {
-        // Refresh token is invalid or expired
         print('Refresh token is invalid or expired.');
-        await logout(); // Log the user out
-        throw SessionExpiredException(); // Throw custom exception
+        await logout();
+        throw SessionExpiredException();
       } else {
         print('Failed to refresh token. Status code: ${response.statusCode}');
         throw Exception('Failed to refresh token: ${response.body}');
       }
     } catch (e) {
       print('Error in refreshAccessToken: $e');
-      rethrow; // Propagate the exception to the caller
+      rethrow; 
     }
   }
 
-  // Logout function
   Future<void> logout() async {
     final String logoutUrl = '$baseUrl/Login/Logout';
     final String? refreshToken = await _secureStorage.read(key: 'refreshToken');
     final int? userId = await getUserId();
 
     if (refreshToken != null && userId != null) {
-      // Generate signature using refreshToken and userId
       String dataToSign = '$userId:$refreshToken';
       String signature = await _signatureService.generateHMAC(dataToSign);
 
-      // Perform logout API request
       final response = await http.post(
         Uri.parse(logoutUrl),
         headers: {
           'Content-Type': 'application/json',
-          'X-Signature': signature,  // Include signature in headers
+          'X-Signature': signature,
         },
         body: jsonEncode({
           'UserId': userId,
@@ -136,9 +132,8 @@ class LoginService {
         }),
       );
 
-      // Check if logout is successful
       if (response.statusCode == 200) {
-        await _secureStorage.deleteAll(); // Clear all stored tokens
+        await _secureStorage.deleteAll();
         print('Logged out successfully.');
       } else {
         print('Failed to log out: ${response.body}');
@@ -148,14 +143,12 @@ class LoginService {
     }
   }
 
-  // Store token, refresh token, user ID, and profile picture in secure storage
   Future<void> _storeTokenAndUserId(String token, String refreshToken,
       int userId, DateTime expiration, [String? profilePic]) async {
     await _secureStorage.write(key: 'jwt', value: token);
     await _secureStorage.write(key: 'refreshToken', value: refreshToken);
     await _secureStorage.write(key: 'userId', value: userId.toString());
-    await _secureStorage.write(
-        key: 'expiration', value: expiration.toIso8601String());
+    await _secureStorage.write(key: 'expiration', value: expiration.toIso8601String());
     if (profilePic != null) {
       await _secureStorage.write(key: 'profilePic', value: profilePic);
       print('Profile Pic URL saved: $profilePic');
@@ -164,17 +157,14 @@ class LoginService {
     }
   }
 
-  // Get the JWT token from secure storage
   Future<String?> getToken() async {
     return await _secureStorage.read(key: 'jwt');
   }
 
-  // Get the refresh token from secure storage
   Future<String?> getRefreshToken() async {
     return await _secureStorage.read(key: 'refreshToken');
   }
 
-  // Get the user ID from secure storage
   Future<int?> getUserId() async {
     String? userIdString = await _secureStorage.read(key: 'userId');
     if (userIdString != null) {
@@ -183,16 +173,14 @@ class LoginService {
     return null;
   }
 
-    // Retrieve fullname from secure storage
   Future<String> getFullname() async {
     String? fullname = await _secureStorage.read(key: 'fullname');
     if (fullname != null) {
       return fullname;
     }
-    return "User"; // Default if fullname is not found
+    return "User";
   }
 
-  // Get the token expiration time from secure storage
   Future<DateTime?> getTokenExpiration() async {
     String? expirationString = await _secureStorage.read(key: 'expiration');
     if (expirationString != null) {
@@ -201,16 +189,13 @@ class LoginService {
     return null;
   }
 
-  // Get profile picture URL from secure storage
   Future<String?> getProfilePic() async {
     return await _secureStorage.read(key: 'profilePic');
   }
 
-  // Check if the user is logged in
   Future<bool> isLoggedIn() async {
     var token = await getToken();
     var expiration = await getTokenExpiration();
-
     if (token != null && expiration != null) {
       if (DateTime.now().isBefore(expiration)) {
         return true;
@@ -222,7 +207,6 @@ class LoginService {
     return false;
   }
 
-  // Update FCM Token on the backend
   Future<void> updateFcmToken(String newToken) async {
     final userId = await getUserId();
     final token = await getToken();
@@ -232,11 +216,9 @@ class LoginService {
       return;
     }
 
-    // Generate HMAC signature
     String dataToSign = newToken;
     String signature = await _signatureService.generateHMAC(dataToSign);
 
-    // Perform update FCM token API request
     final response = await http.put(
       Uri.parse('$baseUrl/Login/UpdateFcmToken/$userId'),
       headers: <String, String>{

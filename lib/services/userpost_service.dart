@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'blocked_user_exception.dart';
+import 'bannedexception.dart';  // Ensure this import is correct
 import '../models/post_model.dart';
 import '../models/sharedpost_model.dart';
 import 'SessionExpiredException.dart';
@@ -42,6 +43,12 @@ class UserpostService {
         final Map<String, dynamic> jsonData = jsonDecode(rawBody);
         print("[DEBUG] Parsed 403 JSON: $jsonData");
 
+        // Check if user is banned
+        if (jsonData['message'] == "This user is banned.") {
+          print("[DEBUG] Banned user scenario in fetchUserPosts");
+          throw BannedException("This user is banned.", "N/A");
+        }
+
         final isBlockedBy = jsonData['blockedBy'] as bool? ?? false;
         final isUserBlocked = jsonData['blockedUser'] as bool? ?? false;
 
@@ -63,21 +70,20 @@ class UserpostService {
         print("[DEBUG] Non-JSON 403 response in fetchUserPosts. Checking message keywords.");
         final lowerBody = rawBody.toLowerCase();
 
-        // Check for blocked keywords in non-JSON response
-        if (lowerBody.contains("blocked") || lowerBody.contains("you have blocked this user") || lowerBody.contains("blocked by this user")) {
+        if (lowerBody.contains("banned")) {
+          // Handle banned scenario in non-JSON response (if ever occurs)
+          print("[DEBUG] Banned user scenario in non-JSON fetchUserPosts");
+          throw BannedException("This user is banned.", "N/A");
+        } else if (lowerBody.contains("blocked") || lowerBody.contains("you have blocked this user") || lowerBody.contains("blocked by this user")) {
           print("[DEBUG] Non-JSON response indicates a blocked scenario.");
-          // Decide who blocked who based on message
           bool isBlockedBy = false;
           bool isUserBlocked = false;
 
           if (lowerBody.contains("you have blocked this user")) {
-            // The current user blocked the profile user
             isUserBlocked = true;
           } else if (lowerBody.contains("user blocked you") || lowerBody.contains("you are blocked by this user")) {
-            // The profile user blocked the current user
             isBlockedBy = true;
           } else {
-            // If uncertain, default to userBlocked scenario
             isUserBlocked = true;
           }
 
@@ -150,6 +156,12 @@ class UserpostService {
         final Map<String, dynamic> jsonData = jsonDecode(rawBody);
         print("[DEBUG] Parsed 403 JSON in sharedPosts: $jsonData");
 
+        // Check if user is banned
+        if (jsonData['message'] == "This user is banned.") {
+          print("[DEBUG] Banned user scenario in fetchSharedPosts");
+          throw BannedException("This user is banned.", "N/A");
+        }
+
         final isBlockedBy = jsonData['blockedBy'] as bool? ?? false;
         final isUserBlocked = jsonData['blockedUser'] as bool? ?? false;
 
@@ -171,7 +183,10 @@ class UserpostService {
         print("[DEBUG] Non-JSON 403 response in fetchSharedPosts. Checking message keywords.");
         final lowerBody = rawBody.toLowerCase();
 
-        if (lowerBody.contains("blocked") || lowerBody.contains("you have blocked this user") || lowerBody.contains("blocked by this user")) {
+        if (lowerBody.contains("banned")) {
+          print("[DEBUG] Banned user scenario in non-JSON fetchSharedPosts");
+          throw BannedException("This user is banned.", "N/A");
+        } else if (lowerBody.contains("blocked") || lowerBody.contains("you have blocked this user") || lowerBody.contains("blocked by this user")) {
           print("[DEBUG] Non-JSON response indicates a blocked scenario.");
           bool isBlockedBy = false;
           bool isUserBlocked = false;

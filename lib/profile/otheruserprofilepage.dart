@@ -20,6 +20,7 @@ import 'package:cook/services/SessionExpiredException.dart';
 import 'package:cook/profile/qr_code.dart';
 
 import '../services/blocked_user_exception.dart';
+import '../services/bannedexception.dart'; // Import BannedException
 
 class OtherUserProfilePage extends StatefulWidget {
   final int otherUserId;
@@ -62,6 +63,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   bool amFollowing = false;
   bool isBlockedBy = false;
   bool isUserBlocked = false;
+  bool isUserBanned = false; // NEW FLAG to indicate user is banned
 
   int? currentUserId;
 
@@ -154,7 +156,6 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                 backgroundColor: Colors.green,
               ),
             );
-            // After unblocking, refresh the profile to show correct posts/status
             _refreshUserProfile();
           } else {
             throw Exception("Failed to unblock user.");
@@ -265,6 +266,11 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     } on SessionExpiredException {
       print("Session expired in _loadUserProfile");
       handleSessionExpired(context);
+    } on BannedException catch (bex) {
+      print("BannedException caught in _loadUserProfile: ${bex.toString()}");
+      setState(() {
+        isUserBanned = true;
+      });
     } catch (e) {
       print("Error fetching user profile: $e");
       final errStr = e.toString();
@@ -278,6 +284,10 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
         showBlockSnackbar(context, reason);
       } else if (errStr.contains('Session expired')) {
         handleSessionExpired(context);
+      } else if (errStr.contains('Banned')) {
+        setState(() {
+          isUserBanned = true;
+        });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -322,15 +332,19 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
         isBlockedBy = e.isBlockedBy;
         isUserBlocked = e.isUserBlocked;
       });
-      print("[DEBUG] After BlockedUserException in _fetchUserPosts: isBlockedBy=$isBlockedBy, isUserBlocked=$isUserBlocked, isPrivateAccount=$isPrivateAccount");
       showBlockSnackbar(context, e.reason);
+    } on BannedException {
+      print("[DEBUG] BannedException caught in _fetchUserPosts");
+      setState(() {
+        isUserBanned = true;
+        isPaginating = false;
+      });
     } on PrivacyException catch (e) {
       print("[DEBUG] PrivacyException caught in _fetchUserPosts: message=${e.message}");
       setState(() {
         isPrivateAccount = true;
         isPaginating = false;
       });
-      print("[DEBUG] After PrivacyException in _fetchUserPosts: isBlockedBy=$isBlockedBy, isUserBlocked=$isUserBlocked, isPrivateAccount=$isPrivateAccount");
     } on SessionExpiredException {
       print("[DEBUG] SessionExpiredException caught in _fetchUserPosts");
       setState(() {
@@ -382,15 +396,19 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
         isBlockedBy = e.isBlockedBy;
         isUserBlocked = e.isUserBlocked;
       });
-      print("[DEBUG] After BlockedUserException in _fetchSharedPosts: isBlockedBy=$isBlockedBy, isUserBlocked=$isUserBlocked, isPrivateAccount=$isPrivateAccount");
       showBlockSnackbar(context, e.reason);
+    } on BannedException {
+      print("[DEBUG] BannedException caught in _fetchSharedPosts");
+      setState(() {
+        isUserBanned = true;
+        isPaginatingSharedPosts = false;
+      });
     } on PrivacyException catch (e) {
       print("[DEBUG] PrivacyException caught in _fetchSharedPosts: message=${e.message}");
       setState(() {
         isPrivateAccount = true;
         isPaginatingSharedPosts = false;
       });
-      print("[DEBUG] After PrivacyException in _fetchSharedPosts: isBlockedBy=$isBlockedBy, isUserBlocked=$isUserBlocked, isPrivateAccount=$isPrivateAccount");
     } on SessionExpiredException {
       print("[DEBUG] SessionExpiredException caught in _fetchSharedPosts");
       setState(() {
@@ -428,6 +446,11 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   }
 
   void _toggleFollow() async {
+    // If user is banned, disable follow action
+    if (isUserBanned) {
+      return; // Do nothing
+    }
+
     currentUserId ??= await _loginService.getUserId();
     if (currentUserId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -462,6 +485,10 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
         showBlockSnackbar(context, reason);
       } else if (errStr.contains('Session expired')) {
         handleSessionExpired(context);
+      } else if (errStr.contains('Banned')) {
+        setState(() {
+          isUserBanned = true;
+        });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -482,6 +509,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
       isPrivateAccount = false;
       isBlockedBy = false;
       isUserBlocked = false;
+      isUserBanned = false; // Reset banned flag on refresh
     });
 
     await _loadUserProfile();
@@ -506,9 +534,9 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
               Text(
                 "Report User",
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFF45F67)
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFF45F67)
                 ),
               ),
               Divider(color: Color(0xFFF45F67)),
@@ -640,6 +668,34 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   }
 
   Widget _buildFollowButton(double screenWidth) {
+    // If user is banned, display a grey disabled button
+    if (isUserBanned) {
+      return Center(
+        child: ElevatedButton(
+          onPressed: null, // Disabled
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey, // Greyed out color
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+            padding: EdgeInsets.symmetric(
+              horizontal: screenWidth * 0.07,
+              vertical: screenWidth * 0.025,
+            ),
+            elevation: 8,
+          ),
+          child: Text(
+            "FOLLOW",
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: screenWidth * 0.038,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      );
+    }
+
     if (isUserBlocked) {
       return Center(
         child: ElevatedButton(
@@ -975,6 +1031,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                                 isPrivateAccount: isPrivateAccount,
                                 isBlockedBy: isBlockedBy,
                                 isUserBlocked: isUserBlocked,
+                                isUserBanned: isUserBanned, // Pass banned flag
                               )
                             : SharedPostsGrid(
                                 sharedPosts: sharedPosts,
@@ -986,6 +1043,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                                 isPrivateAccount: isPrivateAccount,
                                 isBlockedBy: isBlockedBy,
                                 isUserBlocked: isUserBlocked,
+                                isUserBanned: isUserBanned, // Pass banned flag
                               ),
                   ),
                 ],
