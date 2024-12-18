@@ -15,7 +15,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   bool _obscureText = true;
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  final TextEditingController _emailOrPhoneController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
@@ -28,7 +28,7 @@ class _LoginPageState extends State<LoginPage> {
       });
 
       // Quick admin login check (optional)
-      if (_emailOrPhoneController.text.trim() == 'admin@gmail.com' &&
+      if (_emailController.text.trim() == 'admin@gmail.com' &&
           _passwordController.text.trim() == 'admin') {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => HomePage()),
@@ -42,7 +42,7 @@ class _LoginPageState extends State<LoginPage> {
       try {
         final loginService = LoginService();
         await loginService.loginUser(
-          _emailOrPhoneController.text.trim(),
+          _emailController.text.trim(),
           _passwordController.text.trim(),
         );
 
@@ -154,15 +154,15 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                                   ),
                                   child: TextFormField(
-                                    controller: _emailOrPhoneController,
+                                    controller: _emailController,
                                     decoration: const InputDecoration(
-                                      hintText: "Email or Phone number",
+                                      hintText: "Enter Your Email",
                                       hintStyle: TextStyle(color: Colors.grey),
                                       border: InputBorder.none,
                                     ),
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {
-                                        return 'Please enter your email or phone number';
+                                        return 'Please enter your email';
                                       }
                                       return null;
                                     },
