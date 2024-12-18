@@ -17,9 +17,9 @@ class LoginService {
   factory LoginService() => _instance;
   LoginService._internal();
 
-  Future<void> loginUser(String emailOrPhoneNumber, String password) async {
+  Future<void> loginUser(String email, String password) async {
     String? fcmToken = await PushNotificationService().getFcmToken();
-    String dataToSign = '$emailOrPhoneNumber:$password';
+    String dataToSign = '$email:$password';
     String signature = await _signatureService.generateHMAC(dataToSign);
 
     final response = await http.post(
@@ -29,7 +29,7 @@ class LoginService {
         'X-Signature': signature,
       },
       body: jsonEncode(<String, dynamic>{
-        'EmailOrPhoneNumber': emailOrPhoneNumber,
+        'Email': email,
         'Password': password,
         'FcmToken': fcmToken,
       }),
