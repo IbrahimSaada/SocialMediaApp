@@ -4,11 +4,11 @@ import '../services/PasswordResetService.dart';
 import 'login_page.dart';
 
 class NewpasswordPage extends StatefulWidget {
-  final String emailOrPhone;
+  final String email;
   final String verificationCode;
 
   const NewpasswordPage(
-      {super.key, required this.emailOrPhone, required this.verificationCode});
+      {super.key, required this.email, required this.verificationCode});
 
   @override
   _NewpasswordPageState createState() => _NewpasswordPageState();
@@ -25,7 +25,7 @@ class _NewpasswordPageState extends State<NewpasswordPage> {
       String newPassword = _passwordController.text.trim();
       try {
         await PasswordResetService().resetPassword(
-          widget.emailOrPhone,
+          widget.email,
           widget.verificationCode,
           newPassword,
         );

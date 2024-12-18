@@ -15,13 +15,13 @@ class ForgotpasswrodhomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
-    final TextEditingController emailOrPhoneController =
+    final TextEditingController emailController =
         TextEditingController();
     final primaryColor = Theme.of(context).colorScheme.primary;
 
     Future<void> sendResetCode() async {
       if (formKey.currentState!.validate()) {
-        String input = emailOrPhoneController.text.trim();
+        String input = emailController.text.trim();
         try {
           await PasswordResetService().requestPasswordReset(input);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -29,7 +29,7 @@ class ForgotpasswrodhomePage extends StatelessWidget {
           );
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => ForgotpasswrodverPage(emailOrPhone: input),
+              builder: (context) => ForgotpasswrodverPage(email: input),
             ),
           );
         } catch (e) {
@@ -110,21 +110,21 @@ class ForgotpasswrodhomePage extends StatelessWidget {
                                     ),
                                   ),
                                   child: TextFormField(
-                                    controller: emailOrPhoneController,
+                                    controller: emailController,
                                     decoration: const InputDecoration(
                                       hintText:
-                                          "Enter your email or phone number",
+                                          "Enter your email",
                                       hintStyle: TextStyle(color: Colors.grey),
                                       border: InputBorder.none,
                                     ),
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {
-                                        return 'Please enter your email or phone number';
+                                        return 'Please enter your email';
                                       } else if (!RegExp(r'^[^@]+@[^@]+\.[^@]+$')
                                               .hasMatch(value) &&
                                           !RegExp(r'^\+?[0-9]{10,15}$')
                                               .hasMatch(value)) {
-                                        return 'Please enter a valid email or phone number';
+                                        return 'Please enter a valid email';
                                       }
                                       return null;
                                     },

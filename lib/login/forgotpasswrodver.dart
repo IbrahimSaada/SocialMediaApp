@@ -5,12 +5,12 @@ import '../services/PasswordResetService.dart';
 
 void main() => runApp(const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: ForgotpasswrodverPage(emailOrPhone: ''),
+      home: ForgotpasswrodverPage(email: ''),
     ));
 
 class ForgotpasswrodverPage extends StatefulWidget {
-  final String emailOrPhone;
-  const ForgotpasswrodverPage({super.key, required this.emailOrPhone});
+  final String email;
+  const ForgotpasswrodverPage({super.key, required this.email});
 
   @override
   _ForgotpasswrodverPageState createState() => _ForgotpasswrodverPageState();
@@ -49,14 +49,14 @@ class _ForgotpasswrodverPageState extends State<ForgotpasswrodverPage> {
     String code = _controllers.map((controller) => controller.text).join();
     try {
       bool isValid = await PasswordResetService().verifyUser(
-        widget.emailOrPhone,
+        widget.email,
         code,
       );
       if (isValid) {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => NewpasswordPage(
-              emailOrPhone: widget.emailOrPhone,
+              email: widget.email,
               verificationCode: code,
             ),
           ),
@@ -75,7 +75,7 @@ class _ForgotpasswrodverPageState extends State<ForgotpasswrodverPage> {
 
   Future<void> _resendCode() async {
     try {
-      await PasswordResetService().requestPasswordReset(widget.emailOrPhone);
+      await PasswordResetService().requestPasswordReset(widget.email);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Verification code resent')),
       );
