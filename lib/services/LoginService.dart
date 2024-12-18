@@ -19,7 +19,7 @@ class LoginService {
 
   Future<void> loginUser(String email, String password) async {
     String? fcmToken = await PushNotificationService().getFcmToken();
-    String dataToSign = '$email:$password';
+    String dataToSign = '$email:$password:$fcmToken';
     String signature = await _signatureService.generateHMAC(dataToSign);
 
     final response = await http.post(

@@ -7,14 +7,14 @@ class PasswordResetService {
   final String baseUrl =
       '***REMOVED***/api/ResetPassword';
 
-  Future<void> requestPasswordReset(String emailOrPhoneNumber) async {
+  Future<void> requestPasswordReset(String email) async {
     final response = await http.post(
       Uri.parse('$baseUrl/request'),
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
       },
       body: jsonEncode(<String, dynamic>{
-        'emailOrPhoneNumber': emailOrPhoneNumber,
+        'email': email,
       }),
     );
 
@@ -24,14 +24,14 @@ class PasswordResetService {
   }
 
   Future<bool> verifyUser(
-      String emailOrPhoneNumber, String verificationCode) async {
+      String email, String verificationCode) async {
     final response = await http.post(
       Uri.parse('$baseUrl/verify'),
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
       },
       body: jsonEncode(<String, dynamic>{
-        'emailOrPhoneNumber': emailOrPhoneNumber,
+        'email': email,
         'verificationCode': verificationCode,
       }),
     );
@@ -43,7 +43,7 @@ class PasswordResetService {
     }
   }
 
-  Future<void> resetPassword(String emailOrPhoneNumber, String verificationCode,
+  Future<void> resetPassword(String email, String verificationCode,
       String newPassword) async {
     final response = await http.post(
       Uri.parse('$baseUrl/reset'),
@@ -51,7 +51,7 @@ class PasswordResetService {
         'Content-Type': 'application/json; charset=UTF-8',
       },
       body: jsonEncode(<String, dynamic>{
-        'emailOrPhoneNumber': emailOrPhoneNumber,
+        'email': email,
         'verificationCode': verificationCode,
         'newPassword': newPassword,
       }),
