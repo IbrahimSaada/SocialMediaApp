@@ -4,19 +4,13 @@ import 'login_page.dart';
 import 'forgotpasswordver.dart';
 import '../services/PasswordResetService.dart';
 
-void main() => runApp(const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: ForgotpasswrodhomePage(),
-    ));
-
 class ForgotpasswrodhomePage extends StatelessWidget {
   const ForgotpasswrodhomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
-    final TextEditingController emailController =
-        TextEditingController();
+    final TextEditingController emailController = TextEditingController();
     final primaryColor = Theme.of(context).colorScheme.primary;
 
     Future<void> sendResetCode() async {
@@ -33,8 +27,14 @@ class ForgotpasswrodhomePage extends StatelessWidget {
             ),
           );
         } catch (e) {
+          String errorMessage = e.toString();
+          if (errorMessage.contains('No network connection')) {
+            errorMessage = 'No network connection. Please check your internet.';
+          } else if (errorMessage.contains('Server error')) {
+            errorMessage = 'Server error occurred. Please try again later.';
+          }
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e')),
+            SnackBar(content: Text('Error: $errorMessage')),
           );
         }
       }
@@ -112,8 +112,7 @@ class ForgotpasswrodhomePage extends StatelessWidget {
                                   child: TextFormField(
                                     controller: emailController,
                                     decoration: const InputDecoration(
-                                      hintText:
-                                          "Enter your email",
+                                      hintText: "Enter your email",
                                       hintStyle: TextStyle(color: Colors.grey),
                                       border: InputBorder.none,
                                     ),
@@ -121,9 +120,7 @@ class ForgotpasswrodhomePage extends StatelessWidget {
                                       if (value == null || value.isEmpty) {
                                         return 'Please enter your email';
                                       } else if (!RegExp(r'^[^@]+@[^@]+\.[^@]+$')
-                                              .hasMatch(value) &&
-                                          !RegExp(r'^\+?[0-9]{10,15}$')
-                                              .hasMatch(value)) {
+                                          .hasMatch(value)) {
                                         return 'Please enter a valid email';
                                       }
                                       return null;

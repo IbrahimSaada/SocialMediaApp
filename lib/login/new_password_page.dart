@@ -36,8 +36,14 @@ class _NewpasswordPageState extends State<NewpasswordPage> {
           MaterialPageRoute(builder: (context) => const LoginPage()),
         );
       } catch (e) {
+        String errorMessage = e.toString();
+        if (errorMessage.contains('No network connection')) {
+          errorMessage = 'No network connection. Please check your internet.';
+        } else if (errorMessage.contains('Server error')) {
+          errorMessage = 'Server error occurred. Please try again later.';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text('Error: $errorMessage')),
         );
       }
     }
