@@ -1,13 +1,14 @@
 // services/feed_service.dart
 
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'apiService.dart';
 import '../models/feed/feed_item.dart';
 import '../models/feed/post_item.dart';
 import '../models/feed/repost_item.dart';
 
 class FeedService {
-  static const String baseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api';
+  static const String baseUrl = 'https://3687-185-97-92-30.ngrok-free.app/api';
+  final ApiService _apiService = ApiService();
 
   Future<List<FeedItem>> fetchFeed({
     required int userId,
@@ -15,25 +16,30 @@ class FeedService {
     required int pageSize,
   }) async {
     try {
-      final response = await http.get(
-        Uri.parse(
-          '$baseUrl/feed?userId=$userId&pageNumber=$pageNumber&pageSize=$pageSize',
-        ),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      // Construct the URI
+      final Uri uri = Uri.parse(
+        '$baseUrl/feed?userId=$userId&pageNumber=$pageNumber&pageSize=$pageSize',
       );
 
+      // Prepare the data to sign
+      final String signatureData = '$userId:$pageNumber:$pageSize';
+
+      // Use ApiService to make the request
+      final response = await _apiService.makeRequestWithToken(
+        uri,
+        signatureData,
+        'GET',
+      );
+
+      // Handle the response
       if (response.statusCode == 200) {
         try {
           List<dynamic> feedJson = jsonDecode(response.body);
           List<FeedItem> feedItems = feedJson.map((json) {
             String type = json['type'] ?? '';
             if (type == 'post') {
-              print('Response body: ${response.body}');
               return PostItem.fromJson(json);
             } else if (type == 'repost') {
-              print('Response body: ${response.body}');
               return RepostItem.fromJson(json);
             } else {
               throw Exception('Unknown feed item type: $type');
@@ -42,7 +48,6 @@ class FeedService {
           return feedItems;
         } catch (e) {
           print('Error parsing JSON: $e');
-          print('Response body: ${response.body}');
           throw Exception('Failed to parse feed data');
         }
       } else {

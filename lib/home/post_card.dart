@@ -18,6 +18,7 @@ import 'package:cook/models/LikeRequest_model.dart';
 import 'package:cook/models/bookmarkrequest_model.dart';
 import '../models/user_like.dart';
 import '../home/post_bottom_likes_sheet.dart';
+import '../services/SessionExpiredException.dart';
 import 'full_screen_image_page.dart';
 
 void showBlockSnackbar(BuildContext context, String reason) {
@@ -162,50 +163,47 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     );
   }
 
-  Future<void> _handleLike() async {
-    final userId = await LoginService().getUserId();
+Future<void> _handleLike() async {
+  final userId = await LoginService().getUserId();
 
-    if (userId == null) {
-      return;
+  if (userId == null) {
+    return;
+  }
+
+  try {
+    if (_isLiked) {
+      await PostService.unlikePost(
+        LikeRequest(userId: userId, postId: widget.postInfo.postId),
+      );
+      setState(() {
+        _isLiked = false;
+        widget.postInfo.likeCount -= 1;
+      });
+    } else {
+      await PostService.likePost(
+        LikeRequest(userId: userId, postId: widget.postInfo.postId),
+      );
+      setState(() {
+        _isLiked = true;
+        widget.postInfo.likeCount += 1;
+      });
     }
-
-    try {
-      if (_isLiked) {
-        await PostService.unlikePost(
-          LikeRequest(userId: userId, postId: widget.postInfo.postId),
-        );
-        setState(() {
-          _isLiked = false;
-          widget.postInfo.likeCount -= 1;
-        });
-      } else {
-        await PostService.likePost(
-          LikeRequest(userId: userId, postId: widget.postInfo.postId),
-        );
-        setState(() {
-          _isLiked = true;
-          widget.postInfo.likeCount += 1;
-        });
-      }
-    } catch (e) {
-      final errStr = e.toString();
-      if (errStr.contains('Session expired')) {
-        if (context.mounted) {
-          handleSessionExpired(context);
-        }
-      } else if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
-        String reason;
-        if (errStr.startsWith('Exception: BLOCKED:')) {
-          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
-        } else {
-          reason = errStr;
-        }
-        showBlockSnackbar(context, reason);
-      } else {
-        print('Failed to like/unlike post: $e');
-      }
+  } on SessionExpiredException {
+    if (context.mounted) {
+      handleSessionExpired(context);
+    }
+  } catch (e) {
+    final errStr = e.toString();
+    if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+      String reason = errStr.startsWith('Exception: BLOCKED:')
+          ? errStr.replaceFirst('Exception: BLOCKED:', '')
+          : errStr;
+      showBlockSnackbar(context, reason);
+    } else {
+      print('Failed to like/unlike post: $e');
     }
   }
+}
 
   void _showShareBottomSheet(BuildContext context) {
     showModalBottomSheet(
