@@ -95,55 +95,55 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     _currentUserId = await LoginService().getUserId();
   }
 
-  Future<void> _toggleBookmark() async {
-    try {
-      bool isLoggedIn = await LoginService().isLoggedIn();
+// _toggleBookmark
+Future<void> _toggleBookmark() async {
+  try {
+    bool isLoggedIn = await LoginService().isLoggedIn();
 
-      if (!isLoggedIn) {
-        throw Exception('Session expired');
-      }
+    if (!isLoggedIn) {
+      // If session isn't valid, explicitly handle as expired
+      throw SessionExpiredException();
+    }
 
-      final userId = await LoginService().getUserId();
-      if (userId == null) {
-        throw Exception('User ID not found');
-      }
+    final userId = await LoginService().getUserId();
+    if (userId == null) {
+      // If userId isn't found, treat as session issue
+      throw SessionExpiredException();
+    }
 
-      await _animationController.forward();
+    await _animationController.forward();
 
-      if (_isBookmarked) {
-        await PostService.unbookmarkPost(
-          BookmarkRequest(userId: userId, postId: widget.postInfo.postId),
-        );
-        await _animationController.reverse();
-      } else {
-        await PostService.bookmarkPost(
-          BookmarkRequest(userId: userId, postId: widget.postInfo.postId),
-        );
-      }
+    if (_isBookmarked) {
+      await PostService.unbookmarkPost(
+        BookmarkRequest(userId: userId, postId: widget.postInfo.postId),
+      );
+      await _animationController.reverse();
+    } else {
+      await PostService.bookmarkPost(
+        BookmarkRequest(userId: userId, postId: widget.postInfo.postId),
+      );
+    }
 
-      setState(() {
-        _isBookmarked = !_isBookmarked;
-      });
-    } catch (e) {
-      final errStr = e.toString();
-      if (errStr.contains('Session expired')) {
-        if (context.mounted) {
-          handleSessionExpired(context);
-        }
-      } else if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
-        // Extract reason
-        String reason;
-        if (errStr.startsWith('Exception: BLOCKED:')) {
-          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
-        } else {
-          reason = errStr;
-        }
-        showBlockSnackbar(context, reason);
-      } else {
-        print('Failed to bookmark/unbookmark post: $e');
-      }
+    setState(() {
+      _isBookmarked = !_isBookmarked;
+    });
+  } on SessionExpiredException {
+    if (context.mounted) {
+      handleSessionExpired(context);
+    }
+  } catch (e) {
+    final errStr = e.toString();
+    if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+      // Extract reason
+      String reason = errStr.startsWith('Exception: BLOCKED:')
+          ? errStr.replaceFirst('Exception: BLOCKED:', '')
+          : errStr;
+      showBlockSnackbar(context, reason);
+    } else {
+      print('Failed to bookmark/unbookmark post: $e');
     }
   }
+}
 
   void _toggleExpansion() {
     setState(() {
@@ -215,40 +215,38 @@ Future<void> _handleLike() async {
     );
   }
 
-  Future<void> _showLikesBottomSheet() async {
-    try {
-      List<UserLike> likes = await PostService.fetchPostLikes(widget.postInfo.postId);
-      if (context.mounted) {
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          builder: (BuildContext context) {
-            return PostLikesBottomSheet(
-              postId: widget.postInfo.postId,
-              initialLikes: likes,
-            );
-          },
-        );
-      }
-    } catch (e) {
-      final errStr = e.toString();
-      if (errStr.contains('Session expired')) {
-        if (context.mounted) {
-          handleSessionExpired(context);
-        }
-      } else if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
-        String reason;
-        if (errStr.startsWith('Exception: BLOCKED:')) {
-          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
-        } else {
-          reason = errStr;
-        }
-        showBlockSnackbar(context, reason);
-      } else {
-        print('Failed to fetch post likes: $e');
-      }
+ // _showLikesBottomSheet
+Future<void> _showLikesBottomSheet() async {
+  try {
+    List<UserLike> likes = await PostService.fetchPostLikes(widget.postInfo.postId);
+    if (context.mounted) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        builder: (BuildContext context) {
+          return PostLikesBottomSheet(
+            postId: widget.postInfo.postId,
+            initialLikes: likes,
+          );
+        },
+      );
+    }
+  } on SessionExpiredException {
+    if (context.mounted) {
+      handleSessionExpired(context);
+    }
+  } catch (e) {
+    final errStr = e.toString();
+    if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+      String reason = errStr.startsWith('Exception: BLOCKED:')
+          ? errStr.replaceFirst('Exception: BLOCKED:', '')
+          : errStr;
+      showBlockSnackbar(context, reason);
+    } else {
+      print('Failed to fetch post likes: $e');
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {

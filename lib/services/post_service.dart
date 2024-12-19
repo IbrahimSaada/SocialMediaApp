@@ -12,7 +12,7 @@ import '../models/bookmarkrequest_model.dart';
 import 'apiService.dart';
 
 class PostService {
-  static const String apiUrl = 'https://3687-185-97-92-30.ngrok-free.app/api/Posts';
+  static const String apiUrl = '***REMOVED***/api/Posts';
   static final LoginService _loginService = LoginService(); 
   static final SignatureService _signatureService = SignatureService();
 
@@ -83,176 +83,92 @@ static Future<void> unlikePost(LikeRequest likeRequest) async {
   }
 }
 
-  // Bookmark post
-  static Future<void> bookmarkPost(BookmarkRequest bookmarkRequest) async {
-    try {
-      String? token = await _loginService.getToken();
-      String dataToSign = '${bookmarkRequest.userId}:${bookmarkRequest.postId}';
-      String signature = await _signatureService.generateHMAC(dataToSign);
+// Bookmark post
+static Future<void> bookmarkPost(BookmarkRequest bookmarkRequest) async {
+  final Uri url = Uri.parse('$apiUrl/Bookmark');
+  final String signatureData = '${bookmarkRequest.userId}:${bookmarkRequest.postId}';
 
-      final response = await http.post(
-        Uri.parse('$apiUrl/Bookmark'),
-        headers: {
-          'Content-Type': 'application/json; charset=UTF-8',
-          'Authorization': 'Bearer $token',
-          'X-Signature': signature,
-        },
-        body: jsonEncode(bookmarkRequest.toJson()),
-      );
+  try {
+    final response = await ApiService().makeRequestWithToken(
+      url,
+      signatureData,
+      'POST',
+      body: bookmarkRequest.toJson(),
+    );
 
-      if (response.statusCode == 403) {
-        final reason = response.body;
-        throw Exception('BLOCKED:$reason');
-      }
-
-      if (response.statusCode == 401) {
-        await _loginService.refreshAccessToken();
-        token = await _loginService.getToken();
-
-        final retryResponse = await http.post(
-          Uri.parse('$apiUrl/Bookmark'),
-          headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            'Authorization': 'Bearer $token',
-            'X-Signature': signature,
-          },
-          body: jsonEncode(bookmarkRequest.toJson()),
-        );
-
-        if (retryResponse.statusCode == 403) {
-          final reason = retryResponse.body;
-          throw Exception('BLOCKED:$reason');
-        }
-
-        if (retryResponse.statusCode != 200) {
-          throw Exception('Failed to bookmark post after token refresh.');
-        }
-      } else if (response.statusCode != 200) {
-        throw Exception('Failed to bookmark post.');
-      }
-    } catch (e) {
-      print("Error in bookmarkPost: $e");
-      rethrow;
+    if (response.statusCode == 403) {
+      final reason = response.body;
+      throw Exception('BLOCKED:$reason');
     }
-  }
 
-  // Unbookmark post
-  static Future<void> unbookmarkPost(BookmarkRequest bookmarkRequest) async {
-    try {
-      String? token = await _loginService.getToken();
-      String dataToSign = '${bookmarkRequest.userId}:${bookmarkRequest.postId}';
-      String signature = await _signatureService.generateHMAC(dataToSign);
-
-      final response = await http.post(
-        Uri.parse('$apiUrl/Unbookmark'),
-        headers: {
-          'Content-Type': 'application/json; charset=UTF-8',
-          'Authorization': 'Bearer $token',
-          'X-Signature': signature,
-        },
-        body: jsonEncode(bookmarkRequest.toJson()),
-      );
-
-      if (response.statusCode == 403) {
-        final reason = response.body;
-        throw Exception('BLOCKED:$reason');
-      }
-
-      if (response.statusCode == 401) {
-        await _loginService.refreshAccessToken();
-        token = await _loginService.getToken();
-
-        final retryResponse = await http.post(
-          Uri.parse('$apiUrl/Unbookmark'),
-          headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            'Authorization': 'Bearer $token',
-            'X-Signature': signature,
-          },
-          body: jsonEncode(bookmarkRequest.toJson()),
-        );
-
-        if (retryResponse.statusCode == 403) {
-          final reason = retryResponse.body;
-          throw Exception('BLOCKED:$reason');
-        }
-
-        if (retryResponse.statusCode != 200) {
-          throw Exception('Failed to unbookmark post after token refresh.');
-        }
-      } else if (response.statusCode != 200) {
-        throw Exception('Failed to unbookmark post.');
-      }
-    } catch (e) {
-      print("Error in unbookmarkPost: $e");
-      rethrow;
+    if (response.statusCode != 200) {
+      throw Exception('Failed to bookmark post.');
     }
+  } on SessionExpiredException {
+    rethrow;
+  } catch (e) {
+    print("Error in bookmarkPost: $e");
+    rethrow;
   }
+}
 
-  // Fetch post likes
-  static Future<List<UserLike>> fetchPostLikes(int postId) async {
-    try {
-      if (!await _loginService.isLoggedIn()) {
-        throw Exception("User not logged in.");
-      }
+// Unbookmark post
+static Future<void> unbookmarkPost(BookmarkRequest bookmarkRequest) async {
+  final Uri url = Uri.parse('$apiUrl/Unbookmark');
+  final String signatureData = '${bookmarkRequest.userId}:${bookmarkRequest.postId}';
 
-      String? token = await _loginService.getToken();
-      String dataToSign = '$postId';
-      String signature = await _signatureService.generateHMAC(dataToSign);
+  try {
+    final response = await ApiService().makeRequestWithToken(
+      url,
+      signatureData,
+      'POST',
+      body: bookmarkRequest.toJson(),
+    );
 
-      final response = await http.get(
-        Uri.parse('$apiUrl/$postId/Likes'),
-        headers: {
-          'Content-Type': 'application/json; charset=UTF-8',
-          'Authorization': 'Bearer $token',
-          'X-Signature': signature,
-        },
-      );
-
-      if (response.statusCode == 403) {
-        final reason = response.body;
-        throw Exception('BLOCKED:$reason');
-      }
-
-      if (response.statusCode == 401) {
-        print('JWT token is invalid or expired. Attempting to refresh token.');
-        await _loginService.refreshAccessToken();
-        token = await _loginService.getToken();
-        print('Token refreshed successfully.');
-
-        final retryResponse = await http.get(
-          Uri.parse('$apiUrl/$postId/Likes'),
-          headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            'Authorization': 'Bearer $token',
-            'X-Signature': signature,
-          },
-        );
-
-        if (retryResponse.statusCode == 403) {
-          final reason = retryResponse.body;
-          throw Exception('BLOCKED:$reason');
-        }
-
-        if (retryResponse.statusCode == 401) {
-          throw Exception('Session expired or refresh token invalid.');
-        } else if (retryResponse.statusCode == 200) {
-          List<dynamic> data = json.decode(retryResponse.body);
-          return data.map((json) => UserLike.fromJson(json)).toList();
-        } else {
-          throw Exception('Failed to load post likes after token refresh.');
-        }
-      }
-
-      if (response.statusCode == 200) {
-        List<dynamic> data = json.decode(response.body);
-        return data.map((json) => UserLike.fromJson(json)).toList();
-      } else {
-        throw Exception('Failed to load post likes.');
-      }
-    } catch (e) {
-      print("Error in fetchPostLikes: $e");
-      rethrow;
+    if (response.statusCode == 403) {
+      final reason = response.body;
+      throw Exception('BLOCKED:$reason');
     }
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to unbookmark post.');
+    }
+  } on SessionExpiredException {
+    rethrow;
+  } catch (e) {
+    print("Error in unbookmarkPost: $e");
+    rethrow;
   }
+}
+
+// Fetch post likes
+static Future<List<UserLike>> fetchPostLikes(int postId) async {
+  final Uri url = Uri.parse('$apiUrl/$postId/Likes');
+  final String signatureData = '$postId';
+
+  try {
+    final response = await ApiService().makeRequestWithToken(
+      url,
+      signatureData,
+      'GET',
+    );
+
+    if (response.statusCode == 403) {
+      final reason = response.body;
+      throw Exception('BLOCKED:$reason');
+    }
+
+    if (response.statusCode == 200) {
+      List<dynamic> data = json.decode(response.body);
+      return data.map((json) => UserLike.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load post likes.');
+    }
+  } on SessionExpiredException {
+    rethrow;
+  } catch (e) {
+    print("Error in fetchPostLikes: $e");
+    rethrow;
+  }
+}
 }
