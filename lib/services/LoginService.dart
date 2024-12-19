@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
-import 'SignatureService.dart';  
+import 'SignatureService.dart';
 import 'SessionExpiredException.dart';
 import 'pushnotificationservice.dart';
 import 'BannedException.dart';
 
 class LoginService {
   final String baseUrl =
-      'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api';
+      'https://3687-185-97-92-30.ngrok-free.app/api';
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   final SignatureService _signatureService = SignatureService();
 
@@ -45,13 +45,21 @@ class LoginService {
         throw BannedException(banReason, banExpiresAt);
       }
 
+      // Check if user is verified
+      if (data['isVerified'] == false) {
+        // User is not verified, throw an exception
+        throw Exception(data['message'] ??
+            'Account not verified. Please verify your account to proceed.');
+      }
+
       var token = data['token'];
       var refreshToken = data['refreshToken'];
       var userId = data['userId'];
       var fullname = data['fullname'];
       var profilePic = data['profilePic'];
       var expiration = DateTime.now().add(const Duration(minutes: 2));
-      await _storeTokenAndUserId(token, refreshToken, userId, expiration, profilePic);
+      await _storeTokenAndUserId(
+          token, refreshToken, userId, expiration, profilePic);
       await _secureStorage.write(key: 'fullname', value: fullname);
     } else if (response.statusCode == 401) {
       // Check if body indicates ban
@@ -107,7 +115,7 @@ class LoginService {
       }
     } catch (e) {
       print('Error in refreshAccessToken: $e');
-      rethrow; 
+      rethrow;
     }
   }
 

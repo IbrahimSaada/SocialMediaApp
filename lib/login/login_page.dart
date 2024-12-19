@@ -4,7 +4,8 @@ import 'package:cook/home/home.dart';
 import 'package:cook/login/forgotpassword.dart';
 import '../login/register.dart';
 import '../services/LoginService.dart';
-import '../services/BannedException.dart'; // Import BannedException
+import '../services/BannedException.dart';
+import 'verification_page.dart'; // Import the verification page to navigate if not verified
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -46,7 +47,7 @@ class _LoginPageState extends State<LoginPage> {
           _passwordController.text.trim(),
         );
 
-        // If successful and not banned
+        // If successful and user is verified
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => HomePage()),
         );
@@ -61,11 +62,25 @@ class _LoginPageState extends State<LoginPage> {
           ),
         );
       } catch (e) {
-        setState(() {
-          _errorMessage = e.toString().contains("Unauthorized")
-              ? "The password you’ve entered is incorrect"
-              : "Login failed. ${e.toString()}";
-        });
+        // Check if the exception message indicates not verified
+        if (e.toString().contains('Account not verified')) {
+          // Show a message (optional)
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString())),
+          );
+          // Navigate to verification page
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => VerificationPage(email: _emailController.text.trim()),
+            ),
+          );
+        } else {
+          setState(() {
+            _errorMessage = e.toString().contains("Unauthorized")
+                ? "The password you’ve entered is incorrect"
+                : "Login failed. ${e.toString()}";
+          });
+        }
       } finally {
         setState(() {
           _isLoading = false;
@@ -326,15 +341,12 @@ class BannedScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Icon at the top
                 const Icon(
                   Icons.block,
                   color: Colors.red,
                   size: 60,
                 ),
                 const SizedBox(height: 16),
-                
-                // Banned Text
                 const Text(
                   'Account Banned',
                   style: TextStyle(
@@ -344,8 +356,6 @@ class BannedScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                
-                // Ban Reason
                 Text(
                   'Reason: $banReason',
                   style: const TextStyle(
@@ -355,8 +365,6 @@ class BannedScreen extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
-                
-                // Ban Expiry Date
                 Text(
                   'Ban Expires At: $banExpiresAt',
                   style: const TextStyle(
@@ -370,7 +378,6 @@ class BannedScreen extends StatelessWidget {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      // Replace this with your logout logic
                       Navigator.pushReplacementNamed(context, '/login');
                     },
                     icon: const Icon(Icons.logout, color: Colors.white, size: 24),
@@ -385,19 +392,19 @@ class BannedScreen extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       backgroundColor: Colors.redAccent,
-                      foregroundColor: Colors.white, // Text/Icon color
+                      foregroundColor: Colors.white, 
                       shadowColor: Colors.black45,
                       elevation: 6,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30), // Rounded edges
+                        borderRadius: BorderRadius.circular(30),
                       ),
                     ).copyWith(
                       backgroundColor: WidgetStateProperty.resolveWith<Color>(
                         (states) {
                           if (states.contains(WidgetState.pressed)) {
-                            return Colors.deepOrange; // Change color on press
+                            return Colors.deepOrange;
                           }
-                          return Colors.redAccent; // Default color
+                          return Colors.redAccent;
                         },
                       ),
                     ),

@@ -5,7 +5,7 @@ import 'dart:convert';
 
 class UserVerificationService {
   final String baseUrl =
-      'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Registration';
+      'https://3687-185-97-92-30.ngrok-free.app/api/Registration';
 
   Future<bool> verifyUser(String email, String verificationCode) async {
     final response = await http.post(
