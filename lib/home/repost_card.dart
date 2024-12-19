@@ -15,6 +15,7 @@ import '***REMOVED***/models/bookmarkrequest_model.dart';
 import '***REMOVED***/services/post_service.dart';
 import '***REMOVED***/profile/otheruserprofilepage.dart';
 import '***REMOVED***/profile/profile_page.dart';
+import '../services/SessionExpiredException.dart';
 import 'full_screen_image_page.dart';
 
 void showBlockSnackbar(BuildContext context, String reason) {
@@ -91,46 +92,49 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
     );
   }
 
-  Future<void> _handleLike() async {
-    final userId = await LoginService().getUserId();
+Future<void> _handleLike() async {
+  final userId = await LoginService().getUserId();
 
-    if (userId == null) {
-      return;
+  if (userId == null) {
+    return;
+  }
+
+  final postId = widget.feedItem.post.postId;
+
+  try {
+    if (_isLiked) {
+      await PostService.unlikePost(
+        LikeRequest(userId: userId, postId: postId),
+      );
+      setState(() {
+        _isLiked = false;
+        _likeCount -= 1;
+      });
+    } else {
+      await PostService.likePost(
+        LikeRequest(userId: userId, postId: postId),
+      );
+      setState(() {
+        _isLiked = true;
+        _likeCount += 1;
+      });
     }
-
-    final postId = widget.feedItem.post.postId;
-
-    try {
-      if (_isLiked) {
-        await PostService.unlikePost(
-          LikeRequest(userId: userId, postId: postId),
-        );
-        setState(() {
-          _isLiked = false;
-          _likeCount -= 1;
-        });
-      } else {
-        await PostService.likePost(
-          LikeRequest(userId: userId, postId: postId),
-        );
-        setState(() {
-          _isLiked = true;
-          _likeCount += 1;
-        });
-      }
-    } catch (e) {
-      if (e.toString().contains('Session expired')) {
-        if (context.mounted) {
-          handleSessionExpired(context);
-        }
-      } else if (e.toString().startsWith('Exception: BLOCKED:')) {
-        String reason = e.toString().replaceFirst('Exception: BLOCKED:', '');
-        showBlockSnackbar(context, reason);
-      } else {
-        print('Failed to like/unlike post: $e');
-      }
+  } on SessionExpiredException {
+    if (context.mounted) {
+      handleSessionExpired(context);
+    }
+  } catch (e) {
+    final errStr = e.toString();
+    if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+      String reason = errStr.startsWith('Exception: BLOCKED:')
+          ? errStr.replaceFirst('Exception: BLOCKED:', '')
+          : errStr;
+      showBlockSnackbar(context, reason);
+    } else {
+      print('Failed to like/unlike post: $e');
     }
   }
+}
 
   Future<void> _handleBookmark() async {
     final userId = await LoginService().getUserId();
