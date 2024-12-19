@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'SignatureService.dart';
@@ -22,56 +23,60 @@ class LoginService {
     String dataToSign = '$email:$password:$fcmToken';
     String signature = await _signatureService.generateHMAC(dataToSign);
 
-    final response = await http.post(
-      Uri.parse('$baseUrl/Login'),
-      headers: <String, String>{
-        'Content-Type': 'application/json; charset=UTF-8',
-        'X-Signature': signature,
-      },
-      body: jsonEncode(<String, dynamic>{
-        'Email': email,
-        'Password': password,
-        'FcmToken': fcmToken,
-      }),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/Login'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+          'X-Signature': signature,
+        },
+        body: jsonEncode(<String, dynamic>{
+          'Email': email,
+          'Password': password,
+          'FcmToken': fcmToken,
+        }),
+      );
 
-    if (response.statusCode == 200) {
-      var data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        var data = jsonDecode(response.body);
 
-      // Check if user is banned
-      if (data['isBanned'] == true) {
-        final banReason = data['banReason'] ?? 'Violation of the rules.';
-        final banExpiresAt = data['banExpiresAt'] ?? 'N/A';
-        throw BannedException(banReason, banExpiresAt);
-      }
+        // Check if user is banned
+        if (data['isBanned'] == true) {
+          final banReason = data['banReason'] ?? 'Violation of the rules.';
+          final banExpiresAt = data['banExpiresAt'] ?? 'N/A';
+          throw BannedException(banReason, banExpiresAt);
+        }
 
-      // Check if user is verified
-      if (data['isVerified'] == false) {
-        // User is not verified, throw an exception
-        throw Exception(data['message'] ??
-            'Account not verified. Please verify your account to proceed.');
-      }
+        // Check if user is verified
+        if (data['isVerified'] == false) {
+          throw Exception(data['message'] ??
+              'Account not verified. Please verify your account to proceed.');
+        }
 
-      var token = data['token'];
-      var refreshToken = data['refreshToken'];
-      var userId = data['userId'];
-      var fullname = data['fullname'];
-      var profilePic = data['profilePic'];
-      var expiration = DateTime.now().add(const Duration(minutes: 2));
-      await _storeTokenAndUserId(
-          token, refreshToken, userId, expiration, profilePic);
-      await _secureStorage.write(key: 'fullname', value: fullname);
-    } else if (response.statusCode == 401) {
-      // Check if body indicates ban
-      final responseBody = response.body.toLowerCase();
-      if (responseBody.contains('banned')) {
-        // When 401 indicates a ban, no expiry given, so use 'N/A'
-        throw BannedException('You have been banned', 'N/A');
+        var token = data['token'];
+        var refreshToken = data['refreshToken'];
+        var userId = data['userId'];
+        var fullname = data['fullname'];
+        var profilePic = data['profilePic'];
+        var expiration = DateTime.now().add(const Duration(minutes: 2));
+        await _storeTokenAndUserId(
+            token, refreshToken, userId, expiration, profilePic);
+        await _secureStorage.write(key: 'fullname', value: fullname);
+      } else if (response.statusCode == 401) {
+        // Check if body indicates ban
+        final responseBody = response.body.toLowerCase();
+        if (responseBody.contains('banned')) {
+          throw BannedException('You have been banned', 'N/A');
+        } else {
+          throw Exception('Unauthorized: ${response.body}');
+        }
+      } else if (response.statusCode == 500) {
+        throw Exception('Server error (500). Please try again later.');
       } else {
-        throw Exception('Unauthorized: ${response.body}');
+        throw Exception('Failed to login: ${response.body}');
       }
-    } else {
-      throw Exception('Failed to login: ${response.body}');
+    } on SocketException {
+      throw Exception('No network connection. Please check your internet.');
     }
   }
 
@@ -106,16 +111,15 @@ class LoginService {
           throw Exception('User ID not found');
         }
       } else if (response.statusCode == 401) {
-        print('Refresh token is invalid or expired.');
         await logout();
         throw SessionExpiredException();
+      } else if (response.statusCode == 500) {
+        throw Exception('Server error (500). Please try again later.');
       } else {
-        print('Failed to refresh token. Status code: ${response.statusCode}');
         throw Exception('Failed to refresh token: ${response.body}');
       }
-    } catch (e) {
-      print('Error in refreshAccessToken: $e');
-      rethrow;
+    } on SocketException {
+      throw Exception('No network connection. Please check your internet.');
     }
   }
 
@@ -127,24 +131,29 @@ class LoginService {
     if (refreshToken != null && userId != null) {
       String dataToSign = '$userId:$refreshToken';
       String signature = await _signatureService.generateHMAC(dataToSign);
+      try {
+        final response = await http.post(
+          Uri.parse(logoutUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Signature': signature,
+          },
+          body: jsonEncode({
+            'UserId': userId,
+            'RefreshToken': refreshToken,
+          }),
+        );
 
-      final response = await http.post(
-        Uri.parse(logoutUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Signature': signature,
-        },
-        body: jsonEncode({
-          'UserId': userId,
-          'RefreshToken': refreshToken,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        await _secureStorage.deleteAll();
-        print('Logged out successfully.');
-      } else {
-        print('Failed to log out: ${response.body}');
+        if (response.statusCode == 200) {
+          await _secureStorage.deleteAll();
+          print('Logged out successfully.');
+        } else if (response.statusCode == 500) {
+          throw Exception('Server error (500). Please try again later.');
+        } else {
+          print('Failed to log out: ${response.body}');
+        }
+      } on SocketException {
+        throw Exception('No network connection. Please check your internet.');
       }
     } else {
       print('No refresh token found or user ID is null.');
@@ -183,10 +192,7 @@ class LoginService {
 
   Future<String> getFullname() async {
     String? fullname = await _secureStorage.read(key: 'fullname');
-    if (fullname != null) {
-      return fullname;
-    }
-    return "User";
+    return fullname ?? "User";
   }
 
   Future<DateTime?> getTokenExpiration() async {
@@ -227,22 +233,28 @@ class LoginService {
     String dataToSign = newToken;
     String signature = await _signatureService.generateHMAC(dataToSign);
 
-    final response = await http.put(
-      Uri.parse('$baseUrl/Login/UpdateFcmToken/$userId'),
-      headers: <String, String>{
-        'Content-Type': 'application/json; charset=UTF-8',
-        'Authorization': 'Bearer $token',
-        'X-Signature': signature,
-      },
-      body: jsonEncode(<String, dynamic>{
-        'FcmToken': newToken,
-      }),
-    );
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/Login/UpdateFcmToken/$userId'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+          'Authorization': 'Bearer $token',
+          'X-Signature': signature,
+        },
+        body: jsonEncode(<String, dynamic>{
+          'FcmToken': newToken,
+        }),
+      );
 
-    if (response.statusCode == 200) {
-      print('FCM token updated on the backend.');
-    } else {
-      print('Failed to update FCM token: ${response.body}');
+      if (response.statusCode == 200) {
+        print('FCM token updated on the backend.');
+      } else if (response.statusCode == 500) {
+        throw Exception('Server error (500). Please try again later.');
+      } else {
+        throw Exception('Failed to update FCM token: ${response.body}');
+      }
+    } on SocketException {
+      throw Exception('No network connection. Please check your internet.');
     }
   }
 }

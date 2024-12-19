@@ -5,7 +5,7 @@ import '***REMOVED***/login/forgotpassword.dart';
 import '../login/register.dart';
 import '../services/LoginService.dart';
 import '../services/BannedException.dart';
-import 'verification_page.dart'; // Import the verification page to navigate if not verified
+import 'verification_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -52,7 +52,6 @@ class _LoginPageState extends State<LoginPage> {
           MaterialPageRoute(builder: (context) => HomePage()),
         );
       } on BannedException catch (bex) {
-        // Navigate to BannedScreen
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => BannedScreen(
@@ -62,25 +61,36 @@ class _LoginPageState extends State<LoginPage> {
           ),
         );
       } catch (e) {
-        // Check if the exception message indicates not verified
-        if (e.toString().contains('Account not verified')) {
-          // Show a message (optional)
+        String errorMessage = e.toString();
+        if (errorMessage.contains('No network connection')) {
+          errorMessage = 'No network connection. Please check your internet.';
+        } else if (errorMessage.contains('Server error')) {
+          errorMessage = 'Server error occurred. Please try again later.';
+        } else if (errorMessage.contains('Account not verified')) {
+          // Navigate to verification page if not verified
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.toString())),
+            SnackBar(content: Text(errorMessage)),
           );
-          // Navigate to verification page
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (context) => VerificationPage(email: _emailController.text.trim()),
+              builder: (context) => VerificationPage(
+                email: _emailController.text.trim(),
+              ),
             ),
           );
-        } else {
           setState(() {
-            _errorMessage = e.toString().contains("Unauthorized")
-                ? "The password you’ve entered is incorrect"
-                : "Login failed. ${e.toString()}";
+            _isLoading = false;
           });
+          return;
+        } else if (errorMessage.contains("Unauthorized")) {
+          errorMessage = "The password you’ve entered is incorrect";
+        } else {
+          errorMessage = "Login failed. $errorMessage";
         }
+
+        setState(() {
+          _errorMessage = errorMessage;
+        });
       } finally {
         setState(() {
           _isLoading = false;
@@ -306,7 +316,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-// BannedScreen widget to show ban info
+// BannedScreen widget remains unchanged (no network/500 error is handled before)
 class BannedScreen extends StatelessWidget {
   final String banReason;
   final String banExpiresAt;
@@ -320,7 +330,7 @@ class BannedScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF45F67), // Main background
+      backgroundColor: const Color(0xFFF45F67),
       body: SafeArea(
         child: Center(
           child: Container(
@@ -339,7 +349,6 @@ class BannedScreen extends StatelessWidget {
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const Icon(
                   Icons.block,
@@ -392,7 +401,7 @@ class BannedScreen extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       backgroundColor: Colors.redAccent,
-                      foregroundColor: Colors.white, 
+                      foregroundColor: Colors.white,
                       shadowColor: Colors.black45,
                       elevation: 6,
                       shape: RoundedRectangleBorder(

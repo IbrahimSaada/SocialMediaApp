@@ -3,11 +3,6 @@ import 'package:flutter/material.dart';
 import 'new_password_page.dart';
 import '../services/PasswordResetService.dart';
 
-void main() => runApp(const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: ForgotpasswrodverPage(email: ''),
-    ));
-
 class ForgotpasswrodverPage extends StatefulWidget {
   final String email;
   const ForgotpasswrodverPage({super.key, required this.email});
@@ -67,8 +62,14 @@ class _ForgotpasswrodverPageState extends State<ForgotpasswrodverPage> {
         );
       }
     } catch (e) {
+      String errorMessage = e.toString();
+      if (errorMessage.contains('No network connection')) {
+        errorMessage = 'No network connection. Please check your internet.';
+      } else if (errorMessage.contains('Server error')) {
+        errorMessage = 'Server error occurred. Please try again later.';
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(content: Text('Error: $errorMessage')),
       );
     }
   }
@@ -80,8 +81,14 @@ class _ForgotpasswrodverPageState extends State<ForgotpasswrodverPage> {
         const SnackBar(content: Text('Verification code resent')),
       );
     } catch (e) {
+      String errorMessage = e.toString();
+      if (errorMessage.contains('No network connection')) {
+        errorMessage = 'No network connection. Please check your internet.';
+      } else if (errorMessage.contains('Server error')) {
+        errorMessage = 'Server error occurred. Please try again later.';
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(content: Text('Error: $errorMessage')),
       );
     }
   }
