@@ -1,20 +1,14 @@
 // ignore_for_file: avoid_print
 
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../models/post_model.dart';
 import '../models/LikeRequest_model.dart';
 import '../models/user_like.dart';
-import 'LoginService.dart';
 import 'SessionExpiredException.dart';
-import 'SignatureService.dart';
 import '../models/bookmarkrequest_model.dart';
 import 'apiService.dart';
 
 class PostService {
   static const String apiUrl = '***REMOVED***/api/Posts';
-  static final LoginService _loginService = LoginService(); 
-  static final SignatureService _signatureService = SignatureService();
 
   // Like a post
 static Future<void> likePost(LikeRequest likeRequest) async {
