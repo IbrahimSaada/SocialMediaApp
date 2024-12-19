@@ -1,6 +1,7 @@
 // home/home.dart
 
 import 'package:flutter/material.dart';
+import '../services/SessionExpiredException.dart';
 import 'post_card.dart';
 import 'repost_card.dart';
 import 'package:cook/services/loginservice.dart';
@@ -28,7 +29,7 @@ class HomePage extends StatefulWidget {
 class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
   List<FeedItem> _feedItems = [];
   int _currentPageNumber = 1;
-  final int _pageSize = 10;
+  final int _pageSize = 3;
   bool _isFetchingData = false;
   bool _hasMoreData = true;
   final ScrollController _scrollController = ScrollController();
@@ -111,32 +112,39 @@ class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin 
     }
   }
 
-  Future<void> _fetchFeed() async {
-    try {
+Future<void> _fetchFeed() async {
+  try {
+    setState(() {
+      _isFetchingData = true;
+      _currentPageNumber = 1; // Reset to first page when refreshing
+      _hasMoreData = true;
+    });
+    if (_userId != null) {
+      List<FeedItem> feedItems = await FeedService().fetchFeed(
+        userId: _userId!,
+        pageNumber: _currentPageNumber,
+        pageSize: _pageSize,
+      );
       setState(() {
-        _isFetchingData = true;
-        _currentPageNumber = 1; // Reset to first page when refreshing
-        _hasMoreData = true;
-      });
-      if (_userId != null) {
-        List<FeedItem> feedItems = await FeedService().fetchFeed(
-          userId: _userId!,
-          pageNumber: _currentPageNumber,
-          pageSize: _pageSize,
-        );
-        setState(() {
-          _feedItems = feedItems;
-          _isFetchingData = false;
-          _hasMoreData = feedItems.length == _pageSize;
-        });
-      }
-    } catch (e) {
-      setState(() {
+        _feedItems = feedItems;
         _isFetchingData = false;
+        _hasMoreData = feedItems.length == _pageSize;
       });
-      print('Failed to load feed: $e');
     }
+  } on SessionExpiredException {
+    setState(() {
+      _isFetchingData = false;
+    });
+    if (context.mounted) {
+      handleSessionExpired(context);
+    }
+  } catch (e) {
+    setState(() {
+      _isFetchingData = false;
+    });
+    print('Failed to load feed: $e');
   }
+}
 
 Future<void> _fetchMoreFeed() async {
   if (_isFetchingData || !_hasMoreData) return;
@@ -148,7 +156,6 @@ Future<void> _fetchMoreFeed() async {
     });
 
     if (_userId != null) {
-      // Fetch the new feed items
       List<FeedItem> newFeedItems = await FeedService().fetchFeed(
         userId: _userId!,
         pageNumber: _currentPageNumber,
@@ -157,7 +164,6 @@ Future<void> _fetchMoreFeed() async {
 
       if (newFeedItems.isNotEmpty) {
         setState(() {
-          // Add only unique feed items to avoid duplication
           _feedItems.addAll(
             newFeedItems.where((newItem) => !_feedItems.contains(newItem)).toList(),
           );
@@ -165,12 +171,19 @@ Future<void> _fetchMoreFeed() async {
           _hasMoreData = newFeedItems.length == _pageSize;
         });
       } else {
-        // No more data available
         setState(() {
           _isFetchingData = false;
           _hasMoreData = false;
         });
       }
+    }
+  } on SessionExpiredException {
+    setState(() {
+      _isFetchingData = false;
+      _currentPageNumber--; // Decrement page number if fetching fails due to session expiration
+    });
+    if (context.mounted) {
+      handleSessionExpired(context);
     }
   } catch (e) {
     setState(() {
@@ -181,9 +194,10 @@ Future<void> _fetchMoreFeed() async {
   }
 }
 
-  Future<void> _refreshFeed() async {
-    await _fetchFeed();
-  }
+Future<void> _refreshFeed() async {
+  await _fetchFeed();
+}
+
 
   Widget buildDivider() {
     return Divider(
