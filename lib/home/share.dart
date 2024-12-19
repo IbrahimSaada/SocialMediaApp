@@ -1,10 +1,7 @@
-// share.dart
-
 import 'package:flutter/material.dart';
 import '***REMOVED***/services/LoginService.dart';
 import '***REMOVED***/services/RepostServices.dart';
 import '***REMOVED***/maintenance/expiredtoken.dart';
-import '***REMOVED***/services/feed_service.dart';
 
 void showBlockSnackbar(BuildContext context, String reason) {
   String message;
@@ -120,12 +117,13 @@ class ShareBottomSheet extends StatelessWidget {
                                 await RepostService().createRepost(userId, postId, shareText);
                                 Navigator.pop(context);
                               } catch (e) {
-                                if (e.toString().contains('Session expired')) {
+                                final errStr = e.toString();
+                                if (errStr.contains('Session expired')) {
                                   if (context.mounted) {
                                     handleSessionExpired(context);
                                   }
-                                } else if (e.toString().startsWith('Exception: BLOCKED:')) {
-                                  String reason = e.toString().replaceFirst('Exception: BLOCKED:', '');
+                                } else if (errStr.startsWith('Exception: BLOCKED:')) {
+                                  String reason = errStr.replaceFirst('Exception: BLOCKED:', '');
                                   showBlockSnackbar(context, reason);
                                 } else {
                                   print('Failed to repost: $e');
