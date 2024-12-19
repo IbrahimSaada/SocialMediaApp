@@ -6,39 +6,15 @@ import 'package:http/http.dart' as http;
 import 'package:mime/mime.dart';
 import 'package:cook/models/presigned_url.dart';
 import 'package:image_picker/image_picker.dart';
-//import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:cook/services/LoginService.dart'; // Import LoginService
-import 'SignatureService.dart';  // Import the SignatureService
+import 'package:cook/services/apiService.dart'; // Import the ApiService
 
 class S3UploadService {
-  //final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
-  final SignatureService _signatureService = SignatureService();
-  final LoginService _loginService = LoginService(); // Initialize LoginService
+  final ApiService _apiService = ApiService();
 
-  // Method to retrieve token, refresh if expired
-  Future<String?> _getToken() async {
-    // Check token expiration
-    DateTime? expiration = await _loginService.getTokenExpiration();
-    
-    // If the token is expired, refresh it
-    if (expiration == null || DateTime.now().isAfter(expiration)) {
-      // ignore: avoid_print
-      print('Token expired. Refreshing...');
-      await _loginService.refreshAccessToken();
-    }
-    
-    // Get the updated token
-    return await _loginService.getToken();
-  }
-
-  Future<List<PresignedUrl>> getPresignedUrls(List<String> fileNames,
-      {String folderName = 'posts'}) async {
-    // Get the token (refresh if needed)
-    final token = await _getToken();
-    if (token == null) {
-      throw Exception('Token not found');
-    }
-
+  Future<List<PresignedUrl>> getPresignedUrls(
+    List<String> fileNames, {
+    String folderName = 'posts',
+  }) async {
     // Join the file names into a single string separated by commas
     final String fileNamesString = fileNames.join(',');
 
@@ -47,22 +23,17 @@ class S3UploadService {
       'folderName': folderName,
     };
 
-    // Generate data to sign
-    final String dataToSign = '$fileNamesString:$folderName';
+    // Signature data
+    final String signatureData = '$fileNamesString:$folderName';
 
-    // Generate HMAC signature using SignatureService
-    final String signature = await _signatureService.generateHMAC(dataToSign);
-
-    // Make the request with the JWT token and HMAC signature
-    final response = await http.post(
+    // Make the request with ApiService, which handles auth & signature
+    final response = await _apiService.makeRequestWithToken(
       Uri.parse(
-          'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/media/s3-presigned-upload-urls'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',  // Use the updated token
-        'X-Signature': signature,          // Include the HMAC signature here
-      },
-      body: jsonEncode(payload),
+        'https://f123-185-97-92-49.ngrok-free.app/api/media/s3-presigned-upload-urls',
+      ),
+      signatureData,
+      'POST',
+      body: payload,
     );
 
     print('Response status: ${response.statusCode}');
@@ -77,7 +48,6 @@ class S3UploadService {
   }
 
   Future<String> uploadFile(PresignedUrl urlData, XFile file) async {
-   // final fileStream = File(file.path).openRead();
     final fileLength = await File(file.path).length();
     final fileType = lookupMimeType(file.path);
 
@@ -97,7 +67,6 @@ class S3UploadService {
     print('File uploaded successfully');
 
     final objectKey = Uri.parse(urlData.url).path.replaceFirst('/', '');
-
     final objectUrl =
         'https://homepagecooking.s3.eu-central-1.amazonaws.com/$objectKey';
 
