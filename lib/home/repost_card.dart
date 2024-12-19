@@ -136,48 +136,53 @@ Future<void> _handleLike() async {
   }
 }
 
-  Future<void> _handleBookmark() async {
-    final userId = await LoginService().getUserId();
+// _handleBookmark
+Future<void> _handleBookmark() async {
+  final userId = await LoginService().getUserId();
 
-    if (userId == null) {
-      return;
-    }
+  if (userId == null) {
+    // If userId is null, session might be invalid
+    handleSessionExpired(context);
+    return;
+  }
 
+  await _bookmarkAnimationController.forward();
+
+  try {
     final postId = widget.feedItem.post.postId;
 
-    await _bookmarkAnimationController.forward();
-
-    try {
-      if (_isBookmarked) {
-        await PostService.unbookmarkPost(
-          BookmarkRequest(userId: userId, postId: postId),
-        );
-        setState(() {
-          _isBookmarked = false;
-        });
-      } else {
-        await PostService.bookmarkPost(
-          BookmarkRequest(userId: userId, postId: postId),
-        );
-        setState(() {
-          _isBookmarked = true;
-        });
-      }
-    } catch (e) {
-      if (e.toString().contains('Session expired')) {
-        if (context.mounted) {
-          handleSessionExpired(context);
-        }
-      } else if (e.toString().startsWith('Exception: BLOCKED:')) {
-        String reason = e.toString().replaceFirst('Exception: BLOCKED:', '');
-        showBlockSnackbar(context, reason);
-      } else {
-        print('Failed to bookmark/unbookmark post: $e');
-      }
+    if (_isBookmarked) {
+      await PostService.unbookmarkPost(
+        BookmarkRequest(userId: userId, postId: postId),
+      );
+      setState(() {
+        _isBookmarked = false;
+      });
+    } else {
+      await PostService.bookmarkPost(
+        BookmarkRequest(userId: userId, postId: postId),
+      );
+      setState(() {
+        _isBookmarked = true;
+      });
     }
-
-    await _bookmarkAnimationController.reverse();
+  } on SessionExpiredException {
+    if (context.mounted) {
+      handleSessionExpired(context);
+    }
+  } catch (e) {
+    final errStr = e.toString();
+    if (errStr.startsWith('Exception: BLOCKED:')) {
+      String reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+      showBlockSnackbar(context, reason);
+    } else {
+      print('Failed to bookmark/unbookmark post: $e');
+    }
   }
+
+  await _bookmarkAnimationController.reverse();
+}
+
 
   void _viewComments(int postId) {
     Navigator.push(
