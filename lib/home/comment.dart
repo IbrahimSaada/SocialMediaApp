@@ -13,6 +13,8 @@ import 'package:shimmer/shimmer.dart';
 import '***REMOVED***/profile/otheruserprofilepage.dart';
 import '***REMOVED***/profile/profile_page.dart';
 
+import '../services/SessionExpiredException.dart';
+
 void showBlockSnackbar(BuildContext context, String reason) {
   String message;
   if (reason.contains('You are blocked by the post owner')) {
@@ -103,123 +105,144 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
     _currentUserId = await LoginService().getUserId();
   }
 
-  Future<void> _fetchComments() async {
+  // _fetchComments
+Future<void> _fetchComments() async {
+  setState(() {
+    _isLoading = true;
+  });
+  try {
+    List<Comment> comments = await CommentService.fetchComments(widget.postId);
     setState(() {
-      _isLoading = true;
+      _comments = comments;
+      _isLoading = false;
     });
-    try {
-      List<Comment> comments = await CommentService.fetchComments(widget.postId);
-      setState(() {
-        _comments = comments;
-        _isLoading = false;
-      });
-    } catch (e) {
-      print('Failed to load comments: $e');
-      if (e.toString().contains("Session expired")) {
-        if (context.mounted) {
-          handleSessionExpired(context);
-        }
-        setState(() {
-          _isLoading = true;
-        });
-      }
+  } on SessionExpiredException {
+    // Handle session expiration
+    if (context.mounted) {
+      handleSessionExpired(context);
     }
-  }
-
-  Future<void> _postComment() async {
-    if (_commentController.text.isEmpty || _isPosting) return;
-
     setState(() {
-      _isPosting = true;
+      _isLoading = false;
     });
+  } catch (e) {
+    print('Failed to load comments: $e');
+    setState(() {
+      _isLoading = false;
+    });
+  }
+}
 
-    try {
-      final userId = await LoginService().getUserId();
-      final newCommentText = _commentController.text;
 
-      final commentRequest = CommentRequest(
-        postId: widget.postId,
-        userId: userId!,
-        text: newCommentText,
-        parentCommentId: _replyingTo?.commentId,
-      );
+Future<void> _postComment() async {
+  if (_commentController.text.isEmpty || _isPosting) return;
 
-      await CommentService.postComment(commentRequest);
+  setState(() {
+    _isPosting = true;
+  });
 
-      _commentController.clear();
-      _replyingTo = null;
+  try {
+    final userId = await LoginService().getUserId();
+    if (userId == null) {
+      // User is not logged in, handle accordingly (e.g. show a message)
+      setState(() {
+        _isPosting = false;
+      });
+      return;
+    }
 
-      await _fetchComments();
-    } catch (e) {
+    final newCommentText = _commentController.text;
+    final commentRequest = CommentRequest(
+      postId: widget.postId,
+      userId: userId,
+      text: newCommentText,
+      parentCommentId: _replyingTo?.commentId,
+    );
+
+    await CommentService.postComment(commentRequest);
+
+    _commentController.clear();
+    _replyingTo = null;
+
+    await _fetchComments();
+  } on SessionExpiredException {
+    // Session is expired, handle by prompting user to re-login
+    if (context.mounted) {
+      handleSessionExpired(context);
+    }
+  } catch (e) {
+    final errStr = e.toString();
+    if (errStr.startsWith('Exception: BLOCKED:')) {
+      String reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+      showBlockSnackbar(context, reason);
+    } else {
       print('Failed to post comment: $e');
-      if (e.toString().contains("Session expired")) {
-        if (context.mounted) {
-          handleSessionExpired(context);
-        }
-      } else if (e.toString().startsWith('Exception: BLOCKED:')) {
-        String reason = e.toString().replaceFirst('Exception: BLOCKED:', '');
-        showBlockSnackbar(context, reason);
-      }
-    } finally {
-      setState(() {
-        _isPosting = false;
-      });
     }
-  }
-
-  Future<void> _editComment(Comment comment) async {
-    if (_commentController.text.isEmpty || _isPosting) return;
-
+  } finally {
     setState(() {
-      _isPosting = true;
+      _isPosting = false;
     });
+  }
+}
 
-    try {
-      final commentRequest = CommentRequest(
-        postId: widget.postId,
-        userId: _currentUserId!,
-        text: _commentController.text,
-      );
+  // _editComment
+Future<void> _editComment(Comment comment) async {
+  if (_commentController.text.isEmpty || _isPosting) return;
 
-      await CommentService.editComment(commentRequest, comment.commentId);
+  setState(() {
+    _isPosting = true;
+  });
 
-      _commentController.clear();
-      _replyingTo = null;
+  try {
+    final commentRequest = CommentRequest(
+      postId: widget.postId,
+      userId: _currentUserId!,
+      text: _commentController.text,
+    );
 
-      await _fetchComments();
-    } catch (e) {
+    await CommentService.editComment(commentRequest, comment.commentId);
+
+    _commentController.clear();
+    _replyingTo = null;
+
+    await _fetchComments();
+  } on SessionExpiredException {
+    if (context.mounted) {
+      handleSessionExpired(context);
+    }
+  } catch (e) {
+    final errStr = e.toString();
+    if (errStr.startsWith('Exception: BLOCKED:')) {
+      String reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+      showBlockSnackbar(context, reason);
+    } else {
       print('Failed to edit comment: $e');
-      if (e.toString().contains("Session expired")) {
-        if (context.mounted) {
-          handleSessionExpired(context);
-        }
-      } else if (e.toString().startsWith('Exception: BLOCKED:')) {
-        String reason = e.toString().replaceFirst('Exception: BLOCKED:', '');
-        showBlockSnackbar(context, reason);
-      }
-    } finally {
-      setState(() {
-        _isPosting = false;
-      });
     }
+  } finally {
+    setState(() {
+      _isPosting = false;
+    });
   }
+}
 
-  Future<void> _deleteComment(Comment comment) async {
-    try {
-      await CommentService.deleteComment(widget.postId, comment.commentId, _currentUserId!);
-      await _fetchComments();
-    } catch (e) {
+// _deleteComment
+Future<void> _deleteComment(Comment comment) async {
+  try {
+    await CommentService.deleteComment(widget.postId, comment.commentId, _currentUserId!);
+    await _fetchComments();
+  } on SessionExpiredException {
+    if (context.mounted) {
+      handleSessionExpired(context);
+    }
+  } catch (e) {
+    final errStr = e.toString();
+    if (errStr.startsWith('Exception: BLOCKED:')) {
+      String reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+      showBlockSnackbar(context, reason);
+    } else {
       print('Failed to delete comment: $e');
-      if (e.toString().contains("Session expired")) {
-        if (context.mounted) {
-          handleSessionExpired(context);
-        }
-      } else if (e.toString().startsWith('Exception: BLOCKED:')) {
-        String reason = e.toString().replaceFirst('Exception: BLOCKED:', '');
-        showBlockSnackbar(context, reason);
-      }
     }
   }
+}
 
   void _onReplyPressed(Comment comment) {
     setState(() {
