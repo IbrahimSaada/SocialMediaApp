@@ -35,7 +35,6 @@ class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _phoneNumberController = TextEditingController();
   final _passwordController = TextEditingController();
   final _dateController = TextEditingController();
   String? _gender;
@@ -43,7 +42,6 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _obscureText = true;
 
   String _emailError = '';
-  String _phoneError = '';
   String _generalError = '';
 
   final UserRegistrationService _userRegistrationService =
@@ -51,9 +49,6 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Debug print
-    print("Building Register Page...");
-
     return Scaffold(
       body: SingleChildScrollView(
         child: Container(
@@ -64,7 +59,7 @@ class _RegisterPageState extends State<RegisterPage> {
               end: Alignment.bottomCenter,
               colors: [
                 Color(0xFFF45F67),
-                Color(0xFFF78182), // Slightly lighter shade for gradient effect
+                Color(0xFFF78182),
               ],
             ),
           ),
@@ -77,13 +72,13 @@ class _RegisterPageState extends State<RegisterPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    FadeInUp(
-                      duration: const Duration(milliseconds: 1000),
-                      child: const Text(
-                        "Register",
-                        style: TextStyle(color: Colors.white, fontSize: 40),
-                      ),
+                  FadeInUp(
+                    duration: const Duration(milliseconds: 1000), // Use const here for the Duration
+                    child: const Text(
+                      "Register",
+                      style: TextStyle(color: Colors.white, fontSize: 40),
                     ),
+                  ),
                     const SizedBox(height: 10),
                   ],
                 ),
@@ -189,52 +184,6 @@ class _RegisterPageState extends State<RegisterPage> {
                                               const EdgeInsets.only(top: 8.0),
                                           child: Text(
                                             _emailError,
-                                            style: const TextStyle(
-                                              color: Colors.red,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    border: Border(
-                                      bottom: BorderSide(
-                                        color: Colors.grey.shade200,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      TextFormField(
-                                        controller: _phoneNumberController,
-                                        decoration: const InputDecoration(
-                                          hintText: "Phone Number",
-                                          hintStyle:
-                                              TextStyle(color: Colors.grey),
-                                          border: InputBorder.none,
-                                        ),
-                                        validator: (value) {
-                                          if (value == null ||
-                                              value.isEmpty ||
-                                              !RegExp(r'^\+?[0-9]{10,15}$')
-                                                  .hasMatch(value)) {
-                                            return 'Please enter a valid phone number';
-                                          }
-                                          return null;
-                                        },
-                                      ),
-                                      if (_phoneError.isNotEmpty)
-                                        Padding(
-                                          padding:
-                                              const EdgeInsets.only(top: 8.0),
-                                          child: Text(
-                                            _phoneError,
                                             style: const TextStyle(
                                               color: Colors.red,
                                               fontSize: 12,
@@ -392,7 +341,6 @@ class _RegisterPageState extends State<RegisterPage> {
                             onPressed: () async {
                               setState(() {
                                 _emailError = '';
-                                _phoneError = '';
                                 _generalError = '';
                               });
 
@@ -400,7 +348,6 @@ class _RegisterPageState extends State<RegisterPage> {
                                 UserModel user = UserModel(
                                   fullName: _fullNameController.text,
                                   email: _emailController.text,
-                                  phoneNumber: _phoneNumberController.text,
                                   gender: _gender!,
                                   dob: _dob!,
                                   password: _passwordController.text,
@@ -408,21 +355,11 @@ class _RegisterPageState extends State<RegisterPage> {
 
                                 bool emailExists = await emailAlreadyExists(
                                     _emailController.text);
-                                bool phoneExists = await phoneAlreadyExists(
-                                    _phoneNumberController.text);
 
                                 if (emailExists) {
                                   setState(() {
                                     _emailError =
                                         'A user with this email already exists.';
-                                  });
-                                  return;
-                                }
-
-                                if (phoneExists) {
-                                  setState(() {
-                                    _phoneError =
-                                        'A user with this phone number already exists.';
                                   });
                                   return;
                                 }
@@ -491,20 +428,10 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
-  Future<bool> phoneAlreadyExists(String phoneNumber) async {
-    try {
-      return await _userRegistrationService.phoneExists(phoneNumber);
-    } catch (e) {
-      print('Failed to check phone number: $e');
-      return false;
-    }
-  }
-
   @override
   void dispose() {
     _fullNameController.dispose();
     _emailController.dispose();
-    _phoneNumberController.dispose();
     _passwordController.dispose();
     _dateController.dispose();
     super.dispose();

@@ -36,19 +36,4 @@ class UserRegistrationService {
       throw Exception('Failed to check email: ${response.body}');
     }
   }
-
-  Future<bool> phoneExists(String phoneNumber) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/phone-exists/$phoneNumber'),
-      headers: <String, String>{
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
-    );
-
-    if (response.statusCode == 200) {
-      return response.body == 'true';
-    } else {
-      throw Exception('Failed to check phone number: ${response.body}');
-    }
-  }
 }

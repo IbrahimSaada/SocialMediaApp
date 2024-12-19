@@ -1,7 +1,7 @@
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 import 'package:cook/home/home.dart';
-import 'package:cook/login/forgotpasswrod.dart';
+import 'package:cook/login/forgotpassword.dart';
 import '../login/register.dart';
 import '../services/LoginService.dart';
 import '../services/BannedException.dart'; // Import BannedException
