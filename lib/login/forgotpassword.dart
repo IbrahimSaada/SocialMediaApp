@@ -1,7 +1,7 @@
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 import 'login_page.dart';
-import '../login/forgotpasswrodver.dart';
+import 'forgotpasswordver.dart';
 import '../services/PasswordResetService.dart';
 
 void main() => runApp(const MaterialApp(
