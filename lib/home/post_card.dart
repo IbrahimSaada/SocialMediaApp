@@ -1,5 +1,3 @@
-// post_card.dart
-
 import 'package:flutter/material.dart';
 import 'package:cook/models/feed/post_info.dart';
 import 'package:cook/models/feed/user_info.dart';
@@ -20,6 +18,7 @@ import 'package:cook/models/user_like.dart';
 import 'package:cook/home/post_bottom_likes_sheet.dart';
 import 'package:cook/services/SessionExpiredException.dart';
 import 'full_screen_image_page.dart';
+import 'report_dialog.dart';
 
 void showBlockSnackbar(BuildContext context, String reason) {
   String message;
@@ -47,8 +46,6 @@ class PostCard extends StatefulWidget {
   final bool isBookmarked;
   final DateTime createdAt;
   final String content;
-
-  /// A callback that the parent widget can provide to refresh the home feed.
   final VoidCallback? onRefreshNeeded;
 
   const PostCard({
@@ -214,11 +211,35 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
       isScrollControlled: true,
     );
 
-    // If result == true, call onRefreshNeeded to refresh homepage
-    if (result == true) {
+    if (result == true && widget.onRefreshNeeded != null) {
+      widget.onRefreshNeeded!();
+    }
+  }
+
+  Future<void> _deletePost() async {
+    try {
+      final userId = await LoginService().getUserId();
+      if (userId == null) {
+        throw SessionExpiredException();
+      }
+      // Implement post deletion functionality here. For example:
+      // await PostService.deletePost(widget.postInfo.postId);
+      // After deletion, maybe refresh parent:
       if (widget.onRefreshNeeded != null) {
         widget.onRefreshNeeded!();
       }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Post deleted successfully')),
+      );
+    } on SessionExpiredException {
+      if (context.mounted) {
+        handleSessionExpired(context);
+      }
+    } catch (e) {
+      print('Failed to delete post: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to delete post')),
+      );
     }
   }
 
@@ -312,48 +333,54 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                     ),
                   ),
                   const Spacer(),
-                  if (_currentUserId != user.userId)
-                    PopupMenuButton(
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 'hide',
-                          child: Row(
-                            children: [
-                              Icon(Icons.visibility_off, color: Color(0xFFF45F67)),
-                              const SizedBox(width: 10),
-                              Text('Hide this post', style: TextStyle(color: Color(0xFFF45F67))),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'report',
-                          child: Row(
-                            children: [
-                              Icon(Icons.flag, color: Color(0xFFF45F67)),
-                              const SizedBox(width: 10),
-                              Text('Report', style: TextStyle(color: Color(0xFFF45F67))),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'block',
-                          child: Row(
-                            children: [
-                              Icon(Icons.block, color: Color(0xFFF45F67)),
-                              const SizedBox(width: 10),
-                              Text('Block', style: TextStyle(color: Color(0xFFF45F67))),
-                            ],
-                          ),
-                        ),
-                      ],
-                      onSelected: (value) {
+                  // Show different popup menu options based on whether current user is the post owner
+                  if (_currentUserId != null)
+                    PopupMenuButton<String>(
+                      icon: Icon(Icons.more_vert, color: Color(0xFFF45F67)),
+                      onSelected: (value) async {
                         if (value == 'report') {
-                          // Implement report functionality
-                        } else if (value == 'block') {
-                          // Implement block functionality
+                          // Report post
+                          showReportDialog(
+                            context: context,
+                            reportedUser: user.userId,
+                            contentId: post.postId,
+                          );
+                        } else if (value == 'delete') {
+                          // Delete post
+                          _deletePost();
                         }
                       },
-                      child: Icon(Icons.more_vert, color: Color(0xFFF45F67)),
+                      itemBuilder: (context) {
+                        if (_currentUserId == user.userId) {
+                          // Owner: Can delete post
+                          return [
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: const [
+                                  Icon(Icons.delete, color: Colors.red),
+                                  SizedBox(width: 10),
+                                  Text('Delete Post'),
+                                ],
+                              ),
+                            ),
+                          ];
+                        } else {
+                          // Not owner: Can report post
+                          return [
+                            PopupMenuItem(
+                              value: 'report',
+                              child: Row(
+                                children: const [
+                                  Icon(Icons.flag, color: Color(0xFFF45F67)),
+                                  SizedBox(width: 10),
+                                  Text('Report'),
+                                ],
+                              ),
+                            ),
+                          ];
+                        }
+                      },
                     ),
                 ],
               ),
@@ -413,7 +440,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                                       color: Colors.white,
                                     ),
                                   ),
-                                  errorWidget: (context, url, error) => Icon(Icons.error),
+                                  errorWidget: (context, url, error) => const Icon(Icons.error),
                                 )
                               : VideoPost(mediaUrl: media.mediaUrl),
                         ),
@@ -480,11 +507,11 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                         }
                       }
                     },
-                    child: Text('${post.likeCount}', style: TextStyle(color: Color(0xFFF45F67))),
+                    child: Text('${post.likeCount}', style: const TextStyle(color: Color(0xFFF45F67))),
                   ),
                   const SizedBox(width: 16.0),
                   IconButton(
-                    icon: Icon(Icons.comment, color: Color(0xFFF45F67)),
+                    icon: const Icon(Icons.comment, color: Color(0xFFF45F67)),
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -494,9 +521,9 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                       );
                     },
                   ),
-                  Text('${post.commentCount}', style: TextStyle(color: Color(0xFFF45F67))),
+                  Text('${post.commentCount}', style: const TextStyle(color: Color(0xFFF45F67))),
                   IconButton(
-                    icon: Icon(Icons.share, color: Color(0xFFF45F67)),
+                    icon: const Icon(Icons.share, color: Color(0xFFF45F67)),
                     onPressed: () {
                       _showShareBottomSheet(context);
                     },
