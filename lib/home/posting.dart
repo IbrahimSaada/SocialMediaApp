@@ -1,3 +1,5 @@
+// posting.dart
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -15,7 +17,6 @@ class CreatePostPage extends StatefulWidget {
   const CreatePostPage({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _CreatePostPageState createState() => _CreatePostPageState();
 }
 
@@ -82,7 +83,6 @@ class _CreatePostPageState extends State<CreatePostPage> {
         });
       }
     } catch (e) {
-      // ignore: avoid_print
       print('Error picking media: $e');
     }
   }
@@ -112,7 +112,6 @@ class _CreatePostPageState extends State<CreatePostPage> {
         });
       }
     } catch (e) {
-      // ignore: avoid_print
       print('Error capturing media: $e');
     }
   }
@@ -177,15 +176,12 @@ class _CreatePostPageState extends State<CreatePostPage> {
         media: uploadedMedia,
       );
 
+      // Previously we added directly to the homepage, now we just return true
       await _postService.createPost(postRequest);
 
-      setState(() {
-        _mediaFiles.clear();
-      });
-
-      Navigator.pop(context);
+      // Return true to indicate that home should refresh
+      Navigator.pop(context, true);
     } catch (e) {
-      // ignore: avoid_print
       print('Error creating post: $e');
       if (e.toString().contains('Failed to refresh token')) {
         handleSessionExpired(context);
@@ -650,7 +646,6 @@ class FullScreenViewer extends StatefulWidget {
   });
 
   @override
-  // ignore: library_private_types_in_public_api
   _FullScreenViewerState createState() => _FullScreenViewerState();
 }
 
