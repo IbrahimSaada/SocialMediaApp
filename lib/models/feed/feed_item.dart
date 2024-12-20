@@ -19,7 +19,6 @@ abstract class FeedItem {
     required this.user,
   });
 
-
   factory FeedItem.fromJson(Map<String, dynamic> json) {
     if (json['type'] == 'post') {
       return PostItem.fromJson(json);

@@ -9,7 +9,7 @@ import 'BannedException.dart';
 
 class LoginService {
   final String baseUrl =
-      'https://f123-185-97-92-49.ngrok-free.app/api';
+      'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api';
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   final SignatureService _signatureService = SignatureService();
 

@@ -26,17 +26,25 @@ class RepostItem extends FeedItem {
           user: user,
         );
 
+  static DateTime _parseUtcThenLocal(String dateStr) {
+    if (!dateStr.endsWith('Z')) {
+      dateStr = dateStr + 'Z';
+    }
+    return DateTime.parse(dateStr).toLocal();
+  }
+
   factory RepostItem.fromJson(Map<String, dynamic> json) {
     return RepostItem(
       type: json['type'] ?? '',
       itemId: json['itemId'] ?? 0,
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
+      createdAt: json['createdAt'] != null
+          ? _parseUtcThenLocal(json['createdAt'])
+          : DateTime.now().toLocal(),
       content: json['content'] ?? '',
       user: UserInfo.fromJson(json['user'] ?? {}),
       post: PostInfo.fromJson(json['post'] ?? {}),
       isLiked: json['isLiked'] ?? false,
       isBookmarked: json['isBookmarked'] ?? false,
-
     );
   }
 }
