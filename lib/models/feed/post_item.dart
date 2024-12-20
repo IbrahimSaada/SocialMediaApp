@@ -26,14 +26,23 @@ class PostItem extends FeedItem {
           user: user,
         );
 
+  static DateTime _parseUtcThenLocal(String dateStr) {
+    if (!dateStr.endsWith('Z')) {
+      dateStr = dateStr + 'Z';
+    }
+    return DateTime.parse(dateStr).toLocal();
+  }
+
   factory PostItem.fromJson(Map<String, dynamic> json) {
-    // Debug: Print UTC time
+    // Debug: Print UTC time before conversion
     print("UTC time for PostItem (itemId: ${json['itemId']}): ${json['createdAt']}");
 
     return PostItem(
       type: json['type'] ?? '',
       itemId: json['itemId'] ?? 0,
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']).toUtc().toLocal() : DateTime.now().toLocal(),
+      createdAt: json['createdAt'] != null
+          ? _parseUtcThenLocal(json['createdAt'])
+          : DateTime.now().toLocal(),
       content: json['content'] ?? '',
       user: UserInfo.fromJson(json['user'] ?? {}),
       post: PostInfo.fromJson(json['post'] ?? {}),

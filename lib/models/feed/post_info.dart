@@ -15,17 +15,26 @@ class PostInfo {
   PostInfo({
     required this.postId,
     required this.createdAt,
-    this.author, // Nullable
+    this.author,
     required this.content,
     required this.media,
     required this.likeCount,
     required this.commentCount,
   });
 
+  static DateTime _parseUtcThenLocal(String dateStr) {
+    if (!dateStr.endsWith('Z')) {
+      dateStr = dateStr + 'Z';
+    }
+    return DateTime.parse(dateStr).toLocal();
+  }
+
   factory PostInfo.fromJson(Map<String, dynamic> json) {
     return PostInfo(
       postId: json['postId'] ?? 0,
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
+      createdAt: json['createdAt'] != null
+          ? _parseUtcThenLocal(json['createdAt'])
+          : DateTime.now().toLocal(),
       author: json['author'] != null ? UserInfo.fromJson(json['author']) : null,
       content: json['content'] ?? '',
       media: (json['media'] as List<dynamic>?)
