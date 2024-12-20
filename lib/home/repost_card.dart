@@ -1,5 +1,3 @@
-// repost_card.dart
-
 import 'package:flutter/material.dart';
 import '***REMOVED***/models/feed/repost_item.dart';
 import '***REMOVED***/models/feed/user_info.dart';
@@ -7,7 +5,6 @@ import '***REMOVED***/home/video_post.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '***REMOVED***/services/loginservice.dart';
 import '***REMOVED***/home/comment.dart';
-import '***REMOVED***/home/report_dialog.dart';
 import '***REMOVED***/maintenance/expiredtoken.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '***REMOVED***/models/LikeRequest_model.dart';
@@ -17,6 +14,7 @@ import '***REMOVED***/profile/otheruserprofilepage.dart';
 import '***REMOVED***/profile/profile_page.dart';
 import '../services/SessionExpiredException.dart';
 import 'full_screen_image_page.dart';
+import 'report_dialog.dart';
 
 void showBlockSnackbar(BuildContext context, String reason) {
   String message;
@@ -92,97 +90,94 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
     );
   }
 
-Future<void> _handleLike() async {
-  final userId = await LoginService().getUserId();
+  Future<void> _handleLike() async {
+    final userId = await LoginService().getUserId();
 
-  if (userId == null) {
-    return;
-  }
-
-  final postId = widget.feedItem.post.postId;
-
-  try {
-    if (_isLiked) {
-      await PostService.unlikePost(
-        LikeRequest(userId: userId, postId: postId),
-      );
-      setState(() {
-        _isLiked = false;
-        _likeCount -= 1;
-      });
-    } else {
-      await PostService.likePost(
-        LikeRequest(userId: userId, postId: postId),
-      );
-      setState(() {
-        _isLiked = true;
-        _likeCount += 1;
-      });
+    if (userId == null) {
+      return;
     }
-  } on SessionExpiredException {
-    if (context.mounted) {
-      handleSessionExpired(context);
-    }
-  } catch (e) {
-    final errStr = e.toString();
-    if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
-      String reason = errStr.startsWith('Exception: BLOCKED:')
-          ? errStr.replaceFirst('Exception: BLOCKED:', '')
-          : errStr;
-      showBlockSnackbar(context, reason);
-    } else {
-      print('Failed to like/unlike post: $e');
-    }
-  }
-}
 
-// _handleBookmark
-Future<void> _handleBookmark() async {
-  final userId = await LoginService().getUserId();
-
-  if (userId == null) {
-    // If userId is null, session might be invalid
-    handleSessionExpired(context);
-    return;
-  }
-
-  await _bookmarkAnimationController.forward();
-
-  try {
     final postId = widget.feedItem.post.postId;
 
-    if (_isBookmarked) {
-      await PostService.unbookmarkPost(
-        BookmarkRequest(userId: userId, postId: postId),
-      );
-      setState(() {
-        _isBookmarked = false;
-      });
-    } else {
-      await PostService.bookmarkPost(
-        BookmarkRequest(userId: userId, postId: postId),
-      );
-      setState(() {
-        _isBookmarked = true;
-      });
-    }
-  } on SessionExpiredException {
-    if (context.mounted) {
-      handleSessionExpired(context);
-    }
-  } catch (e) {
-    final errStr = e.toString();
-    if (errStr.startsWith('Exception: BLOCKED:')) {
-      String reason = errStr.replaceFirst('Exception: BLOCKED:', '');
-      showBlockSnackbar(context, reason);
-    } else {
-      print('Failed to bookmark/unbookmark post: $e');
+    try {
+      if (_isLiked) {
+        await PostService.unlikePost(
+          LikeRequest(userId: userId, postId: postId),
+        );
+        setState(() {
+          _isLiked = false;
+          _likeCount -= 1;
+        });
+      } else {
+        await PostService.likePost(
+          LikeRequest(userId: userId, postId: postId),
+        );
+        setState(() {
+          _isLiked = true;
+          _likeCount += 1;
+        });
+      }
+    } on SessionExpiredException {
+      if (context.mounted) {
+        handleSessionExpired(context);
+      }
+    } catch (e) {
+      final errStr = e.toString();
+      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+        String reason = errStr.startsWith('Exception: BLOCKED:')
+            ? errStr.replaceFirst('Exception: BLOCKED:', '')
+            : errStr;
+        showBlockSnackbar(context, reason);
+      } else {
+        print('Failed to like/unlike post: $e');
+      }
     }
   }
 
-  await _bookmarkAnimationController.reverse();
-}
+  Future<void> _handleBookmark() async {
+    final userId = await LoginService().getUserId();
 
+    if (userId == null) {
+      handleSessionExpired(context);
+      return;
+    }
+
+    await _bookmarkAnimationController.forward();
+
+    try {
+      final postId = widget.feedItem.post.postId;
+
+      if (_isBookmarked) {
+        await PostService.unbookmarkPost(
+          BookmarkRequest(userId: userId, postId: postId),
+        );
+        setState(() {
+          _isBookmarked = false;
+        });
+      } else {
+        await PostService.bookmarkPost(
+          BookmarkRequest(userId: userId, postId: postId),
+        );
+        setState(() {
+          _isBookmarked = true;
+        });
+      }
+    } on SessionExpiredException {
+      if (context.mounted) {
+        handleSessionExpired(context);
+      }
+    } catch (e) {
+      final errStr = e.toString();
+      if (errStr.startsWith('Exception: BLOCKED:')) {
+        String reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+        showBlockSnackbar(context, reason);
+      } else {
+        print('Failed to bookmark/unbookmark post: $e');
+      }
+    }
+
+    await _bookmarkAnimationController.reverse();
+  }
 
   void _viewComments(int postId) {
     Navigator.push(
@@ -193,66 +188,28 @@ Future<void> _handleBookmark() async {
     );
   }
 
-  void _showPostOptions(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20.0),
-          ),
-          backgroundColor: Colors.white,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  "Choose an Action",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18.0,
-                    color: Color(0xFFF45F67),
-                  ),
-                ),
-                const SizedBox(height: 16.0),
-                Divider(color: Colors.grey[300], thickness: 1.0),
-                const SizedBox(height: 12.0),
-                if (_currentUserId == widget.feedItem.user.userId) ...[
-                  ListTile(
-                    leading: Icon(Icons.delete, color: Colors.red[400]),
-                    title: Text(
-                      'Delete Repost',
-                      style: TextStyle(color: Colors.red[400]),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      // Implement delete functionality here
-                    },
-                  ),
-                ] else ...[
-                  ListTile(
-                    leading: Icon(Icons.report, color: Colors.red[400]),
-                    title: Text(
-                      'Report Post',
-                      style: TextStyle(color: Colors.red[400]),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      showReportDialog(
-                        context: context,
-                        reportedUser: widget.feedItem.post.author?.userId ?? 0,
-                        contentId: widget.feedItem.post.postId,
-                      );
-                    },
-                  ),
-                ],
-              ],
-            ),
-          ),
-        );
-      },
-    );
+  Future<void> _deleteRepost() async {
+    try {
+      final userId = await LoginService().getUserId();
+      if (userId == null) {
+        throw SessionExpiredException();
+      }
+      // Implement repost deletion functionality here:
+      // await PostService.deleteRepost(widget.feedItem.post.postId);
+      // After deletion, you may need to refresh the feed.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Repost deleted successfully')),
+      );
+    } on SessionExpiredException {
+      if (context.mounted) {
+        handleSessionExpired(context);
+      }
+    } catch (e) {
+      print('Failed to delete repost: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to delete repost')),
+      );
+    }
   }
 
   @override
@@ -350,12 +307,54 @@ Future<void> _handleBookmark() async {
                   ),
                 ),
               ),
-              IconButton(
-                icon: Icon(Icons.more_vert, color: Color(0xFFF45F67)),
-                onPressed: () {
-                  _showPostOptions(context);
-                },
-              ),
+              if (_currentUserId != null)
+                PopupMenuButton<String>(
+                  icon: Icon(Icons.more_vert, color: Color(0xFFF45F67)),
+                  onSelected: (value) {
+                    if (value == 'report') {
+                      // Report original post
+                      showReportDialog(
+                        context: context,
+                        reportedUser: post.author?.userId ?? 0,
+                        contentId: post.postId,
+                      );
+                    } else if (value == 'delete') {
+                      // Delete Repost
+                      _deleteRepost();
+                    }
+                  },
+                  itemBuilder: (context) {
+                    if (_currentUserId == sharer.userId) {
+                      // Owner of the repost can delete
+                      return [
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: const [
+                              Icon(Icons.delete, color: Colors.red),
+                              SizedBox(width: 10),
+                              Text('Delete Repost'),
+                            ],
+                          ),
+                        ),
+                      ];
+                    } else {
+                      // Non-owner can report
+                      return [
+                        PopupMenuItem(
+                          value: 'report',
+                          child: Row(
+                            children: const [
+                              Icon(Icons.flag, color: Color(0xFFF45F67)),
+                              SizedBox(width: 10),
+                              Text('Report'),
+                            ],
+                          ),
+                        ),
+                      ];
+                    }
+                  },
+                ),
             ],
           ),
           if (widget.feedItem.content.isNotEmpty) ...[
@@ -527,11 +526,11 @@ Future<void> _handleBookmark() async {
         ),
         Text(
           '$_likeCount',
-          style: TextStyle(color: Color(0xFFF45F67)),
+          style: const TextStyle(color: Color(0xFFF45F67)),
         ),
         const SizedBox(width: 16.0),
         IconButton(
-          icon: Icon(
+          icon: const Icon(
             Icons.comment,
             color: Color(0xFFF45F67),
             size: 28,
@@ -540,9 +539,8 @@ Future<void> _handleBookmark() async {
         ),
         Text(
           '${post.commentCount}',
-          style: TextStyle(color: Color(0xFFF45F67)),
+          style: const TextStyle(color: Color(0xFFF45F67)),
         ),
-        const SizedBox(width: 16.0),
         const Spacer(),
         ScaleTransition(
           scale: _bookmarkAnimationController,

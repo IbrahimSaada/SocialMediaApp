@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '***REMOVED***/services/LoginService.dart';
-import '***REMOVED***/services/GenerateReportService.dart';
+import '***REMOVED***/services/GenerateReportService.dart' as ReportServiceFile; // Rename import if needed
 import '***REMOVED***/models/ReportRequest_model.dart';
 import '***REMOVED***/maintenance/expiredtoken.dart';
+import '***REMOVED***/services/SessionExpiredException.dart';
 
 void showReportDialog({
   required BuildContext context,
@@ -29,23 +30,29 @@ void showReportDialog({
       resolutionDetails: '',
     );
 
+    final reportService = ReportServiceFile.ReportService();
+
     try {
-      final reportService =
-          ReportService(); // Create an instance of ReportService
-      await reportService
-          .createReport(reportRequest); // Use the instance to call the method
-          // ignore: use_build_context_synchronously
+      await reportService.createReport(reportRequest);
+      // If successful
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Report submitted successfully')),
       );
+    } on SessionExpiredException {
+      // Handle session expiration
+      if (context.mounted) {
+        handleSessionExpired(context);
+      }
     } catch (error) {
-      if (error.toString().contains('Session expired')) {
-        // ignore: use_build_context_synchronously
-        handleSessionExpired(context);  // 1. Handle session expired globally
-      } else {
-        // ignore: use_build_context_synchronously
+      final errStr = error.toString();
+      if (errStr.startsWith('Exception: BLOCKED:')) {
+        // Handle BLOCKED scenario if needed
+        final reason = errStr.replaceFirst('Exception: BLOCKED:', '');
         ScaffoldMessenger.of(context).showSnackBar(
-          // ignore: use_build_context_synchronously
+          SnackBar(content: Text('Action not allowed: $reason')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to submit report')),
         );
       }
@@ -53,7 +60,6 @@ void showReportDialog({
   }
 
   showDialog(
-    // ignore: use_build_context_synchronously
     context: context,
     builder: (BuildContext context) {
       return AlertDialog(
@@ -81,20 +87,16 @@ void showReportDialog({
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading:
-                  const Icon(Icons.report_problem, color: Colors.redAccent, size: 28),
-              title: const Text('Spam',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              leading: const Icon(Icons.report_problem, color: Colors.redAccent, size: 28),
+              title: const Text('Spam', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               onTap: () {
                 Navigator.of(context).pop();
                 submitReport('Spam');
               },
             ),
             ListTile(
-              leading:
-                  const Icon(Icons.visibility_off, color: Colors.redAccent, size: 28),
-              title: const Text('Inappropriate Content',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              leading: const Icon(Icons.visibility_off, color: Colors.redAccent, size: 28),
+              title: const Text('Inappropriate Content', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               onTap: () {
                 Navigator.of(context).pop();
                 submitReport('Inappropriate Content');
@@ -102,8 +104,7 @@ void showReportDialog({
             ),
             ListTile(
               leading: const Icon(Icons.info, color: Colors.redAccent, size: 28),
-              title: const Text('Misinformation',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              title: const Text('Misinformation', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               onTap: () {
                 Navigator.of(context).pop();
                 submitReport('Misinformation');
@@ -111,8 +112,7 @@ void showReportDialog({
             ),
             ListTile(
               leading: const Icon(Icons.flag, color: Colors.redAccent, size: 28),
-              title: const Text('Harassment or Bullying',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              title: const Text('Harassment or Bullying', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               onTap: () {
                 Navigator.of(context).pop();
                 submitReport('Harassment or Bullying');
@@ -120,8 +120,7 @@ void showReportDialog({
             ),
             ListTile(
               leading: const Icon(Icons.error, color: Colors.redAccent, size: 28),
-              title: const Text('Hate Speech',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              title: const Text('Hate Speech', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               onTap: () {
                 Navigator.of(context).pop();
                 submitReport('Hate Speech');
@@ -129,8 +128,7 @@ void showReportDialog({
             ),
             ListTile(
               leading: const Icon(Icons.shield, color: Colors.redAccent, size: 28),
-              title: const Text('Violence',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              title: const Text('Violence', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               onTap: () {
                 Navigator.of(context).pop();
                 submitReport('Violence');
@@ -138,29 +136,17 @@ void showReportDialog({
             ),
             ListTile(
               leading: const Icon(Icons.copy, color: Colors.redAccent, size: 28),
-              title: const Text('Copyright Violation',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              title: const Text('Copyright Violation', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               onTap: () {
                 Navigator.of(context).pop();
                 submitReport('Copyright Violation');
-              },
-            ),
-            ListTile(
-              leading:
-                  const Icon(Icons.help_outline, color: Colors.redAccent, size: 28),
-              title: const Text('Other',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              onTap: () {
-                Navigator.of(context).pop();
-                submitReport('Other');
               },
             ),
           ],
         ),
         actions: [
           TextButton(
-            child: const Text('Cancel',
-                style: TextStyle(color: Color(0xFFF45F67), fontSize: 16)),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFFF45F67), fontSize: 16)),
             onPressed: () {
               Navigator.of(context).pop();
             },
