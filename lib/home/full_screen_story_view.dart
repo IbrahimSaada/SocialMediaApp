@@ -16,8 +16,9 @@ import 'package:cook/maintenance/expiredtoken.dart';
 class FullScreenStoryView extends StatefulWidget {
   final List<Story> stories;
   final int initialIndex;
+  final VoidCallback? onStoriesChanged;
 
-  const FullScreenStoryView({required this.stories, required this.initialIndex});
+  const FullScreenStoryView({required this.stories, required this.initialIndex,this.onStoriesChanged});
 
   @override
   _FullScreenStoryViewState createState() => _FullScreenStoryViewState();
@@ -434,11 +435,22 @@ void _deleteStory(int storyId) async {
       });
 
       // If the story now has zero media left, remove the entire story
-      if (currentStory.media.isEmpty) {
-        setState(() {
-          widget.stories.removeAt(_currentStoryIndex);
-        });
+    if (currentStory.media.isEmpty) {
+      setState(() {
+        widget.stories.removeAt(_currentStoryIndex);
+      });
+
+      // If we have zero stories left, go home
+      if (widget.stories.isEmpty) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        widget.onStoriesChanged?.call(); // refresh the home list
+        return;
       }
+
+      // If not empty, we're still in this user's story list
+      // but want to update the home list to remove the entire box
+      widget.onStoriesChanged?.call();
+    }
 
       // If we have no stories left, go home
       if (widget.stories.isEmpty) {
