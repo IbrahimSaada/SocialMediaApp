@@ -1,97 +1,69 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '***REMOVED***/models/storyview_request_model.dart';
 import '***REMOVED***/models/storyview_response_model.dart';
-import '***REMOVED***/services/LoginService.dart'; // Import LoginService
-import '***REMOVED***/services/SignatureService.dart'; // Import SignatureService
+import '***REMOVED***/services/apiService.dart';
+import '***REMOVED***/services/SessionExpiredException.dart';
 
 class StoryServiceRequest {
   final String baseUrl =
-      "***REMOVED***/api/Stories"; // Base API URL
+      '***REMOVED***/api/Stories';
 
-  final LoginService _loginService = LoginService();
-  final SignatureService _signatureService = SignatureService(); // Use SignatureService
+  final ApiService _apiService = ApiService();
 
-  // Helper method to ensure token is valid or refresh it if expired
-  Future<String?> _getValidToken() async {
-    String? accessToken = await _loginService.getToken();
-    DateTime? expiration = await _loginService.getTokenExpiration();
-
-    // If the token is expired, proactively refresh it
-    if (expiration == null || DateTime.now().isAfter(expiration)) {
-       // ignore: avoid_print
-      print('Access token expired, refreshing...');
-      await _loginService.refreshAccessToken(); // Refresh the token
-      accessToken = await _loginService.getToken(); // Get the new token
-    }
-
-    return accessToken; // Return the valid token
-  }
-
-  // Method to record story view (POST)
+  /// Record story view (POST)
   Future<StoryViewResponse?> recordStoryView(StoryViewRequest request) async {
-    String? accessToken = await _getValidToken(); // Ensure token is valid
+    // Data to sign: storyId:viewerId
+    final String signatureData = '${request.storyId}:${request.viewerId}';
 
-    if (accessToken == null) {
-       // ignore: avoid_print
-      print('Unable to retrieve access token.');
-      return null; // If no valid token, return early
-    }
+    try {
+      final response = await _apiService.makeRequestWithToken(
+        Uri.parse('$baseUrl/View'),
+        signatureData,
+        'POST',
+        body: request.toJson(),
+      );
 
-    // Generate signature for the request
-    var dataToSign = '${request.storyId}:${request.viewerId}';
-    String signature = await _signatureService.generateHMAC(dataToSign);
-
-    final response = await http.post(
-      Uri.parse('$baseUrl/View'), // Full URL for recording story view
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $accessToken', // Include the valid access token
-        'X-Signature': signature, // Include the signature in the headers
-      },
-      body: jsonEncode(request.toJson()),
-    );
-
-    if (response.statusCode == 200) {
-      return StoryViewResponse.fromJson(jsonDecode(response.body));
-    } else { 
-      // ignore: avoid_print
-      print("Failed to record story view: ${response.statusCode}");
+      if (response.statusCode == 200) {
+        return StoryViewResponse.fromJson(json.decode(response.body));
+      } else {
+        print('Failed to record story view. Status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        return null;
+      }
+    } on SessionExpiredException {
+      rethrow;
+    } catch (e) {
+      print('Error recording story view: $e');
       return null;
     }
   }
 
-  // Method to get the list of users who viewed a story (GET)
+  /// Get the list of users who viewed a story (GET)
   Future<List<StoryViewer>?> getStoryViewers(int storyId) async {
-    String? accessToken = await _getValidToken(); // Ensure token is valid
+    // Data to sign: storyId
+    final String signatureData = '$storyId';
 
-    if (accessToken == null) {
-      // ignore: avoid_print
-      print('Unable to retrieve access token.');
-      return null; // If no valid token, return early
-    }
+    try {
+      final response = await _apiService.makeRequestWithToken(
+        Uri.parse('$baseUrl/$storyId/viewers'),
+        signatureData,
+        'GET',
+      );
 
-    // Generate signature for the request
-    var dataToSign = '$storyId';
-    String signature = await _signatureService.generateHMAC(dataToSign);
-
-    final response = await http.get(
-      Uri.parse('$baseUrl/$storyId/viewers'), // Full URL for retrieving story viewers
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $accessToken', // Include the valid access token
-        'X-Signature': signature, // Include the signature in the headers
-      },
-    );
-
-    if (response.statusCode == 200) {
-      List<dynamic> jsonList = jsonDecode(response.body);
-      List<StoryViewer> viewers =
-          jsonList.map((json) => StoryViewer.fromJson(json)).toList();
-      return viewers;
-    } else {
-      // ignore: avoid_print
-      print("Failed to retrieve story viewers: ${response.statusCode}");
+      if (response.statusCode == 200) {
+        List<dynamic> jsonList = json.decode(response.body);
+        List<StoryViewer> viewers =
+            jsonList.map((data) => StoryViewer.fromJson(data)).toList();
+        return viewers;
+      } else {
+        print('Failed to retrieve story viewers. Status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        return null;
+      }
+    } on SessionExpiredException {
+      rethrow;
+    } catch (e) {
+      print('Error retrieving story viewers: $e');
       return null;
     }
   }

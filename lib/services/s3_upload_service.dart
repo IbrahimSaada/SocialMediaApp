@@ -29,7 +29,7 @@ class S3UploadService {
     // Make the request with ApiService, which handles auth & signature
     final response = await _apiService.makeRequestWithToken(
       Uri.parse(
-        'https://f123-185-97-92-49.ngrok-free.app/api/media/s3-presigned-upload-urls',
+        '***REMOVED***/api/media/s3-presigned-upload-urls',
       ),
       signatureData,
       'POST',
