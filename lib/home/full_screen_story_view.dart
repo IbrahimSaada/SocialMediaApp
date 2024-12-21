@@ -297,152 +297,181 @@ Future<void> _fetchStoryViewers(int storyId) async {
     _resumeStory(); // resume after closing
   }
 
-  void _deleteStory(int storyId) async {
-    _pauseStory();
-    bool confirmDelete = await showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
+void _deleteStory(int storyId) async {
+  _pauseStory();
+
+  bool confirmDelete = await showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15.0),
+        ),
+        elevation: 16,
+        backgroundColor: Colors.white,
+        child: Container(
+          padding: const EdgeInsets.all(20.0),
+          decoration: BoxDecoration(
+            color: Colors.white,
             borderRadius: BorderRadius.circular(15.0),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                spreadRadius: 5,
+                blurRadius: 15,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
-          elevation: 16,
-          backgroundColor: Colors.white,
-          child: Container(
-            padding: const EdgeInsets.all(20.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(15.0),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  spreadRadius: 5,
-                  blurRadius: 15,
-                  offset: const Offset(0, 5),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.delete_outline,
+                color: Color(0xFFD32F2F),
+                size: 40,
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Confirm Deletion',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF4B3F72),
                 ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.delete_outline,
-                  color: Color(0xFFD32F2F),
-                  size: 40,
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Are you sure you want to delete this story media? '
+                'This action cannot be undone.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.black87,
                 ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Confirm Deletion',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF4B3F72),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Are you sure you want to delete this story? This action cannot be undone.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 30),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pop(false);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        backgroundColor: Colors.grey.shade300,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(
-                          color: Colors.black87,
-                          fontSize: 16,
-                        ),
+              ),
+              const SizedBox(height: 30),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      backgroundColor: Colors.grey.shade300,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
                       ),
                     ),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pop(true);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        backgroundColor: Color(0xFFD32F2F),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      child: const Text(
-                        'Delete',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: Colors.black87,
+                        fontSize: 16,
                       ),
                     ),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      backgroundColor: Color(0xFFD32F2F),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    child: const Text(
+                      'Delete',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
 
-    if (!confirmDelete) {
-      _resumeStory();
-      return;
-    }
-
-    if (!await _checkSession(context)) {
-      _resumeStory();
-      return;
-    }
-
-    try {
-      final mediaId = widget.stories[_currentStoryIndex].media[_currentMediaIndex].mediaId;
-      final userId = _loggedInUserId;
-
-      if (userId != null) {
-        bool isDeleted = await StoryService().deleteStoryMedia(mediaId, userId);
-        if (isDeleted) {
-          setState(() {
-            widget.stories.removeWhere((story) => story.storyId == storyId);
-          });
-
-          if (widget.stories.isEmpty) {
-            Navigator.of(context).popUntil((route) => route.isFirst);
-          } else {
-            // If current index is out of range, adjust
-            if (_currentStoryIndex >= widget.stories.length) {
-              _currentStoryIndex = widget.stories.length - 1;
-            }
-            // Jump to the adjusted story
-            _pageController.jumpToPage(_currentStoryIndex);
-            _viewStory(widget.stories[_currentStoryIndex].storyId);
-            _startStoryTimer();
-          }
-        } else {
-          _showSnackbar("Failed to delete story.");
-        }
-      }
-    } catch (e) {
-      _showSnackbar("Error occurred while deleting story: $e");
-    }
-
+  // If user cancels deletion
+  if (!confirmDelete) {
     _resumeStory();
+    return;
   }
+
+  // Session check
+  if (!await _checkSession(context)) {
+    _resumeStory();
+    return;
+  }
+
+  try {
+    final userId = _loggedInUserId;
+    if (userId == null) {
+      _showSnackbar("User not found or not logged in.");
+      _resumeStory();
+      return;
+    }
+
+    // Identify the current story & media we want to delete
+    final currentStory = widget.stories[_currentStoryIndex];
+    final mediaId = currentStory.media[_currentMediaIndex].mediaId;
+
+    // Call the backend to delete this single media item
+    bool isDeleted = await StoryService().deleteStoryMedia(mediaId, userId);
+
+    if (isDeleted) {
+      // Remove the single media from our local list
+      setState(() {
+        currentStory.media.removeAt(_currentMediaIndex);
+      });
+
+      // If the story now has zero media left, remove the entire story
+      if (currentStory.media.isEmpty) {
+        setState(() {
+          widget.stories.removeAt(_currentStoryIndex);
+        });
+      }
+
+      // If we have no stories left, go home
+      if (widget.stories.isEmpty) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        return;
+      }
+
+      // Otherwise, if the current index is now out of bounds (e.g. last story was removed),
+      // shift it to the last valid story
+      if (_currentStoryIndex >= widget.stories.length) {
+        _currentStoryIndex = widget.stories.length - 1;
+      }
+
+      // If the current story still has media but we removed the last media index, shift to the new last media
+      if (currentStory.media.isNotEmpty &&
+          _currentMediaIndex >= currentStory.media.length) {
+        _currentMediaIndex = currentStory.media.length - 1;
+      }
+
+      // Reset the timer & jump to our updated story
+      _pageController.jumpToPage(_currentStoryIndex);
+      _viewStory(widget.stories[_currentStoryIndex].storyId);
+      _startStoryTimer();
+    } else {
+      _showSnackbar("Failed to delete story media.");
+    }
+  } catch (e) {
+    _showSnackbar("Error occurred while deleting story media: $e");
+  }
+
+  // Resume the story after all operations
+  _resumeStory();
+}
 
   void _submitReport(String reportReason, int reportedUserId, int contentId) async {
     if (!await _checkSession(context)) return;
