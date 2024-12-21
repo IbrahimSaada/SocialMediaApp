@@ -47,6 +47,8 @@ class PostCard extends StatefulWidget {
   final DateTime createdAt;
   final String content;
   final VoidCallback? onRefreshNeeded;
+  final Function(int postId, bool isLiked, int likeCount)? onPostStateChange; // NEW
+  final Map<int, Map<String, dynamic>> globalPostStates; // NEW
 
   const PostCard({
     Key? key,
@@ -57,6 +59,8 @@ class PostCard extends StatefulWidget {
     required this.createdAt,
     required this.content,
     this.onRefreshNeeded,
+        required this.onPostStateChange,  // NEW
+    required this.globalPostStates,    // NEW
   }) : super(key: key);
 
   @override
@@ -71,9 +75,16 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
   late AnimationController _animationController;
   int? _currentUserId;
 
+
   @override
   void initState() {
     super.initState();
+     if (widget.globalPostStates.containsKey(widget.postInfo.postId)) {
+      _isLiked = widget.globalPostStates[widget.postInfo.postId]!["isLiked"];
+      widget.postInfo.likeCount = widget.globalPostStates[widget.postInfo.postId]!["likeCount"];
+    } else {
+      _isLiked = widget.isLiked;
+    }
     _isLiked = widget.isLiked;
     _isBookmarked = widget.isBookmarked;
     _fetchCurrentUserId();
@@ -84,6 +95,18 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
       lowerBound: 0.8,
       upperBound: 1.2,
     );
+  }
+
+    @override
+  void didUpdateWidget(covariant PostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // CHANGES HERE: If global states change, update local state
+    if (widget.globalPostStates.containsKey(widget.postInfo.postId)) {
+      setState(() {
+        _isLiked = widget.globalPostStates[widget.postInfo.postId]!["isLiked"];
+        widget.postInfo.likeCount = widget.globalPostStates[widget.postInfo.postId]!["likeCount"];
+      });
+    }
   }
 
   @override
@@ -184,6 +207,13 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
           _isLiked = true;
           widget.postInfo.likeCount += 1;
         });
+      }
+        if (widget.onPostStateChange != null) {
+        widget.onPostStateChange!(
+          widget.postInfo.postId,
+          _isLiked,
+          widget.postInfo.likeCount,
+        );
       }
     } on SessionExpiredException {
       if (context.mounted) {

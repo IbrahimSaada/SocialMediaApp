@@ -34,7 +34,7 @@ class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin 
   bool _hasMoreData = true;
   final ScrollController _scrollController = ScrollController();
   int? _userId;
-
+  Map<int, Map<String, dynamic>> _postStates = {};
   bool _isBarVisible = true;
   late AnimationController _animationController;
   late Animation<double> _animation;
@@ -120,6 +120,7 @@ class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin 
           pageNumber: _currentPageNumber,
           pageSize: _pageSize,
         );
+      _updatePostStatesFromFeed(feedItems);
         setState(() {
           _feedItems = feedItems;
           _isFetchingData = false;
@@ -157,6 +158,11 @@ class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin 
           pageSize: _pageSize,
         );
 
+                if (newFeedItems.isNotEmpty) {
+          // CHANGES HERE: Update global post states
+          _updatePostStatesFromFeed(newFeedItems);
+                }
+
         if (newFeedItems.isNotEmpty) {
           setState(() {
             _feedItems.addAll(
@@ -191,6 +197,42 @@ class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin 
 
   Future<void> _refreshFeed() async {
     await _fetchFeed();
+  }
+
+   // CHANGES HERE: Method to update global post states map
+  void _updatePostStatesFromFeed(List<FeedItem> items) {
+    for (var item in items) {
+      int? postId;
+      bool? isLiked;
+      int? likeCount;
+
+      if (item is PostItem) {
+        postId = item.post.postId;
+        isLiked = item.isLiked;
+        likeCount = item.post.likeCount;
+      } else if (item is RepostItem) {
+        postId = item.post.postId;
+        isLiked = item.isLiked;
+        likeCount = item.post.likeCount;
+      }
+
+      if (postId != null && isLiked != null && likeCount != null) {
+        _postStates[postId] = {
+          "isLiked": isLiked,
+          "likeCount": likeCount,
+        };
+      }
+    }
+  }
+
+  // CHANGES HERE: Callback called by PostCard/RepostCard to update global state
+  void updatePostState(int postId, bool isLiked, int likeCount) {
+    setState(() {
+      _postStates[postId] = {
+        "isLiked": isLiked,
+        "likeCount": likeCount,
+      };
+    });
   }
 
   Widget buildDivider() {
@@ -269,9 +311,15 @@ class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin 
         isBookmarked: item.isBookmarked,
         createdAt: item.createdAt,
         content: item.content,
+        onPostStateChange: updatePostState, // NEW
+        globalPostStates: _postStates,      // NEW
       );
     } else if (item is RepostItem) {
-      return RepostCard(feedItem: item);
+           return RepostCard(
+        feedItem: item,
+        onPostStateChange: updatePostState, // NEW
+        globalPostStates: _postStates,      // NEW
+      );
     } else {
       return Container();
     }
