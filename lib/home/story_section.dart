@@ -10,7 +10,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:cook/services/StoryService.dart' as storyService;
 import 'package:cook/services/storyview_Service.dart' as storyview;
-
+import 'package:cook/models/storyview_response_model.dart';
 
 class StorySection extends StatefulWidget {
   final int? userId;
@@ -24,36 +24,36 @@ class StorySection extends StatefulWidget {
 class _StorySectionState extends State<StorySection> {
   List<story_model.Story> _stories = [];
   final LoginService _loginService = LoginService();
-  int? _userId; // Define _userId
+  int? _userId;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _fetchStories();
     _fetchUserIdAndStories();
   }
-   Future<void> _fetchUserIdAndStories() async {
-  setState(() {
-    _isLoading = true;
-  });
-  
-  try {
-    final userId = await LoginService().getUserId();
-    if (userId != null) {
-      _userId = userId;
-      await _fetchStories();
-    } else {
-      print('User ID not found');
-    }
-  } catch (e) {
-    print('Failed to fetch user ID or stories: $e');
-  } finally {
+
+  Future<void> _fetchUserIdAndStories() async {
     setState(() {
-      _isLoading = false;
+      _isLoading = true;
     });
+
+    try {
+      final userId = await _loginService.getUserId();
+      if (userId != null) {
+        _userId = userId;
+        await _fetchStories();
+      } else {
+        print('User ID not found');
+      }
+    } catch (e) {
+      print('Failed to fetch user ID or stories: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
-}
 
   Future<void> _recordStoryView(int storyId) async {
     if (_userId != null) {
@@ -61,55 +61,53 @@ class _StorySectionState extends State<StorySection> {
       StoryViewResponse? response = await storyview.StoryServiceRequest().recordStoryView(request);
 
       if (response != null) {
-        print(response.message); // Handle the response message, if needed
+        print(response.message);
       } else {
         print("Failed to record story view.");
       }
     }
   }
 
-  Future<void> _fetchStories() async {
-    try {
-      if (_userId != null) {
-List<story_model.Story> allStories =
-    await storyService.StoryService().fetchStories(_userId!);
+Future<void> _fetchStories() async {
+  try {
+    if (_userId != null) {
+      // Using the StoryService to fetch paginated stories
+      final paginatedStories = await storyService.StoryService().fetchStories(_userId!);
 
+      // Extract the actual list of Story objects from the paginated response
+      List<story_model.Story> allStories = paginatedStories.data;
 
-        // Print the fetched stories for debugging
-        // ignore: avoid_print
-        print('Fetched ${allStories.length} stories.');
-        for (var story in allStories) {
-          // ignore: avoid_print
-          print(
-              'Story ID: ${story.storyId}, User: ${story.fullName}, Media URL: ${story.media.isNotEmpty ? story.media[0].mediaUrl : 'No Media'}');
-        }
-
-        // Separate "My Stories" and "Other Stories"
-        List<story_model.Story> myStories =
-            allStories.where((story) => story.userId == _userId).toList();
-        List<story_model.Story> otherStories =
-            allStories.where((story) => story.userId != _userId).toList();
-
-        setState(() {
-          _stories = [
-            ...myStories,
-            ...otherStories
-          ]; // "My Stories" appear first
-        });
+      // Print debugging info
+      print('Fetched ${allStories.length} stories.');
+      for (var story in allStories) {
+        print('Story ID: ${story.storyId}, User: ${story.fullName}, '
+            'Media URL: ${story.media.isNotEmpty ? story.media[0].mediaUrl : 'No Media'}');
       }
-    } catch (e) {
-      // ignore: avoid_print
-      print('Failed to fetch stories: $e');
+
+      // Separate "My Stories" and "Other Stories"
+      List<story_model.Story> myStories =
+          allStories.where((story) => story.userId == _userId).toList();
+      List<story_model.Story> otherStories =
+          allStories.where((story) => story.userId != _userId).toList();
+
+      setState(() {
+        // "My Stories" appear first
+        _stories = [...myStories, ...otherStories];
+      });
     }
+  } catch (e) {
+    print('Failed to fetch stories: $e');
   }
+}
+
 
   void _viewStoryFullscreen(int initialIndex) {
     final story = _stories[initialIndex];
 
-    // Call the API to record the view
+    // Record the view
     _recordStoryView(story.storyId);
 
-    // Show the story fullscreen
+    // Show story in fullscreen
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -121,11 +119,18 @@ List<story_model.Story> allStories =
     );
   }
 
-  void _addStories(List<story_model.Story> newStories) {
-    setState(() {
-      _stories.insertAll(0, newStories);
-    });
-  }
+void _addStories(List<story_model.Story> newStories) {
+  setState(() {
+    // 1. Remove any stories already in _stories that match 
+    //    the newly added story IDs.
+    for (var newStory in newStories) {
+      _stories.removeWhere((existing) => existing.storyId == newStory.storyId);
+    }
+
+    // 2. Insert the fresh stories at the front.
+    _stories.insertAll(0, newStories);
+  });
+}
 
   @override
   Widget build(BuildContext context) {
@@ -138,12 +143,14 @@ List<story_model.Story> allStories =
           Expanded(
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              itemCount: _stories.length + 1,
+              itemCount: _stories.length + 1, // +1 for the "add story" box
               itemBuilder: (context, index) {
+                // The "add story" box
                 if (index == 0) {
                   return StoryBox(onStoriesUpdated: _addStories);
                 }
 
+                // Actual story item
                 final story = _stories[index - 1];
                 if (story.media.isEmpty) {
                   return Container();
@@ -158,7 +165,7 @@ List<story_model.Story> allStories =
                         width: 120,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(25.0),
-                          border: Border.all(color: Color(0xFFF45F67), width: 3),
+                          border: Border.all(color: const Color(0xFFF45F67), width: 3),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.1),
@@ -203,7 +210,8 @@ List<story_model.Story> allStories =
                         child: Column(
                           children: [
                             CircleAvatar(
-                              backgroundImage: CachedNetworkImageProvider(story.profilePicUrl),
+                              backgroundImage:
+                                  CachedNetworkImageProvider(story.profilePicUrl),
                             ),
                             const SizedBox(height: 4.0),
                             Text(

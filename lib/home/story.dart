@@ -68,10 +68,10 @@ class _StoryBoxState extends State<StoryBox> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black26,
                           spreadRadius: 3,
                           blurRadius: 8,
-                          offset: const Offset(0, 4),
+                          offset: Offset(0, 4),
                         ),
                       ],
                     ),
@@ -83,7 +83,11 @@ class _StoryBoxState extends State<StoryBox> {
                         ),
                         Text(
                           'Take Photo',
-                          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
@@ -111,10 +115,10 @@ class _StoryBoxState extends State<StoryBox> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black26,
                           spreadRadius: 3,
                           blurRadius: 8,
-                          offset: const Offset(0, 4),
+                          offset: Offset(0, 4),
                         ),
                       ],
                     ),
@@ -126,7 +130,11 @@ class _StoryBoxState extends State<StoryBox> {
                         ),
                         Text(
                           'Gallery (Images)',
-                          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
@@ -182,7 +190,6 @@ class _StoryBoxState extends State<StoryBox> {
 
     for (var filePath in filePaths) {
       String mimeType = lookupMimeType(filePath) ?? '';
-
       if (_isValidMimeType(mimeType)) {
         _mediaPaths.add(filePath);
         _mimeTypes.add(mimeType);
@@ -207,107 +214,118 @@ class _StoryBoxState extends State<StoryBox> {
     }
   }
 
-  Future<void> _sendToStory(List<String> mediaPaths) async {
-    S3UploadService s3UploadService = S3UploadService();
-    StoryService storyService = StoryService();
+Future<void> _sendToStory(List<String> mediaPaths) async {
+  S3UploadService s3UploadService = S3UploadService();
+  StoryService storyService = StoryService();
 
-    List<String> fileNames = mediaPaths.map((path) => path.split('/').last).toList();
+  List<String> fileNames = mediaPaths.map((path) => path.split('/').last).toList();
 
-    try {
-      int userId = await LoginService().getUserId() ?? 0;
+  try {
+    int userId = await LoginService().getUserId() ?? 0;
 
-      List<PresignedUrl> presignedUrls = await s3UploadService.getPresignedUrls(fileNames, folderName: 'stories');
+    // Get pre-signed URLs from AWS
+    List<PresignedUrl> presignedUrls =
+        await s3UploadService.getPresignedUrls(fileNames, folderName: 'stories');
 
-      List<MediaRequest> mediaItems = [];
-      for (int i = 0; i < presignedUrls.length; i++) {
-        String uploadedUrl = await s3UploadService.uploadFile(
-          presignedUrls[i], XFile(mediaPaths[i])
-        );
+    // Upload each file, building up the list of media
+    List<MediaRequest> mediaItems = [];
+    for (int i = 0; i < presignedUrls.length; i++) {
+      String uploadedUrl = await s3UploadService.uploadFile(
+        presignedUrls[i],
+        XFile(mediaPaths[i]),
+      );
+      mediaItems.add(
+        MediaRequest(
+          mediaUrl: uploadedUrl,
+          mediaType: 'photo',
+        ),
+      );
+    }
 
-        mediaItems.add(
-          MediaRequest(
-            mediaUrl: uploadedUrl,
-            mediaType: 'photo',
-          ),
-        );
-      }
+    // Create story
+    StoryRequest storyRequest = StoryRequest(userId: userId, media: mediaItems);
+    await storyService.createStory(storyRequest);
 
-      StoryRequest storyRequest = StoryRequest(userId: userId, media: mediaItems);
-      await storyService.createStory(storyRequest);
+    // Fetch updated stories (paginated)
+    final paginatedStories = await storyService.fetchStories(userId);
 
-      List<story_model.Story> updatedStories = await storyService.fetchStories(userId);
-      widget.onStoriesUpdated(updatedStories);
+    // Extract the raw list of stories from the paginated response
+    List<story_model.Story> updatedStories = paginatedStories.data;
 
-      Navigator.pop(context);
-    } catch (e) {
-      if (e.toString().contains('Session expired')) {
-        Future.microtask(() => handleSessionExpired(context));
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create story: $e')),
-        );
-      }
+    // Update the UI
+    widget.onStoriesUpdated(updatedStories);
+
+    Navigator.pop(context);
+  } catch (e) {
+    if (e.toString().contains('Session expired')) {
+      Future.microtask(() => handleSessionExpired(context));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to create story: $e')),
+      );
     }
   }
+}
+
 
   bool _isValidMimeType(String mimeType) {
     return mimeType.startsWith('image/');
   }
 
-@override
-Widget build(BuildContext context) {
-  return GestureDetector(
-    onTap: () {
-      _showOptionsDialog(context);
-    },
-    child: DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFFF45F67), // Main color gradient start
-            Color(0xFFF45F67), // Main color gradient end
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(25.0),
-        border: Border.all(color: const Color(0xFFF45F67), width: 2), // Border color update
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Container(
-        width: 110,
-        height: 110,
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        _showOptionsDialog(context);
+      },
+      child: DecoratedBox(
         decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [
+              Color(0xFFF45F67), // Main color gradient start
+              Color(0xFFF45F67), // Main color gradient end
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(25.0),
-          color: Colors.white,
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              width: 45,
-              height: 45,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF45F67), // Circle color for the + icon
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.add, color: Colors.white, size: 30),
+          border: Border.all(color: const Color(0xFFF45F67), width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
+        child: Container(
+          width: 110,
+          height: 110,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(25.0),
+            color: Colors.white,
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 45,
+                height: 45,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF45F67),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.add, color: Colors.white, size: 30),
+              ),
+            ],
+          ),
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
 
-// MediaPreviewScreen after modification
+// MediaPreviewScreen
 
 class MediaPreviewScreen extends StatefulWidget {
   final List<String> filePaths;
@@ -335,28 +353,31 @@ class _MediaPreviewScreenState extends State<MediaPreviewScreen> {
         title: const Text('Preview Media'),
         actions: [
           TextButton(
-  onPressed: _isSending ? null : () async {
-    setState(() {
-      _isSending = true;
-    });
+            onPressed: _isSending
+                ? null
+                : () async {
+                    setState(() {
+                      _isSending = true;
+                    });
 
-    // Perform session check before sending the story
-    if (!await _checkSession(context)) {
-      setState(() {
-        _isSending = false; // Re-enable button if session expired
-      });
-      return;
-    }
+                    // Perform session check before sending the story
+                    if (!await _checkSession(context)) {
+                      setState(() {
+                        _isSending = false; // Re-enable button if session expired
+                      });
+                      return;
+                    }
 
-    await widget.onSendToStory(widget.filePaths); // Send media if session is valid
+                    await widget.onSendToStory(widget.filePaths);
 
-    Navigator.of(context).popUntil((route) => route.isFirst);
-  },
-  child: Text(
-    _isSending ? 'CREATING...' : 'CREATE',
-    style: const TextStyle(color: Color.fromARGB(255, 255, 255, 255)),
-  ),
-),
+                    // After sending, close all the way to the main screen
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  },
+            child: Text(
+              _isSending ? 'CREATING...' : 'CREATE',
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
         ],
       ),
       body: PageView.builder(
