@@ -38,7 +38,15 @@ void showBlockSnackbar(BuildContext context, String reason) {
 class RepostCard extends StatefulWidget {
   final RepostItem feedItem;
 
-  const RepostCard({Key? key, required this.feedItem}) : super(key: key);
+    final Function(int postId, bool isLiked, int likeCount)? onPostStateChange; // NEW
+  final Map<int, Map<String, dynamic>> globalPostStates; // NEW
+
+  const RepostCard({
+    Key? key,
+    required this.feedItem,
+    required this.onPostStateChange,  // NEW
+    required this.globalPostStates,    // NEW
+  }) : super(key: key);
 
   @override
   _RepostCardState createState() => _RepostCardState();
@@ -54,6 +62,14 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+        final postId = widget.feedItem.post.postId;
+    if (widget.globalPostStates.containsKey(postId)) {
+      _isLiked = widget.globalPostStates[postId]!["isLiked"];
+      _likeCount = widget.globalPostStates[postId]!["likeCount"];
+    } else {
+      _isLiked = widget.feedItem.isLiked;
+      _likeCount = widget.feedItem.post.likeCount;
+    }
     _isLiked = widget.feedItem.isLiked;
     _likeCount = widget.feedItem.post.likeCount;
     _isBookmarked = widget.feedItem.isBookmarked;
@@ -66,6 +82,19 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
     );
 
     _fetchCurrentUserId();
+  }
+
+    @override
+  void didUpdateWidget(covariant RepostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // CHANGES HERE: If global states change, update local state
+    final postId = widget.feedItem.post.postId;
+    if (widget.globalPostStates.containsKey(postId)) {
+      setState(() {
+        _isLiked = widget.globalPostStates[postId]!["isLiked"];
+        _likeCount = widget.globalPostStates[postId]!["likeCount"];
+      });
+    }
   }
 
   @override
@@ -117,6 +146,12 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
           _likeCount += 1;
         });
       }
+
+      // CHANGES HERE: Notify parent about state change
+      if (widget.onPostStateChange != null) {
+        widget.onPostStateChange!(postId, _isLiked, _likeCount);
+      }
+
     } on SessionExpiredException {
       if (context.mounted) {
         handleSessionExpired(context);
