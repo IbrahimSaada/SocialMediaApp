@@ -17,7 +17,7 @@ class FullScreenStoryView extends StatefulWidget {
   final List<Story> stories;
   final int initialIndex;
 
-  FullScreenStoryView({required this.stories, required this.initialIndex});
+  const FullScreenStoryView({required this.stories, required this.initialIndex});
 
   @override
   _FullScreenStoryViewState createState() => _FullScreenStoryViewState();
@@ -111,20 +111,22 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
     }
   }
 
-  Future<void> _fetchStoryViewers(int storyId) async {
-    try {
-      List<StoryViewer>? viewers =
-          await StoryServiceRequest().getStoryViewers(storyId);
+Future<void> _fetchStoryViewers(int storyId) async {
+  try {
+    // Retrieve the paginated response
+    final paginatedViewers = await StoryServiceRequest().getStoryViewers(storyId);
 
-      if (viewers != null) {
-        setState(() {
-          viewersList = viewers;
-        });
-      }
-    } catch (e) {
-      print('Failed to fetch story viewers: $e');
+    if (paginatedViewers != null) {
+      setState(() {
+        // Extract the actual list of StoryViewer objects
+        viewersList = paginatedViewers.data;
+      });
     }
+  } catch (e) {
+    print('Failed to fetch story viewers: $e');
   }
+}
+
 
   void _startStoryTimer() {
     _resetStoryTimer();
@@ -154,7 +156,6 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
 
   void _nextMediaOrStory() async {
     if (_hasNavigatedToHomePage) return;
-
     if (!await _checkSession(context)) return;
 
     final currentStory = widget.stories[_currentStoryIndex];
@@ -170,7 +171,6 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
 
   void _nextStory() async {
     if (_hasNavigatedToHomePage) return;
-
     if (!await _checkSession(context)) return;
 
     if (_currentStoryIndex < widget.stories.length - 1) {
@@ -201,8 +201,7 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
     } else if (_currentStoryIndex > 0) {
       setState(() {
         _currentStoryIndex--;
-        _currentMediaIndex =
-            widget.stories[_currentStoryIndex].media.length - 1;
+        _currentMediaIndex = widget.stories[_currentStoryIndex].media.length - 1;
         _startStoryTimer();
       });
       _pageController.previousPage(
@@ -216,13 +215,9 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
   }
 
   Future<void> _showViewersBottomSheet() async {
-    // Pause the story when showing viewers
-    _pauseStory();
-
-    // Fetch viewers if not fetched yet
+    _pauseStory(); // pause while showing viewers
     await _fetchStoryViewers(widget.stories[_currentStoryIndex].storyId);
 
-    // Show a modal bottom sheet that can be swiped down to close
     await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -259,7 +254,7 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
               ),
               Expanded(
                 child: viewersList.isEmpty
-                    ? Center(
+                    ? const Center(
                         child: Text(
                           "No views",
                           style: TextStyle(
@@ -280,13 +275,14 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
                             ),
                             title: Text(
                               viewer.fullname,
-                              style: const TextStyle(
-                                  color: Colors.black, fontSize: 14),
+                              style: const TextStyle(color: Colors.black, fontSize: 14),
                             ),
                             subtitle: Text(
                               _formatTime(viewer.localViewedAt),
                               style: const TextStyle(
-                                  color: Colors.deepOrange, fontSize: 12),
+                                color: Colors.deepOrange,
+                                fontSize: 12,
+                              ),
                             ),
                           );
                         },
@@ -298,8 +294,7 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
       },
     );
 
-    // Once bottom sheet is closed (swiped down), resume the story
-    _resumeStory();
+    _resumeStory(); // resume after closing
   }
 
   void _deleteStory(int storyId) async {
@@ -362,8 +357,7 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
                         Navigator.of(context).pop(false);
                       },
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                         backgroundColor: Colors.grey.shade300,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
@@ -382,8 +376,7 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
                         Navigator.of(context).pop(true);
                       },
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                         backgroundColor: Color(0xFFD32F2F),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
@@ -418,13 +411,11 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
     }
 
     try {
-      final mediaId =
-          widget.stories[_currentStoryIndex].media[_currentMediaIndex].mediaId;
+      final mediaId = widget.stories[_currentStoryIndex].media[_currentMediaIndex].mediaId;
       final userId = _loggedInUserId;
 
       if (userId != null) {
         bool isDeleted = await StoryService().deleteStoryMedia(mediaId, userId);
-
         if (isDeleted) {
           setState(() {
             widget.stories.removeWhere((story) => story.storyId == storyId);
@@ -433,7 +424,7 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
           if (widget.stories.isEmpty) {
             Navigator.of(context).popUntil((route) => route.isFirst);
           } else {
-            // If current index is out of range after deletion, adjust it
+            // If current index is out of range, adjust
             if (_currentStoryIndex >= widget.stories.length) {
               _currentStoryIndex = widget.stories.length - 1;
             }
@@ -653,6 +644,7 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
           if (details.globalPosition.dx < screenWidth / 3) {
             _previousMedia();
           } else if (details.globalPosition.dx > 2 * screenWidth / 3) {
+            // If last story & last media => exit
             if (isLastStory && isLastMedia) {
               _hasNavigatedToHomePage = true;
               Navigator.of(context).popUntil((route) => route.isFirst);
@@ -705,8 +697,7 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
                                 ),
                                 const SizedBox(height: 3),
                                 Text(
-                                  _formatTime(
-                                      story.media[_currentMediaIndex].localCreatedAt),
+                                  _formatTime(story.media[_currentMediaIndex].localCreatedAt),
                                   style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 12,
