@@ -1,11 +1,9 @@
 // ignore_for_file: avoid_print
-
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:cook/models/story_model.dart';
 import 'package:cook/models/story_request_model.dart';
-import 'package:cook/services/LoginService.dart'; // Import LoginService for token management
-import 'package:cook/services/SignatureService.dart'; // Import SignatureService
+import 'package:cook/services/apiService.dart';
+import 'package:cook/services/SessionExpiredException.dart';
 
 class StoryService {
   // Define the base URLs for GET and POST requests
@@ -14,81 +12,53 @@ class StoryService {
   final String postUrl =
       'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Stories';
 
-  final LoginService _loginService = LoginService();
-  final SignatureService _signatureService = SignatureService();
+  final ApiService _apiService = ApiService();
 
-  // Helper method to ensure token is valid or refresh it if expired
-  Future<String?> _getValidToken() async {
-    String? accessToken = await _loginService.getToken();
-    DateTime? expiration = await _loginService.getTokenExpiration();
-
-    // If the token is expired, proactively refresh it
-    if (expiration == null || DateTime.now().isAfter(expiration)) {
-      print('Access token expired, refreshing...');
-      await _loginService.refreshAccessToken(); // Refresh the token
-      accessToken = await _loginService.getToken(); // Get the new token
-    }
-
-    return accessToken; // Return the valid token
-  }
-
-  // Fetch stories using the GET request
+  /// Fetch stories (GET)
   Future<List<Story>> fetchStories(int userId) async {
     final String fullUrl = '$getUrl$userId';
-    String? accessToken = await _getValidToken(); // Ensure token is valid
 
-    if (accessToken == null) {
-      throw Exception('Unable to retrieve access token.');
-    }
-
-    // Generate signature for the request based on userId
-    String signature = await _signatureService.generateHMAC('$userId');
+    // This is the data that needs to be signed
+    final String signatureData = '$userId';
 
     try {
-      final response = await http.get(
+      // Make GET request using ApiService
+      final response = await _apiService.makeRequestWithToken(
         Uri.parse(fullUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken', // Include valid access token
-          'X-Signature': signature, // Include signature
-        },
+        signatureData,
+        'GET',
       );
 
       if (response.statusCode == 200) {
         List<dynamic> jsonData = json.decode(response.body);
         return jsonData.map((item) => Story.fromJson(item)).toList();
       } else {
-        throw Exception(
-            'Failed to load stories. Status code: ${response.statusCode}');
+        print('Failed to load stories. Status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        throw Exception('Failed to load stories.');
       }
+    } on SessionExpiredException {
+      // Let the caller handle session expiration
+      rethrow;
     } catch (e) {
       print('Error fetching stories: $e');
-      throw Exception('Error fetching stories');
+      rethrow;
     }
   }
 
-  // Create a story using the POST request
+  /// Create a story (POST)
   Future<void> createStory(StoryRequest storyRequest) async {
-    String? accessToken = await _getValidToken(); // Ensure token is valid
-
-    if (accessToken == null) {
-      throw Exception('Unable to retrieve access token.');
-    }
-
-    // Generate signature for the request based on userId and media URLs in storyRequest
-    String dataToSign =
+    // Data to sign: userId plus a comma-separated list of media URLs
+    final String signatureData =
         '${storyRequest.userId}:${storyRequest.media.map((m) => m.mediaUrl).join(",")}';
-    String signature = await _signatureService.generateHMAC(dataToSign);
 
     try {
-      final response = await http.post(
+      // Make POST request using ApiService
+      final response = await _apiService.makeRequestWithToken(
         Uri.parse(postUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken', // Include valid access token
-          'X-Signature': signature, // Include signature
-        },
-        body: jsonEncode(storyRequest.toJson()),
+        signatureData,
+        'POST',
+        body: storyRequest.toJson(),
       );
 
       if (response.statusCode == 201) {
@@ -96,42 +66,41 @@ class StoryService {
       } else {
         print('Failed to create story. Status code: ${response.statusCode}');
         print('Response body: ${response.body}');
-        throw Exception('Failed to create story');
+        throw Exception('Failed to create story.');
       }
+    } on SessionExpiredException {
+      rethrow;
     } catch (e) {
       print('Error creating story: $e');
-      throw Exception('Error creating story');
+      rethrow;
     }
   }
-    // Method to delete a story media (DELETE)
+
+  /// Delete a story media (DELETE)
   Future<bool> deleteStoryMedia(int storyMediaId, int userId) async {
-    String? accessToken = await _getValidToken(); // Ensure token is valid
+    // Data to sign: storyMediaId:userId
+    final String signatureData = '$storyMediaId:$userId';
+    final String url = '$postUrl/Media/$storyMediaId/$userId';
 
-    if (accessToken == null) {
-      print('Unable to retrieve access token.');
-      return false; // If no valid token, return early
-    }
+    try {
+      final response = await _apiService.makeRequestWithToken(
+        Uri.parse(url),
+        signatureData,
+        'DELETE',
+      );
 
-    // Generate signature for the request
-    var dataToSign = '$storyMediaId:$userId';
-    String signature = await _signatureService.generateHMAC(dataToSign);
-
-    final url = '$postUrl/Media/$storyMediaId/$userId'; // Construct the API URL
-
-    final response = await http.delete(
-      Uri.parse(url),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $accessToken', // Include the valid access token
-        'X-Signature': signature, // Include the signature in the headers
-      },
-    );
-
-    if (response.statusCode == 200) {
-      return true; // Successfully deleted
-    } else {
-      
-      print("Failed to delete story media: ${response.statusCode}");
+      if (response.statusCode == 200) {
+        print('Story media deleted successfully.');
+        return true;
+      } else {
+        print('Failed to delete story media. Status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        return false;
+      }
+    } on SessionExpiredException {
+      rethrow;
+    } catch (e) {
+      print('Error deleting story media: $e');
       return false;
     }
   }
