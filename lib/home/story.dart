@@ -246,15 +246,11 @@ Future<void> _sendToStory(List<String> mediaPaths) async {
     StoryRequest storyRequest = StoryRequest(userId: userId, media: mediaItems);
     await storyService.createStory(storyRequest);
 
-    // Fetch updated stories (paginated)
-    final paginatedStories = await storyService.fetchStories(userId);
+    // Instead of passing the newly fetched stories, we send an empty list
+    // to indicate a forced refresh is needed in the parent widget.
+    widget.onStoriesUpdated([]);
 
-    // Extract the raw list of stories from the paginated response
-    List<story_model.Story> updatedStories = paginatedStories.data;
-
-    // Update the UI
-    widget.onStoriesUpdated(updatedStories);
-
+    // Return to home
     Navigator.pop(context);
   } catch (e) {
     if (e.toString().contains('Session expired')) {

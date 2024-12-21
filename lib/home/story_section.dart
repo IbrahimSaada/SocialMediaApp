@@ -101,25 +101,36 @@ Future<void> _fetchStories() async {
 }
 
 
-  void _viewStoryFullscreen(int initialIndex) {
-    final story = _stories[initialIndex];
+void _viewStoryFullscreen(int initialIndex) {
+  final story = _stories[initialIndex];
 
-    // Record the view
-    _recordStoryView(story.storyId);
+  // record view
+  _recordStoryView(story.storyId);
 
-    // Show story in fullscreen
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => FullScreenStoryView(
-          stories: _stories,
-          initialIndex: initialIndex,
-        ),
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => FullScreenStoryView(
+        stories: _stories,
+        initialIndex: initialIndex,
+
+        // 2. define what to do when the child signals a story changed
+        onStoriesChanged: () {
+          _fetchStories(); // <--- re-fetch from server
+        },
       ),
-    );
-  }
+    ),
+  );
+}
 
 void _addStories(List<story_model.Story> newStories) {
+  // If newStories is empty, it means we want to force a fresh server call
+  if (newStories.isEmpty) {
+    _fetchStories(); 
+    return; 
+  }
+
+  // Otherwise, manually merge the new stories at the front
   setState(() {
     // 1. Remove any stories already in _stories that match 
     //    the newly added story IDs.
