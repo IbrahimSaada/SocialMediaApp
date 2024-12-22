@@ -27,6 +27,12 @@ class _StorySectionState extends State<StorySection> {
   int? _userId;
   bool _isLoading = false;
 
+  // 2) Track the current page and total stories
+  int _currentPage = 1;
+  int _totalCount = 0;          // from the backend ("TotalCount")
+  bool _isLoadingMore = false;  // to prevent multiple loads at once
+  bool _hasMore = true;         // if we've loaded all stories, we set false
+
   @override
   void initState() {
     super.initState();
@@ -34,24 +40,20 @@ class _StorySectionState extends State<StorySection> {
   }
 
   Future<void> _fetchUserIdAndStories() async {
-    setState(() {
-      _isLoading = true;
-    });
-
+    setState(() => _isLoading = true);
     try {
       final userId = await _loginService.getUserId();
       if (userId != null) {
         _userId = userId;
-        await _fetchStories();
+        // Fetch the first page
+        await _fetchStories(isLoadMore: false);
       } else {
         print('User ID not found');
       }
     } catch (e) {
       print('Failed to fetch user ID or stories: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
@@ -68,37 +70,72 @@ class _StorySectionState extends State<StorySection> {
     }
   }
 
-Future<void> _fetchStories() async {
+Future<void> _fetchStories({bool isLoadMore = false}) async {
   try {
-    if (_userId != null) {
-      // Using the StoryService to fetch paginated stories
-      final paginatedStories = await storyService.StoryService().fetchStories(_userId!);
+    if (_userId == null) return;
 
-      // Extract the actual list of Story objects from the paginated response
-      List<story_model.Story> allStories = paginatedStories.data;
-
-      // Print debugging info
-      print('Fetched ${allStories.length} stories.');
-      for (var story in allStories) {
-        print('Story ID: ${story.storyId}, User: ${story.fullName}, '
-            'Media URL: ${story.media.isNotEmpty ? story.media[0].mediaUrl : 'No Media'}');
-      }
-
-      // Separate "My Stories" and "Other Stories"
-      List<story_model.Story> myStories =
-          allStories.where((story) => story.userId == _userId).toList();
-      List<story_model.Story> otherStories =
-          allStories.where((story) => story.userId != _userId).toList();
-
-      setState(() {
-        // "My Stories" appear first
-        _stories = [...myStories, ...otherStories];
-      });
+    // If not loading more, reset page to 1 and clear old data
+    if (!isLoadMore) {
+      _currentPage = 1;
+      _stories.clear();
+      _hasMore = true;
     }
+
+    if (!_hasMore) {
+      // We already loaded everything
+      return;
+    }
+
+    setState(() => _isLoadingMore = true);
+
+    // Fetch from the backend with the current page, pageSize = 3
+    final paginatedStories = await storyService.StoryService().fetchStories(
+      _userId!,
+      pageIndex: _currentPage,
+      pageSize: 3, // or any size you want
+    );
+
+    final newStories = paginatedStories.data;
+    final total = paginatedStories.totalCount;
+
+    print('Fetched page $_currentPage with ${newStories.length} stories. '
+          'TotalCount = $total');
+
+    // If the server tells us totalCount, store it:
+    _totalCount = total;
+
+    // Insert the new stories into our local list
+    // =========== OPTIONAL REORDER ==============
+    //  1) separate myStories vs others
+    final myStories = newStories.where((s) => s.userId == _userId).toList();
+    final otherStories = newStories.where((s) => s.userId != _userId).toList();
+
+    // Insert them at the end of your existing list
+    // but keep your stories in front
+    setState(() {
+      // We do NOT want to re-clear _stories, or we lose the old pages
+      _stories.removeWhere((old) => newStories.any((n) => n.storyId == old.storyId));
+      _stories.insertAll(0, myStories);
+      _stories.addAll(otherStories);
+    });
+
+    // If we loaded fewer than pageSize or we've reached totalCount, 
+    // no more pages to load
+    if (newStories.length < 3 || _stories.length >= _totalCount) {
+      _hasMore = false;
+    } else {
+      // We can increment for the next load
+      _currentPage++;
+    }
+
+    setState(() => _isLoadingMore = false);
+
   } catch (e) {
     print('Failed to fetch stories: $e');
+    setState(() => _isLoadingMore = false);
   }
 }
+
 
 
 void _viewStoryFullscreen(int initialIndex) {
@@ -143,28 +180,42 @@ void _addStories(List<story_model.Story> newStories) {
   });
 }
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 220,
-      padding: const EdgeInsets.symmetric(vertical: 10.0),
-      color: Colors.grey[100],
+@override
+Widget build(BuildContext context) {
+  return Container(
+    height: 220,
+    padding: const EdgeInsets.symmetric(vertical: 10.0),
+    color: Colors.grey[100],
+    // We wrap our column in a NotificationListener to detect when user
+    // scrolls near the end of the horizontal list.
+    child: NotificationListener<ScrollNotification>(
+      onNotification: (scrollNotification) {
+        // 1) Check if user has scrolled close to the max extent.
+        if (scrollNotification.metrics.pixels >=
+            scrollNotification.metrics.maxScrollExtent - 50) {
+          // 2) If not already loading and we still have more pages, fetch next page
+          if (!_isLoadingMore && _hasMore) {
+            _fetchStories(isLoadMore: true);
+          }
+        }
+        // Returning false allows the scroll event to continue to propagate
+        return false;
+      },
       child: Column(
         children: [
           Expanded(
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              itemCount: _stories.length + 1, // +1 for the "add story" box
+              itemCount: _stories.length + 1, // +1 for the "Add Story" box
               itemBuilder: (context, index) {
-                // The "add story" box
+                // The "Add Story" box is always first
                 if (index == 0) {
                   return StoryBox(onStoriesUpdated: _addStories);
                 }
 
-                // Actual story item
                 final story = _stories[index - 1];
                 if (story.media.isEmpty) {
-                  return Container();
+                  return const SizedBox.shrink();
                 }
 
                 return GestureDetector(
@@ -211,7 +262,8 @@ void _addStories(List<story_model.Story> newStories) {
                               ),
                             ),
                           ),
-                          errorWidget: (context, url, error) => const Icon(Icons.error),
+                          errorWidget: (context, url, error) =>
+                              const Icon(Icons.error),
                         ),
                       ),
                       Positioned(
@@ -245,6 +297,8 @@ void _addStories(List<story_model.Story> newStories) {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 }
