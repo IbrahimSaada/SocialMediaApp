@@ -1,8 +1,8 @@
 // posting.dart
 
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 import 'package:chewie/chewie.dart';
 import 'package:video_player/video_player.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -21,15 +21,28 @@ class CreatePostPage extends StatefulWidget {
 }
 
 class _CreatePostPageState extends State<CreatePostPage> {
+  // Public or Private toggle
   bool isPublicSelected = true;
+
+  // Uploading states
   bool _isUploading = false;
   double _uploadProgress = 0;
+
+  // Media and caption
   final ImagePicker _picker = ImagePicker();
   final TextEditingController _captionController = TextEditingController();
   List<XFile> _mediaFiles = [];
+
+  // Services
   final S3UploadService _s3UploadService = S3UploadService();
   final LoginService _loginService = LoginService();
   late final PostService _postService;
+
+  // User info (fetched from LoginService)
+  String? _userFullName;
+  String? _profilePicUrl;
+
+  // Colors, styling
   final Color primaryColor = const Color(0xFFF45F67);
 
   @override
@@ -37,8 +50,21 @@ class _CreatePostPageState extends State<CreatePostPage> {
     super.initState();
     _requestPermissions();
     _initializePostService();
+    _fetchUserData(); // Get the user's full name and profile pic
   }
 
+  // Fetch the user's full name and profile picture from secure storage
+  Future<void> _fetchUserData() async {
+    final userFullName = await _loginService.getFullname();
+    final profilePic = await _loginService.getProfilePic();
+
+    setState(() {
+      _userFullName = userFullName;
+      _profilePicUrl = profilePic;
+    });
+  }
+
+  // Request necessary permissions
   Future<void> _requestPermissions() async {
     await [
       Permission.camera,
@@ -47,12 +73,14 @@ class _CreatePostPageState extends State<CreatePostPage> {
     ].request();
   }
 
+  // Initialize our PostService
   Future<void> _initializePostService() async {
     setState(() {
       _postService = PostService();
     });
   }
 
+  // Pick images or videos from gallery
   Future<void> _pickMedia({bool isImage = true}) async {
     try {
       final List<XFile>? selectedFiles;
@@ -77,6 +105,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
       if (selectedFiles != null && selectedFiles.isNotEmpty) {
         setState(() {
           _mediaFiles.addAll(selectedFiles!);
+          // Limit to 10 files max
           if (_mediaFiles.length > 10) {
             _mediaFiles = _mediaFiles.sublist(0, 10);
           }
@@ -87,6 +116,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
     }
   }
 
+  // Capture photo or video from camera
   Future<void> _pickCameraMedia({bool isImage = true}) async {
     try {
       XFile? file;
@@ -106,6 +136,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
       if (file != null) {
         setState(() {
           _mediaFiles.add(file!);
+          // Limit to 10 files max
           if (_mediaFiles.length > 10) {
             _mediaFiles = _mediaFiles.sublist(0, 10);
           }
@@ -116,7 +147,9 @@ class _CreatePostPageState extends State<CreatePostPage> {
     }
   }
 
+  // Create the post
   Future<void> _post() async {
+    // Validate: caption or media must be present
     if (_captionController.text.isEmpty && _mediaFiles.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please add a caption or media.')),
@@ -124,6 +157,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
       return;
     }
 
+    // Validate: if media is present, must have a caption
     if (_mediaFiles.isNotEmpty && _captionController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Media cannot be posted without a caption.')),
@@ -131,6 +165,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
       return;
     }
 
+    // If already uploading, do not proceed
     if (_isUploading) {
       return;
     }
@@ -143,12 +178,14 @@ class _CreatePostPageState extends State<CreatePostPage> {
     try {
       final int? userId = await _loginService.getUserId();
       if (userId == null) {
+        // If no user, handle session expired
         handleSessionExpired(context);
         return;
       }
 
       List<Media> uploadedMedia = [];
 
+      // If user attached any media files, we upload them to S3
       if (_mediaFiles.isNotEmpty) {
         List<String> fileNames = _mediaFiles.map((file) => file.name).toList();
         List<PresignedUrl> presignedUrls =
@@ -158,6 +195,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
           String objectUrl =
               await _s3UploadService.uploadFile(presignedUrls[i], _mediaFiles[i]);
 
+          // Update progress
           setState(() {
             _uploadProgress = (i + 1) / _mediaFiles.length;
           });
@@ -169,6 +207,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
         }
       }
 
+      // Build request body
       PostRequest postRequest = PostRequest(
         userId: userId,
         caption: _captionController.text,
@@ -176,13 +215,14 @@ class _CreatePostPageState extends State<CreatePostPage> {
         media: uploadedMedia,
       );
 
-      // Previously we added directly to the homepage, now we just return true
+      // Send to API
       await _postService.createPost(postRequest);
 
-      // Return true to indicate that home should refresh
+      // Once posted, go back and signal that home should refresh
       Navigator.pop(context, true);
     } catch (e) {
       print('Error creating post: $e');
+      // If token refresh fails
       if (e.toString().contains('Failed to refresh token')) {
         handleSessionExpired(context);
       }
@@ -193,6 +233,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
     }
   }
 
+  // Open media in full screen viewer
   void _openFullScreenViewer(int initialIndex) {
     Navigator.push(
       context,
@@ -210,6 +251,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
     );
   }
 
+  // Camera options: photo or video
   void _showCameraOptions() {
     showModalBottomSheet(
       context: context,
@@ -238,6 +280,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
     );
   }
 
+  // Media options: select from gallery
   void _showMediaOptions() {
     showModalBottomSheet(
       context: context,
@@ -282,8 +325,10 @@ class _CreatePostPageState extends State<CreatePostPage> {
             Navigator.pop(context);
           },
         ),
-        title: Text('Create Post',
-            style: TextStyle(color: primaryColor, fontSize: 22)),
+        title: Text(
+          'Create Post',
+          style: TextStyle(color: primaryColor, fontSize: 22),
+        ),
         actions: [
           TextButton(
             onPressed: _isUploading ? null : _post,
@@ -300,6 +345,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
       ),
       body: GestureDetector(
         onTap: () {
+          // Close the keyboard when tapping outside
           FocusScope.of(context).unfocus();
         },
         child: Stack(
@@ -307,25 +353,34 @@ class _CreatePostPageState extends State<CreatePostPage> {
           children: [
             Column(
               children: [
+                // User info + toggle
                 Container(
                   padding: const EdgeInsets.all(8.0),
                   child: ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 10.0),
-                    leading: const CircleAvatar(
-                      backgroundImage: AssetImage('assets/chef.jpg'),
+                    leading: CircleAvatar(
+                      backgroundImage: (_profilePicUrl != null &&
+                              _profilePicUrl!.isNotEmpty)
+                          ? NetworkImage(_profilePicUrl!)
+                          : const AssetImage('assets/chef.jpg')
+                              as ImageProvider,
                       radius: 24,
                     ),
                     title: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Flexible(
+                        // Single line, no '...' for very long names
+                        Expanded(
                           child: Text(
-                            'users',
-                            style: TextStyle(fontSize: 20),
-                            overflow: TextOverflow.ellipsis,
+                            _userFullName ?? 'User',
+                            style: const TextStyle(
+                              fontSize: 20,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.clip,
+                            softWrap: false,
                           ),
                         ),
-                        const SizedBox(width: 10),
                         Row(
                           children: [
                             ElevatedButton(
@@ -335,26 +390,21 @@ class _CreatePostPageState extends State<CreatePostPage> {
                                 });
                               },
                               style: ElevatedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 8),
-                                backgroundColor: isPublicSelected
-                                    ? primaryColor
-                                    : Colors.white,
-                                foregroundColor: isPublicSelected
-                                    ? Colors.white
-                                    : Colors.black,
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                backgroundColor:
+                                    isPublicSelected ? primaryColor : Colors.white,
+                                foregroundColor:
+                                    isPublicSelected ? Colors.white : Colors.black,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                   side: BorderSide(
-                                    color: isPublicSelected
-                                        ? primaryColor
-                                        : Colors.black,
+                                    color:
+                                        isPublicSelected ? primaryColor : Colors.black,
                                     width: 2,
                                   ),
                                 ),
                               ),
-                              child: const Text('Public',
-                                  style: TextStyle(fontSize: 16)),
+                              child: const Text('Public', style: TextStyle(fontSize: 16)),
                             ),
                             const SizedBox(width: 5),
                             ElevatedButton(
@@ -364,14 +414,11 @@ class _CreatePostPageState extends State<CreatePostPage> {
                                 });
                               },
                               style: ElevatedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 8),
-                                backgroundColor: !isPublicSelected
-                                    ? primaryColor
-                                    : Colors.white,
-                                foregroundColor: !isPublicSelected
-                                    ? Colors.white
-                                    : Colors.black,
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                backgroundColor:
+                                    !isPublicSelected ? primaryColor : Colors.white,
+                                foregroundColor:
+                                    !isPublicSelected ? Colors.white : Colors.black,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                   side: BorderSide(
@@ -382,8 +429,8 @@ class _CreatePostPageState extends State<CreatePostPage> {
                                   ),
                                 ),
                               ),
-                              child: const Text('Private',
-                                  style: TextStyle(fontSize: 16)),
+                              child:
+                                  const Text('Private', style: TextStyle(fontSize: 16)),
                             ),
                           ],
                         ),
@@ -391,6 +438,8 @@ class _CreatePostPageState extends State<CreatePostPage> {
                     ),
                   ),
                 ),
+
+                // Caption text field
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -405,18 +454,18 @@ class _CreatePostPageState extends State<CreatePostPage> {
                         controller: _captionController,
                         decoration: const InputDecoration(
                           hintText: "What's on your mind?",
-                          hintStyle:
-                              TextStyle(fontSize: 22, color: Colors.grey),
+                          hintStyle: TextStyle(fontSize: 22, color: Colors.grey),
                           border: InputBorder.none,
                         ),
-                        style:
-                            const TextStyle(fontSize: 22, color: Colors.black),
+                        style: const TextStyle(fontSize: 22, color: Colors.black),
                         maxLines: null,
                         expands: true,
                       ),
                     ),
                   ),
                 ),
+
+                // Thumbnails for selected media
                 if (_mediaFiles.isNotEmpty)
                   Expanded(
                     child: Padding(
@@ -429,26 +478,22 @@ class _CreatePostPageState extends State<CreatePostPage> {
                           crossAxisSpacing: 4.0,
                           childAspectRatio: 1,
                         ),
-                        itemCount:
-                            _mediaFiles.length > 5 ? 5 : _mediaFiles.length,
+                        itemCount: _mediaFiles.length > 5 ? 5 : _mediaFiles.length,
                         itemBuilder: (context, index) {
                           return GestureDetector(
                             onTap: () => _openFullScreenViewer(index),
                             child: Stack(
                               children: [
                                 Positioned.fill(
-                                  child: _mediaFiles[index]
-                                          .path
-                                          .endsWith('.mp4')
+                                  child: _mediaFiles[index].path.endsWith('.mp4')
                                       ? ClipRRect(
-                                          borderRadius:
-                                              BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(8),
                                           child: Stack(
                                             fit: StackFit.expand,
                                             children: [
+                                              // Dark overlay
                                               Container(
-                                                color: Colors.black
-                                                    .withOpacity(0.5),
+                                                color: Colors.black.withOpacity(0.5),
                                               ),
                                               const Center(
                                                 child: Icon(
@@ -465,6 +510,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                                           fit: BoxFit.cover,
                                         ),
                                 ),
+                                // If more than 5, show +X
                                 if (_mediaFiles.length > 5 && index == 4)
                                   Positioned.fill(
                                     child: Container(
@@ -473,8 +519,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                                         child: Text(
                                           '+${_mediaFiles.length - 5}',
                                           style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 24),
+                                              color: Colors.white, fontSize: 24),
                                         ),
                                       ),
                                     ),
@@ -486,6 +531,8 @@ class _CreatePostPageState extends State<CreatePostPage> {
                       ),
                     ),
                   ),
+
+                // Bottom UI (buttons for media/camera) when keyboard NOT visible
                 if (!keyboardVisible)
                   SizedBox(
                     height: screenHeight * 0.2,
@@ -498,16 +545,14 @@ class _CreatePostPageState extends State<CreatePostPage> {
                           GestureDetector(
                             onTap: () {
                               FocusScope.of(context).unfocus();
-                              Future.delayed(
-                                  const Duration(milliseconds: 300), () {
+                              Future.delayed(const Duration(milliseconds: 300), () {
                                 _showMediaOptions();
                               });
                             },
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.photo,
-                                    color: primaryColor, size: 36),
+                                Icon(Icons.photo, color: primaryColor, size: 36),
                                 const SizedBox(width: 8),
                                 const Text('Image/Video',
                                     style: TextStyle(fontSize: 22)),
@@ -519,11 +564,9 @@ class _CreatePostPageState extends State<CreatePostPage> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.camera_alt,
-                                    color: primaryColor, size: 36),
+                                Icon(Icons.camera_alt, color: primaryColor, size: 36),
                                 const SizedBox(width: 8),
-                                const Text('Camera',
-                                    style: TextStyle(fontSize: 22)),
+                                const Text('Camera', style: TextStyle(fontSize: 22)),
                               ],
                             ),
                           ),
@@ -531,6 +574,8 @@ class _CreatePostPageState extends State<CreatePostPage> {
                       ),
                     ),
                   ),
+
+                // Bottom UI when keyboard IS visible (just the gallery option)
                 if (keyboardVisible)
                   SizedBox(
                     height: screenHeight * 0.1,
@@ -543,16 +588,14 @@ class _CreatePostPageState extends State<CreatePostPage> {
                           GestureDetector(
                             onTap: () {
                               FocusScope.of(context).unfocus();
-                              Future.delayed(
-                                  const Duration(milliseconds: 300), () {
+                              Future.delayed(const Duration(milliseconds: 300), () {
                                 _showMediaOptions();
                               });
                             },
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.photo,
-                                    color: primaryColor, size: 36),
+                                Icon(Icons.photo, color: primaryColor, size: 36),
                                 const SizedBox(width: 8),
                                 const Text('Image/Video',
                                     style: TextStyle(fontSize: 22)),
@@ -565,6 +608,8 @@ class _CreatePostPageState extends State<CreatePostPage> {
                   ),
               ],
             ),
+
+            // Upload progress indicator
             if (_isUploading)
               Center(
                 child: Column(
@@ -578,8 +623,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                           height: 100,
                           child: CircularProgressIndicator(
                             value: _uploadProgress,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(primaryColor),
+                            valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
                             strokeWidth: 8,
                           ),
                         ),
@@ -596,6 +640,8 @@ class _CreatePostPageState extends State<CreatePostPage> {
                   ],
                 ),
               ),
+
+            // Mini media buttons over the keyboard
             if (keyboardVisible)
               Positioned(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -614,13 +660,11 @@ class _CreatePostPageState extends State<CreatePostPage> {
                             _showMediaOptions();
                           });
                         },
-                        child: Icon(Icons.photo,
-                            color: primaryColor, size: 36),
+                        child: Icon(Icons.photo, color: primaryColor, size: 36),
                       ),
                       GestureDetector(
                         onTap: _showCameraOptions,
-                        child: Icon(Icons.camera_alt,
-                            color: primaryColor, size: 36),
+                        child: Icon(Icons.camera_alt, color: primaryColor, size: 36),
                       ),
                     ],
                   ),
@@ -633,6 +677,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
   }
 }
 
+// Full screen viewer for images/videos
 class FullScreenViewer extends StatefulWidget {
   final List<XFile> mediaFiles;
   final int initialIndex;
@@ -663,6 +708,7 @@ class _FullScreenViewerState extends State<FullScreenViewer> {
     _initializeVideoPlayer();
   }
 
+  // Initialize video player if it's a .mp4 file
   void _initializeVideoPlayer() {
     if (widget.mediaFiles[currentIndex].path.endsWith('.mp4')) {
       _videoPlayerController = VideoPlayerController.file(
@@ -691,6 +737,7 @@ class _FullScreenViewerState extends State<FullScreenViewer> {
     super.dispose();
   }
 
+  // Delete current media item
   void _deleteCurrentMedia() {
     widget.onDelete(currentIndex);
     if (widget.mediaFiles.length > 1) {
@@ -739,11 +786,13 @@ class _FullScreenViewerState extends State<FullScreenViewer> {
             });
           },
           itemBuilder: (context, index) {
+            // If it's a video
             if (widget.mediaFiles[index].path.endsWith('.mp4')) {
               return _chewieController != null
                   ? Chewie(controller: _chewieController!)
                   : const Center(child: CircularProgressIndicator());
             } else {
+              // Otherwise, it's an image
               return Image.file(
                 File(widget.mediaFiles[index].path),
                 fit: BoxFit.contain,
