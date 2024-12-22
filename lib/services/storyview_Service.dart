@@ -9,7 +9,7 @@ import 'package:cook/models/paginated_stories.dart'; // import the new model
 
 class StoryServiceRequest {
   final String baseUrl =
-      'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Stories';
+      'https://5a2e-185-97-92-23.ngrok-free.app/api/Stories';
 
   final ApiService _apiService = ApiService();
 
@@ -44,7 +44,7 @@ class StoryServiceRequest {
   Future<PaginatedViewers?> getStoryViewers(
     int storyId, {
     int pageIndex = 1,
-    int pageSize = 20,
+    int pageSize = 3,
   }) async {
     // e.g. GET /api/Stories/{storyId}/viewers?pageIndex=1&pageSize=20
     final String fullUrl = '$baseUrl/$storyId/viewers?pageIndex=$pageIndex&pageSize=$pageSize';

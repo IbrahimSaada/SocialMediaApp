@@ -27,8 +27,8 @@ factory PaginatedStories.fromJson(Map<String, dynamic> json) {
   return PaginatedStories(
     data: storyList,
     pageIndex: json['PageIndex'] ?? 1,
-    pageSize: json['PageSize'] ?? 20,
-    totalCount: json['TotalCount'] ?? 0,
+    pageSize: json['PageSize'] ?? 3,
+    totalCount: json['totalCount'] ?? 0,
   );
 }
 
@@ -53,7 +53,7 @@ class PaginatedViewers {
           .map((item) => StoryViewer.fromJson(item))
           .toList(),
       pageIndex: json['PageIndex'] ?? 1,
-      pageSize: json['PageSize'] ?? 20,
+      pageSize: json['PageSize'] ?? 3,
       totalCount: json['TotalCount'] ?? 0,
     );
   }
