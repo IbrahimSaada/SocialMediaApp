@@ -1,3 +1,5 @@
+import '***REMOVED***/menu/savedposts.dart';
+import '***REMOVED***/settings/settings_page.dart';
 import 'package:flutter/material.dart';
 import '***REMOVED***/services/Userprofile_service.dart';
 import '***REMOVED***/models/userprofileresponse_model.dart';
@@ -7,6 +9,9 @@ import '***REMOVED***/login/login_page.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '***REMOVED***/maintenance/expiredtoken.dart';
 import '***REMOVED***/services/SessionExpiredException.dart';
+import '../profile/followingpage.dart';
+import 'helpnsupport.dart';
+import 'privacypolicy.dart';
 
 class MenuPage extends StatefulWidget {
   @override
@@ -98,178 +103,208 @@ Future<void> _logout() async {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    double screenHeight = MediaQuery.of(context).size.height;
-    double screenWidth = MediaQuery.of(context).size.width;
-    final primaryColor = Color(0xFFF45F67); // Your primary color
+@override
+Widget build(BuildContext context) {
+  double screenHeight = MediaQuery.of(context).size.height;
+  double screenWidth = MediaQuery.of(context).size.width;
+  final primaryColor = Color(0xFFF45F67); // Your primary color
 
-    return Scaffold(
-      backgroundColor: Colors.black.withOpacity(0.3),
-      body: Stack(
-        children: [
-          GestureDetector(
-            onTap: () => _handleCloseMenu(),
-            child: Container(
-              color: Colors.transparent,
-            ),
+  return Scaffold(
+    backgroundColor: Colors.black.withOpacity(0.3),
+    body: Stack(
+      children: [
+        GestureDetector(
+          onTap: () => _handleCloseMenu(),
+          child: Container(
+            color: Colors.transparent,
           ),
-          GestureDetector(
-            onHorizontalDragUpdate: _handleDragUpdate,
-            onHorizontalDragEnd: _handleDragEnd,
-            child: Transform.translate(
-              offset: Offset(_dragPosition, 0),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                width: screenWidth * 0.8,
-                height: screenHeight,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(
-                    color: primaryColor, // Updated color
-                    width: 3,
-                  ),
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(20),
-                    bottomRight: Radius.circular(20),
-                  ),
+        ),
+        GestureDetector(
+          onHorizontalDragUpdate: _handleDragUpdate,
+          onHorizontalDragEnd: _handleDragEnd,
+          child: Transform.translate(
+            offset: Offset(_dragPosition, 0),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              width: screenWidth * 0.8,
+              height: screenHeight,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(
+                  color: primaryColor, // Updated color
+                  width: 3,
                 ),
-                padding: EdgeInsets.all(screenWidth * 0.04),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    userProfile != null
-                        ? GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ProfilePage(),
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(20),
+                  bottomRight: Radius.circular(20),
+                ),
+              ),
+              padding: EdgeInsets.all(screenWidth * 0.04),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  userProfile != null
+                      ? GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ProfilePage(),
+                              ),
+                            );
+                          },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                radius: screenWidth * 0.1,
+                                backgroundImage: CachedNetworkImageProvider(userProfile!.profilePic),
+                              ),
+                              SizedBox(height: screenHeight * 0.02),
+                              Text(
+                                userProfile!.fullName,
+                                style: TextStyle(
+                                  fontSize: screenWidth * 0.05,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
                                 ),
-                              );
-                            },
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                CircleAvatar(
-                                  radius: screenWidth * 0.1,
-                                  backgroundImage: CachedNetworkImageProvider(userProfile!.profilePic),
-                                ),
-                                SizedBox(height: screenHeight * 0.02),
-                                Text(
-                                  userProfile!.fullName,
-                                  style: TextStyle(
-                                    fontSize: screenWidth * 0.05,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
+                              ),
+                              SizedBox(height: screenHeight * 0.01),
+                              Row(
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        '${userProfile!.followersNb}',
+                                        style: TextStyle(
+                                          fontSize: screenWidth * 0.04,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black87,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const Text(
+                                        'Followers',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                SizedBox(height: screenHeight * 0.01),
-                                Row(
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          '${userProfile!.followersNb}',
-                                          style: TextStyle(
-                                            fontSize: screenWidth * 0.04,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.black87,
-                                          ),
-                                          textAlign: TextAlign.center,
+                                  SizedBox(width: screenWidth * 0.08),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        '${userProfile!.followingNb}',
+                                        style: TextStyle(
+                                          fontSize: screenWidth * 0.04,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black87,
                                         ),
-                                        const Text(
-                                          'Followers',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey,
-                                          ),
-                                          textAlign: TextAlign.center,
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const Text(
+                                        'Following',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey,
                                         ),
-                                      ],
-                                    ),
-                                    SizedBox(width: screenWidth * 0.08),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          '${userProfile!.followingNb}',
-                                          style: TextStyle(
-                                            fontSize: screenWidth * 0.04,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.black87,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                        const Text(
-                                          'Following',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          )
-                        : Center(
-                            child: BouncingChefHat(primaryColor: primaryColor),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                    SizedBox(height: screenHeight * 0.03),
-                    _buildMenuItem(
-                      icon: Icons.people,
-                      text: 'Friends',
-                      color: primaryColor,
-                    ),
+                        )
+                      : Center(
+                          child: BouncingChefHat(primaryColor: primaryColor),
+                        ),
+                  SizedBox(height: screenHeight * 0.03),
+                  _buildMenuItem(
+                    icon: Icons.people,
+                    text: 'Friends',
+                    color: primaryColor,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => FollowingPage(
+                            userId: userId!,
+                            viewerUserId: userId!,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                     _buildMenuItem(
                       icon: Icons.bookmark,
                       text: 'Saved Post',
                       color: primaryColor,
-                    ),
-                    _buildMenuItem(
-                      icon: Icons.settings,
-                      text: 'Settings',
-                      color: primaryColor,
                       onTap: () {
-                        // Navigate to Settings
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SavedPostsPage(userId: userId!),
+                          ),
+                        );
                       },
                     ),
-                    _buildMenuItem(
-                      icon: Icons.feedback,
-                      text: 'Feedback',
-                      color: primaryColor,
-                    ),
-                    _buildMenuItem(
-                      icon: Icons.help_outline,
-                      text: 'Help & Support',
-                      color: primaryColor,
-                    ),
-                    _buildMenuItem(
-                      icon: Icons.privacy_tip,
-                      text: 'Privacy Policy',
-                      color: primaryColor,
-                    ),
-                    Spacer(),
-                    _buildMenuItem(
-                      icon: Icons.logout,
-                      text: 'Logout',
-                      color: primaryColor,
-                      onTap: _logout,
-                    ),
-                  ],
-                ),
+                  _buildMenuItem(
+                    icon: Icons.settings,
+                    text: 'Settings',
+                    color: primaryColor,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => SettingsPage()),
+                      );
+                    },
+                  ),
+                  _buildMenuItem(
+                    icon: Icons.help_outline,
+                    text: 'Help & Support',
+                    color: primaryColor,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => HelpSupportPage()),
+                      );
+                    },
+                  ),
+                  _buildMenuItem(
+                    icon: Icons.privacy_tip,
+                    text: 'Privacy Policy',
+                    color: primaryColor,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => PrivacyPolicyPage()),
+                      );
+                    },
+                  ),
+                  Spacer(),
+                  _buildMenuItem(
+                    icon: Icons.logout,
+                    text: 'Logout',
+                    color: primaryColor,
+                    onTap: _logout,
+                  ),
+                ],
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
+
 
   Widget _buildMenuItem({
     required IconData icon,
