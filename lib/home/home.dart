@@ -29,7 +29,7 @@ class HomePage extends StatefulWidget {
 class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
   List<FeedItem> _feedItems = [];
   int _currentPageNumber = 1;
-  final int _pageSize = 3;
+  final int _pageSize = 10;
   bool _isFetchingData = false;
   bool _hasMoreData = true;
   final ScrollController _scrollController = ScrollController();

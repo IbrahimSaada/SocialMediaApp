@@ -2,8 +2,8 @@
 
 import 'package:flutter/material.dart';
 import '***REMOVED***/models/comment_model.dart';
-import '***REMOVED***/services/commentservice.dart';
 import '***REMOVED***/models/comment_request_model.dart';
+import '***REMOVED***/services/commentservice.dart';
 import '***REMOVED***/services/LoginService.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '***REMOVED***/services/GenerateReportService.dart';
@@ -12,8 +12,8 @@ import '***REMOVED***/maintenance/expiredtoken.dart';
 import 'package:shimmer/shimmer.dart';
 import '***REMOVED***/profile/otheruserprofilepage.dart';
 import '***REMOVED***/profile/profile_page.dart';
-
 import '../services/SessionExpiredException.dart';
+import '***REMOVED***/models/paginated_comment_response.dart';
 
 void showBlockSnackbar(BuildContext context, String reason) {
   String message;
@@ -47,19 +47,34 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
   final FocusNode _focusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _commentController = TextEditingController();
+
   List<Comment> _comments = [];
-  bool _isLoading = true;
+
+  /// `_isLoading` controls the **initial** page load (show shimmer).
+  bool _isLoading = false;
+
+  /// `_isLoadingMore` controls whether we’re fetching the **next** page
+  /// (shows a small bottom loader, not a full shimmer).
+  bool _isLoadingMore = false;
+
   bool _isPosting = false;
   bool _showScrollToBottom = false;
   Comment? _replyingTo;
   int? _currentUserId;
 
+  // For pagination
+  int _currentPage = 1;
+  int _pageSize = 10;
+  int _totalPages = 1; // We'll keep track of total pages from backend
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
     _focusNode.addListener(() {
       if (_focusNode.hasFocus) {
+        // Scroll to bottom after focusing (e.g. to show the text field).
         Future.delayed(const Duration(milliseconds: 300), () {
           _scrollController.animateTo(
             _scrollController.position.maxScrollExtent,
@@ -69,9 +84,11 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
         });
       }
     });
+
     _scrollController.addListener(_scrollListener);
-    _fetchComments();
+
     _fetchCurrentUserId();
+    _fetchComments(page: _currentPage, pageSize: _pageSize, append: false);
   }
 
   @override
@@ -83,17 +100,28 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
     super.dispose();
   }
 
+  /// If user scrolls near the bottom, load more if more pages are available.
   void _scrollListener() {
-    if (_scrollController.position.atEdge) {
-      if (_scrollController.position.pixels == 0) {
-        setState(() {
-          _showScrollToBottom = false;
-        });
-      } else {
-        setState(() {
-          _showScrollToBottom = false;
-        });
+    // How close we are to the bottom before loading more:
+    const double threshold = 200.0;
+    final position = _scrollController.position;
+    final maxScroll = position.maxScrollExtent;
+    final currentScroll = position.pixels;
+
+    // If within `threshold` pixels of the bottom, load next page if possible.
+    if (currentScroll >= (maxScroll - threshold)) {
+      if (!_isLoadingMore && !_isLoading && _currentPage < _totalPages) {
+        _currentPage++;
+        _fetchComments(page: _currentPage, pageSize: _pageSize, append: true);
       }
+    }
+
+    // Show or hide the "scroll to bottom" FAB
+    if (position.atEdge) {
+      // Reached top or bottom
+      setState(() {
+        _showScrollToBottom = false;
+      });
     } else {
       setState(() {
         _showScrollToBottom = true;
@@ -105,144 +133,168 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
     _currentUserId = await LoginService().getUserId();
   }
 
-  // _fetchComments
-Future<void> _fetchComments() async {
-  setState(() {
-    _isLoading = true;
-  });
-  try {
-    List<Comment> comments = await CommentService.fetchComments(widget.postId);
-    setState(() {
-      _comments = comments;
-      _isLoading = false;
-    });
-  } on SessionExpiredException {
-    // Handle session expiration
-    if (context.mounted) {
-      handleSessionExpired(context);
+  /// Fetch (and optionally append) comments from the backend.
+  /// `append: false` => initial or "replace" load
+  /// `append: true`  => load next page & add to existing list
+  Future<void> _fetchComments({
+    int page = 1,
+    int pageSize = 10,
+    bool append = false,
+  }) async {
+    // If this is an "append" load (next page), show small loader at bottom.
+    // Otherwise, show the shimmer for initial load.
+    if (append) {
+      setState(() => _isLoadingMore = true);
+    } else {
+      setState(() => _isLoading = true);
     }
-    setState(() {
-      _isLoading = false;
-    });
-  } catch (e) {
-    print('Failed to load comments: $e');
-    setState(() {
-      _isLoading = false;
-    });
+
+    try {
+      final paginated = await CommentService.fetchComments(
+        widget.postId,
+        pageNumber: page,
+        pageSize: pageSize,
+      );
+
+      setState(() {
+        if (append) {
+          _comments.addAll(paginated.comments);
+        } else {
+          _comments = paginated.comments;
+        }
+        _currentPage = paginated.currentPage;
+        _pageSize = paginated.pageSize;
+        _totalPages = paginated.totalPages;
+      });
+    } on SessionExpiredException {
+      if (context.mounted) {
+        handleSessionExpired(context);
+      }
+    } catch (e) {
+      print('Failed to load comments: $e');
+    } finally {
+      if (append) {
+        setState(() => _isLoadingMore = false);
+      } else {
+        setState(() => _isLoading = false);
+      }
+    }
   }
-}
 
+  Future<void> _postComment() async {
+    if (_commentController.text.isEmpty || _isPosting) return;
 
-Future<void> _postComment() async {
-  if (_commentController.text.isEmpty || _isPosting) return;
+    setState(() {
+      _isPosting = true;
+    });
 
-  setState(() {
-    _isPosting = true;
-  });
+    try {
+      final userId = await LoginService().getUserId();
+      if (userId == null) {
+        setState(() {
+          _isPosting = false;
+        });
+        return;
+      }
 
-  try {
-    final userId = await LoginService().getUserId();
-    if (userId == null) {
-      // User is not logged in, handle accordingly (e.g. show a message)
+      final newCommentText = _commentController.text;
+      final commentRequest = CommentRequest(
+        postId: widget.postId,
+        userId: userId,
+        text: newCommentText,
+        parentCommentId: _replyingTo?.commentId,
+      );
+
+      await CommentService.postComment(commentRequest);
+
+      _commentController.clear();
+      _replyingTo = null;
+
+      // Reload from page 1 after posting
+      _currentPage = 1;
+      await _fetchComments(page: _currentPage, pageSize: _pageSize, append: false);
+    } on SessionExpiredException {
+      if (context.mounted) {
+        handleSessionExpired(context);
+      }
+    } catch (e) {
+      final errStr = e.toString();
+      if (errStr.startsWith('Exception: BLOCKED:')) {
+        String reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+        showBlockSnackbar(context, reason);
+      } else {
+        print('Failed to post comment: $e');
+      }
+    } finally {
       setState(() {
         _isPosting = false;
       });
-      return;
     }
+  }
 
-    final newCommentText = _commentController.text;
-    final commentRequest = CommentRequest(
-      postId: widget.postId,
-      userId: userId,
-      text: newCommentText,
-      parentCommentId: _replyingTo?.commentId,
-    );
+  Future<void> _editComment(Comment comment) async {
+    if (_commentController.text.isEmpty || _isPosting) return;
 
-    await CommentService.postComment(commentRequest);
-
-    _commentController.clear();
-    _replyingTo = null;
-
-    await _fetchComments();
-  } on SessionExpiredException {
-    // Session is expired, handle by prompting user to re-login
-    if (context.mounted) {
-      handleSessionExpired(context);
-    }
-  } catch (e) {
-    final errStr = e.toString();
-    if (errStr.startsWith('Exception: BLOCKED:')) {
-      String reason = errStr.replaceFirst('Exception: BLOCKED:', '');
-      showBlockSnackbar(context, reason);
-    } else {
-      print('Failed to post comment: $e');
-    }
-  } finally {
     setState(() {
-      _isPosting = false;
+      _isPosting = true;
     });
-  }
-}
 
-  // _editComment
-Future<void> _editComment(Comment comment) async {
-  if (_commentController.text.isEmpty || _isPosting) return;
+    try {
+      final commentRequest = CommentRequest(
+        postId: widget.postId,
+        userId: _currentUserId!,
+        text: _commentController.text,
+      );
 
-  setState(() {
-    _isPosting = true;
-  });
+      await CommentService.editComment(commentRequest, comment.commentId);
 
-  try {
-    final commentRequest = CommentRequest(
-      postId: widget.postId,
-      userId: _currentUserId!,
-      text: _commentController.text,
-    );
+      _commentController.clear();
+      _replyingTo = null;
 
-    await CommentService.editComment(commentRequest, comment.commentId);
-
-    _commentController.clear();
-    _replyingTo = null;
-
-    await _fetchComments();
-  } on SessionExpiredException {
-    if (context.mounted) {
-      handleSessionExpired(context);
-    }
-  } catch (e) {
-    final errStr = e.toString();
-    if (errStr.startsWith('Exception: BLOCKED:')) {
-      String reason = errStr.replaceFirst('Exception: BLOCKED:', '');
-      showBlockSnackbar(context, reason);
-    } else {
-      print('Failed to edit comment: $e');
-    }
-  } finally {
-    setState(() {
-      _isPosting = false;
-    });
-  }
-}
-
-// _deleteComment
-Future<void> _deleteComment(Comment comment) async {
-  try {
-    await CommentService.deleteComment(widget.postId, comment.commentId, _currentUserId!);
-    await _fetchComments();
-  } on SessionExpiredException {
-    if (context.mounted) {
-      handleSessionExpired(context);
-    }
-  } catch (e) {
-    final errStr = e.toString();
-    if (errStr.startsWith('Exception: BLOCKED:')) {
-      String reason = errStr.replaceFirst('Exception: BLOCKED:', '');
-      showBlockSnackbar(context, reason);
-    } else {
-      print('Failed to delete comment: $e');
+      // Refresh current page after edit
+      await _fetchComments(page: _currentPage, pageSize: _pageSize, append: false);
+    } on SessionExpiredException {
+      if (context.mounted) {
+        handleSessionExpired(context);
+      }
+    } catch (e) {
+      final errStr = e.toString();
+      if (errStr.startsWith('Exception: BLOCKED:')) {
+        String reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+        showBlockSnackbar(context, reason);
+      } else {
+        print('Failed to edit comment: $e');
+      }
+    } finally {
+      setState(() {
+        _isPosting = false;
+      });
     }
   }
-}
+
+  Future<void> _deleteComment(Comment comment) async {
+    try {
+      await CommentService.deleteComment(
+        widget.postId,
+        comment.commentId,
+        _currentUserId!,
+      );
+      // Refresh current page after delete
+      await _fetchComments(page: _currentPage, pageSize: _pageSize, append: false);
+    } on SessionExpiredException {
+      if (context.mounted) {
+        handleSessionExpired(context);
+      }
+    } catch (e) {
+      final errStr = e.toString();
+      if (errStr.startsWith('Exception: BLOCKED:')) {
+        String reason = errStr.replaceFirst('Exception: BLOCKED:', '');
+        showBlockSnackbar(context, reason);
+      } else {
+        print('Failed to delete comment: $e');
+      }
+    }
+  }
 
   void _onReplyPressed(Comment comment) {
     setState(() {
@@ -402,9 +454,9 @@ Future<void> _deleteComment(Comment comment) async {
             padding: const EdgeInsets.only(left: 16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: comment.replies.expand((reply) {
-                return _flattenReplies(reply, comment.fullName);
-              }).toList(),
+              children: comment.replies
+                  .expand((reply) => _flattenReplies(reply, comment.fullName))
+                  .toList(),
             ),
           ),
         _buildDivider(),
@@ -441,9 +493,11 @@ Future<void> _deleteComment(Comment comment) async {
     );
 
     if (reply.replies.isNotEmpty) {
-      flatReplies.addAll(reply.replies.expand((nestedReply) {
-        return _flattenReplies(nestedReply, reply.fullName);
-      }).toList());
+      flatReplies.addAll(
+        reply.replies.expand((nestedReply) {
+          return _flattenReplies(nestedReply, reply.fullName);
+        }).toList(),
+      );
     }
 
     return flatReplies;
@@ -468,17 +522,13 @@ Future<void> _deleteComment(Comment comment) async {
               if (currentUserId == comment.userId) {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => ProfilePage(),
-                  ),
+                  MaterialPageRoute(builder: (_) => ProfilePage()),
                 );
               } else {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => OtherUserProfilePage(
-                      otherUserId: comment.userId,
-                    ),
+                    builder: (_) => OtherUserProfilePage(otherUserId: comment.userId),
                   ),
                 );
               }
@@ -496,15 +546,13 @@ Future<void> _deleteComment(Comment comment) async {
                 if (currentUserId == comment.userId) {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => ProfilePage(),
-                    ),
+                    MaterialPageRoute(builder: (_) => ProfilePage()),
                   );
                 } else {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => OtherUserProfilePage(
+                      builder: (_) => OtherUserProfilePage(
                         otherUserId: comment.userId,
                       ),
                     ),
@@ -566,6 +614,7 @@ Future<void> _deleteComment(Comment comment) async {
     );
   }
 
+  /// Builds the shimmer placeholders for the initial load.
   Widget _buildShimmerComment() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12.0),
@@ -642,6 +691,14 @@ Future<void> _deleteComment(Comment comment) async {
     );
   }
 
+  /// A simple loader shown at the bottom when loading more pages
+  Widget _buildLoadMoreIndicator() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 16.0),
+      child: Center(child: CircularProgressIndicator()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -661,9 +718,17 @@ Future<void> _deleteComment(Comment comment) async {
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: _isLoading
-                    ? List.generate(10, (index) => _buildShimmerComment())
-                    : _comments.map((comment) => _buildParentComment(comment)).toList(),
+                children: [
+                  // If we're loading the very first page, show the shimmer placeholders
+                  if (_isLoading)
+                    ...List.generate(10, (index) => _buildShimmerComment())
+                  else
+                    // Otherwise show the actual list of comments
+                    ..._comments.map((comment) => _buildParentComment(comment)).toList(),
+
+                  // If we're fetching next pages, show a small loader at the bottom
+                  if (_isLoadingMore) _buildLoadMoreIndicator(),
+                ],
               ),
             ),
           ),
@@ -672,7 +737,7 @@ Future<void> _deleteComment(Comment comment) async {
               bottom: 100.0,
               right: 16.0,
               child: FloatingActionButton(
-                backgroundColor: Color(0xFFF45F67),
+                backgroundColor: const Color(0xFFF45F67),
                 child: const Icon(Icons.arrow_downward, color: Colors.white),
                 onPressed: () {
                   _scrollController.animateTo(
@@ -722,6 +787,7 @@ Future<void> _deleteComment(Comment comment) async {
               onPressed: _isPosting
                   ? null
                   : () {
+                      // If the comment being edited is by the same user, treat it as edit
                       if (_replyingTo != null && _replyingTo!.userId == _currentUserId) {
                         _editComment(_replyingTo!);
                       } else {

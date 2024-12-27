@@ -4,13 +4,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/comment_request_model.dart';
 import '../models/comment_model.dart';
+import '../models/paginated_comment_response.dart';
 import 'LoginService.dart';
 import 'SessionExpiredException.dart';
 import 'SignatureService.dart';
 import 'apiService.dart';
 
 class CommentService {
-  static const String apiUrl = '***REMOVED***/api/Posts';
+  static const String apiUrl = 'https://2b0f-185-142-40-54.ngrok-free.app/api/Posts';
   static final LoginService _loginService = LoginService();
   static final SignatureService _signatureService = SignatureService();
 
@@ -45,9 +46,13 @@ static Future<void> postComment(CommentRequest commentRequest) async {
   }
 }
 
-// fetchComments
-static Future<List<Comment>> fetchComments(int postId) async {
-  final Uri url = Uri.parse('$apiUrl/$postId/Comments');
+// fetchComments - returns PaginatedCommentResponse now
+static Future<PaginatedCommentResponse> fetchComments(
+  int postId, {
+  int pageNumber = 1,
+  int pageSize = 5,
+}) async {
+  final Uri url = Uri.parse('$apiUrl/$postId/Comments?pageNumber=$pageNumber&pageSize=$pageSize');
   final String signatureData = '$postId';
 
   try {
@@ -63,8 +68,16 @@ static Future<List<Comment>> fetchComments(int postId) async {
     }
 
     if (response.statusCode == 200) {
-      List<dynamic> data = jsonDecode(response.body);
-      return data.map((commentJson) => Comment.fromJson(commentJson)).toList();
+      // The backend returns an object:
+      // {
+      //   "comments": [...],
+      //   "currentPage": ...,
+      //   "pageSize": ...,
+      //   "totalCount": ...,
+      //   "totalPages": ...
+      // }
+      final data = jsonDecode(response.body);
+      return PaginatedCommentResponse.fromJson(data);
     } else {
       throw Exception('Failed to load comments: ${response.statusCode}');
     }
