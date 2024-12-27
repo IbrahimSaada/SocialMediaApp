@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:app_links/app_links.dart';
-import '***REMOVED***/logo.dart';
 import '***REMOVED***/home/home.dart';
 import '***REMOVED***/login/login_page.dart';
 import '***REMOVED***/profile/otheruserprofilepage.dart';
@@ -49,7 +48,6 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
-
   @override
   void dispose() {
     _sub?.cancel();
@@ -80,7 +78,7 @@ class _MyAppState extends State<MyApp> {
           cursorColor: Color(0xFFF45F67),
         ),
       ),
-      home: const SplashScreen(),
+      home: const LoginPage(),
       routes: {
         '/login': (context) => const LoginPage(),
         '/home': (context) => HomePage(),

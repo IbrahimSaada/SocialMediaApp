@@ -58,10 +58,22 @@ class LoginService {
         var userId = data['userId'];
         var fullname = data['fullname'];
         var profilePic = data['profilePic'];
+
+        // For demo, we set expiration to 2 minutes from now. Adjust as needed.
         var expiration = DateTime.now().add(const Duration(minutes: 2));
+
+        // Store the tokens & user info
         await _storeTokenAndUserId(
-            token, refreshToken, userId, expiration, profilePic);
+          token,
+          refreshToken,
+          userId,
+          expiration,
+          profilePic,
+        );
+
+        // Also store the user's fullname for convenience
         await _secureStorage.write(key: 'fullname', value: fullname);
+
       } else if (response.statusCode == 401) {
         // Check if body indicates ban
         final responseBody = response.body.toLowerCase();
@@ -103,7 +115,9 @@ class LoginService {
         var data = jsonDecode(response.body);
         var token = data['accessToken'];
         var newRefreshToken = data['refreshToken'];
+        // For demo, set shorter token expiration
         var expiration = DateTime.now().add(const Duration(minutes: 1));
+
         final userId = await getUserId();
         if (userId != null) {
           await _storeTokenAndUserId(token, newRefreshToken, userId, expiration);
@@ -111,7 +125,7 @@ class LoginService {
           throw Exception('User ID not found');
         }
       } else if (response.statusCode == 401) {
-        await logout();
+        await logout(); // triggers the logic below
         throw SessionExpiredException();
       } else if (response.statusCode == 500) {
         throw Exception('Server error (500). Please try again later.');
@@ -123,10 +137,15 @@ class LoginService {
     }
   }
 
+  /// NEW logout logic that respects "rememberMe"
   Future<void> logout() async {
     final String logoutUrl = '$baseUrl/Login/Logout';
     final String? refreshToken = await _secureStorage.read(key: 'refreshToken');
     final int? userId = await getUserId();
+
+    // 1) Read whether user had 'rememberMe' set
+    final String? rememberMeValue = await _secureStorage.read(key: 'rememberMe');
+    final bool rememberMe = (rememberMeValue == 'true');
 
     if (refreshToken != null && userId != null) {
       String dataToSign = '$userId:$refreshToken';
@@ -145,7 +164,20 @@ class LoginService {
         );
 
         if (response.statusCode == 200) {
-          await _secureStorage.deleteAll();
+          // 2) Delete tokens, userId, expiration always
+          await _secureStorage.delete(key: 'jwt');
+          await _secureStorage.delete(key: 'refreshToken');
+          await _secureStorage.delete(key: 'userId');
+          await _secureStorage.delete(key: 'expiration');
+          await _secureStorage.delete(key: 'fullname');
+          await _secureStorage.delete(key: 'profilePic');
+
+          // 3) If user did NOT choose rememberMe, also clear savedEmail/savedPassword
+          if (!rememberMe) {
+            await _secureStorage.delete(key: 'savedEmail');
+            await _secureStorage.delete(key: 'savedPassword');
+          }
+
           print('Logged out successfully.');
         } else if (response.statusCode == 500) {
           throw Exception('Server error (500). Please try again later.');
@@ -160,12 +192,20 @@ class LoginService {
     }
   }
 
-  Future<void> _storeTokenAndUserId(String token, String refreshToken,
-      int userId, DateTime expiration, [String? profilePic]) async {
+  Future<void> _storeTokenAndUserId(
+    String token,
+    String refreshToken,
+    int userId,
+    DateTime expiration, [
+    String? profilePic,
+  ]) async {
     await _secureStorage.write(key: 'jwt', value: token);
     await _secureStorage.write(key: 'refreshToken', value: refreshToken);
     await _secureStorage.write(key: 'userId', value: userId.toString());
-    await _secureStorage.write(key: 'expiration', value: expiration.toIso8601String());
+    await _secureStorage.write(
+      key: 'expiration',
+      value: expiration.toIso8601String(),
+    );
     if (profilePic != null) {
       await _secureStorage.write(key: 'profilePic', value: profilePic);
       print('Profile Pic URL saved: $profilePic');
@@ -212,10 +252,12 @@ class LoginService {
     var expiration = await getTokenExpiration();
     if (token != null && expiration != null) {
       if (DateTime.now().isBefore(expiration)) {
+        // Token still valid
         return true;
       } else {
+        // Token expired, try to refresh
         await refreshAccessToken();
-        return true;
+        return true; // If refresh fails, it throws and logs out
       }
     }
     return false;
