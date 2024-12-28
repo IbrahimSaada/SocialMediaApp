@@ -11,7 +11,7 @@ class RepostDetailsService {
   // e.g. GET /api/Feed/Posts/{postId}/SharedPosts/{userId}
   //      GET /api/Feed/Posts/{postId}/SharedPosts/{userId}/latest
   static const String baseUrl =
-      'https://bace-185-97-92-44.ngrok-free.app/api/Feed';
+      'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Feed';
 
   final ApiService _apiService = ApiService();
 

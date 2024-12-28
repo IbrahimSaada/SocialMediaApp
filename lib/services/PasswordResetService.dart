@@ -6,7 +6,7 @@ import 'dart:io';
 
 class PasswordResetService {
   final String baseUrl =
-      'https://3687-185-97-92-30.ngrok-free.app/api/ResetPassword';
+      'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/ResetPassword';
 
   Future<void> requestPasswordReset(String email) async {
     try {

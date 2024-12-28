@@ -9,7 +9,7 @@ import 'package:cook/models/paginated_stories.dart'; // import the new model
 
 class StoryServiceRequest {
   final String baseUrl =
-      'https://5a2e-185-97-92-23.ngrok-free.app/api/Stories';
+      'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Stories';
 
   final ApiService _apiService = ApiService();
 

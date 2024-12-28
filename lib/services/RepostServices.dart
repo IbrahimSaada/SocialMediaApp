@@ -3,7 +3,7 @@ import 'package:cook/services/SessionExpiredException.dart';
 
 class RepostService {
   static const String baseUrl =
-      'https://bace-185-97-92-44.ngrok-free.app/api';
+      'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api';
   
   final ApiService _apiService = ApiService();
 

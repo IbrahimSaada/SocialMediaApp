@@ -8,7 +8,7 @@ import '../models/feed/post_item.dart';
 import '../models/feed/repost_item.dart';
 
 class FeedService {
-  static const String baseUrl = 'https://bace-185-97-92-44.ngrok-free.app/api';
+  static const String baseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api';
   final ApiService _apiService = ApiService();
 
 Future<List<FeedItem>> fetchFeed({
