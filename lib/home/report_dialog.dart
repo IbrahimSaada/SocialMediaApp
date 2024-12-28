@@ -24,7 +24,7 @@ void showReportDialog({
     final reportRequest = ReportRequest(
       reportedBy: userId,
       reportedUser: reportedUser,
-      contentType: 'Post', // Assuming content type is 'Post'
+      contentType: 'posts', // Assuming content type is 'Post'
       contentId: contentId,
       reportReason: reportReason,
       resolutionDetails: '',

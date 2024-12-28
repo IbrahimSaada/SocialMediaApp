@@ -498,7 +498,7 @@ void _deleteStory(int storyId) async {
       final reportRequest = ReportRequest(
         reportedBy: userId,
         reportedUser: reportedUserId,
-        contentType: 'Stories',
+        contentType: 'stories',
         contentId: contentId,
         reportReason: reportReason,
         resolutionDetails: '',
