@@ -1,114 +1,108 @@
 // services/repost_details_service.dart
+// ignore_for_file: avoid_print
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/repost_details_model.dart';
-import 'LoginService.dart';
+import 'package:cook/models/repost_details_model.dart'; // Your custom model
+import 'package:cook/services/apiService.dart';
+import 'package:cook/services/SessionExpiredException.dart';
 
 class RepostDetailsService {
+  // e.g. GET /api/Feed/Posts/{postId}/SharedPosts/{userId}
+  //      GET /api/Feed/Posts/{postId}/SharedPosts/{userId}/latest
   static const String baseUrl =
-      'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Feed';
+      'https://bace-185-97-92-44.ngrok-free.app/api/Feed';
 
-  final LoginService _loginService = LoginService();
+  final ApiService _apiService = ApiService();
 
-  // Fetch the latest repost of a post
+  /// ------------------------------------------------------
+  /// Fetch the *latest* repost for a given post & user
+  /// e.g. GET /api/Feed/Posts/{postId}/SharedPosts/{userId}/latest
+  /// - If your backend expects signature = "{postId}:{userId}"
+  ///   then we do that here
+  /// ------------------------------------------------------
   Future<RepostDetailsModel> fetchLatestRepost({
     required int postId,
     required int userId,
   }) async {
-    try {
-      String? token = await _loginService.getToken();
+    final Uri uri = Uri.parse(
+      '$baseUrl/Posts/$postId/SharedPosts/$userId/latest',
+    );
+    final String signatureData = '$postId:$userId';
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/Posts/$postId/SharedPosts/$userId/latest'),
-        headers: <String, String>{
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+    try {
+      final response = await _apiService.makeRequestWithToken(
+        uri,
+        signatureData,
+        'GET',
       );
 
       if (response.statusCode == 200) {
-        Map<String, dynamic> json = jsonDecode(response.body);
-        return RepostDetailsModel.fromJson(json);
+        final Map<String, dynamic> jsonMap = jsonDecode(response.body);
+        return RepostDetailsModel.fromJson(jsonMap);
       } else if (response.statusCode == 401) {
-        // Token invalid, try refreshing
-        await _loginService.refreshAccessToken();
-        token = await _loginService.getToken();
-
-        // Retry the request
-        final retryResponse = await http.get(
-          Uri.parse('$baseUrl/Posts/$postId/SharedPosts/$userId/latest'),
-          headers: <String, String>{
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-        );
-
-        if (retryResponse.statusCode == 200) {
-          Map<String, dynamic> json = jsonDecode(retryResponse.body);
-          return RepostDetailsModel.fromJson(json);
-        } else {
-          throw Exception(
-              'Failed to fetch latest repost after refreshing token');
-        }
+        throw Exception('Session expired or token invalid.');
       } else {
+        print(
+          'Failed to fetch latest repost: ${response.statusCode} ${response.body}',
+        );
         throw Exception(
-            'Failed to fetch latest repost: ${response.statusCode} ${response.body}');
+          'Failed to fetch latest repost: ${response.statusCode} ${response.body}',
+        );
       }
+    } on SessionExpiredException {
+      rethrow;
     } catch (e) {
       print('Error fetching latest repost: $e');
       rethrow;
     }
   }
 
-  // Fetch all reposts of a post
+  /// ------------------------------------------------------
+  /// Fetch all reposts for a given post & user
+  /// e.g. GET /api/Feed/Posts/{postId}/SharedPosts/{userId}
+  /// or with pagination: ?pageNumber=1&pageSize=10
+  /// If your backend expects signature = "{postId}:{userId}:{pageNumber}:{pageSize}",
+  /// then we do that here
+  /// ------------------------------------------------------
   Future<List<RepostDetailsModel>> fetchRepostsForPost({
     required int postId,
     required int userId,
+    int pageNumber = 1,
+    int pageSize = 10,
   }) async {
-    try {
-      String? token = await _loginService.getToken();
+    // Build the URL with pagination
+    final Uri uri = Uri.parse(
+      '$baseUrl/Posts/$postId/SharedPosts/$userId'
+      '?pageNumber=$pageNumber&pageSize=$pageSize',
+    );
+    // Data to sign = "postId:userId:pageNumber:pageSize"
+    final String signatureData = '$postId:$userId:$pageNumber:$pageSize';
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/Posts/$postId/SharedPosts/$userId'),
-        headers: <String, String>{
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+    try {
+      final response = await _apiService.makeRequestWithToken(
+        uri,
+        signatureData,
+        'GET',
       );
 
       if (response.statusCode == 200) {
-        List<dynamic> jsonList = jsonDecode(response.body);
-        List<RepostDetailsModel> reposts =
-            jsonList.map((json) => RepostDetailsModel.fromJson(json)).toList();
-        return reposts;
+        final List<dynamic> jsonList = jsonDecode(response.body);
+        return jsonList
+            .map((obj) => RepostDetailsModel.fromJson(obj))
+            .toList();
       } else if (response.statusCode == 401) {
-        // Token invalid, try refreshing
-        await _loginService.refreshAccessToken();
-        token = await _loginService.getToken();
-
-        // Retry the request
-        final retryResponse = await http.get(
-          Uri.parse('$baseUrl/Posts/$postId/SharedPosts/$userId'),
-          headers: <String, String>{
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-        );
-
-        if (retryResponse.statusCode == 200) {
-          List<dynamic> jsonList = jsonDecode(retryResponse.body);
-          List<RepostDetailsModel> reposts = jsonList
-              .map((json) => RepostDetailsModel.fromJson(json))
-              .toList();
-          return reposts;
-        } else {
-          throw Exception('Failed to fetch reposts after refreshing token');
-        }
+        throw Exception('Session expired or token invalid.');
       } else {
+        print(
+          'Failed to fetch reposts: ${response.statusCode} ${response.body}',
+        );
         throw Exception(
-            'Failed to fetch reposts: ${response.statusCode} ${response.body}');
+          'Failed to fetch reposts: ${response.statusCode} ${response.body}',
+        );
       }
+    } on SessionExpiredException {
+      rethrow;
     } catch (e) {
       print('Error fetching reposts: $e');
       rethrow;

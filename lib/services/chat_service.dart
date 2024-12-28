@@ -6,7 +6,7 @@ import 'package:cook/services/apiService.dart';
 import '../models/mute_user_dto.dart';
 
 class ChatService {
-  final String baseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Chat';
+  final String baseUrl = 'https://bace-185-97-92-44.ngrok-free.app/api/Chat';
   final ApiService _apiService = ApiService();
 
   // Fetch user chats with token & signature

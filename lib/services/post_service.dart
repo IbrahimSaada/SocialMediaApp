@@ -8,7 +8,7 @@ import '../models/bookmarkrequest_model.dart';
 import 'apiService.dart';
 
 class PostService {
-  static const String apiUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api/Posts';
+  static const String apiUrl = 'https://bace-185-97-92-44.ngrok-free.app/api/Posts';
 
   // Like a post
 static Future<void> likePost(LikeRequest likeRequest) async {

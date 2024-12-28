@@ -15,7 +15,7 @@ class PrivacyException implements Exception {
 }
 
 class UserpostService {
-  static const String baseUrl = 'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/api';
+  static const String baseUrl = 'https://bace-185-97-92-44.ngrok-free.app/api';
   final ApiService _apiService = ApiService();
 
   Future<List<Post>> fetchUserPosts(int currentUserId, int viewerUserId, int pageNumber, int pageSize) async {
