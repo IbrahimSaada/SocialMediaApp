@@ -60,7 +60,7 @@ class FollowService {
       final http.Response response = await _apiService.makeRequestWithToken(
         uri,
         signatureData,
-        'DELETE',
+        'POST',
         body: requestBody,
       );
 
