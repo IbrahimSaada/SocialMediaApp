@@ -9,7 +9,7 @@ class PostDetailsService {
   // Base URL for fetching a single post by ID
   // e.g. GET https://<...>/api/Feed/Post/{postId}?userId={userId}
   static const String baseUrl =
-      'https://bace-185-97-92-44.ngrok-free.app/api/Feed/Post';
+      '***REMOVED***/api/Feed/Post';
 
   final ApiService _apiService = ApiService();
 

@@ -9,7 +9,7 @@ import '***REMOVED***/models/paginated_stories.dart'; // import the new model
 
 class StoryServiceRequest {
   final String baseUrl =
-      'https://5a2e-185-97-92-23.ngrok-free.app/api/Stories';
+      '***REMOVED***/api/Stories';
 
   final ApiService _apiService = ApiService();
 

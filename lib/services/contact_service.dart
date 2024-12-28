@@ -3,7 +3,7 @@ import '***REMOVED***/models/usercontact_model.dart';
 import '***REMOVED***/services/apiService.dart';
 
 class ContactService {
-  final String baseUrl = 'https://bace-185-97-92-44.ngrok-free.app/api/Chat'; 
+  final String baseUrl = '***REMOVED***/api/Chat'; 
   final ApiService _apiService = ApiService();
 
   // Fetch contacts with pagination and optional search

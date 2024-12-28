@@ -11,7 +11,7 @@ import 'SignatureService.dart';
 import 'apiService.dart';
 
 class CommentService {
-  static const String apiUrl = 'https://bace-185-97-92-44.ngrok-free.app/api/Posts';
+  static const String apiUrl = '***REMOVED***/api/Posts';
   static final LoginService _loginService = LoginService();
   static final SignatureService _signatureService = SignatureService();
 

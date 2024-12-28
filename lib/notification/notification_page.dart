@@ -33,11 +33,24 @@ class _NotificationPageState extends State<NotificationPage> {
     });
   }
 
+  /// Mark all notifications as read
+  Future<void> _markAllAsRead() async {
+    try {
+      await _notificationService.markAllAsRead();
+      _refreshNotifications();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to mark all as read: $e'),
+        ),
+      );
+    }
+  }
+
   /// This method is called when the user swipes (Dismissible) to delete the notification
   Future<void> _deleteNotification(NotificationModel notification) async {
-    bool success = await _notificationService.deleteNotification(
-      notification.notificationId,
-    );
+    bool success =
+        await _notificationService.deleteNotification(notification.notificationId);
     if (!success) {
       // If delete was unauthorized or failed, restore the item
       // (because onDismissed removes it from the list)
@@ -107,13 +120,11 @@ class _NotificationPageState extends State<NotificationPage> {
                           fontSize: 24,
                         ),
                       ),
+                      // Replaced the Filter icon button with "Mark All As Read"
                       IconButton(
-                        icon: const Icon(Icons.filter_list,
-                            color: Color(0xFFF45F67)),
-                        onPressed: () {
-                          // Implement filter if needed
-                          print('Filter icon pressed');
-                        },
+                        onPressed: _markAllAsRead,
+                        icon: const Icon(Icons.mark_email_read, color: Color(0xFFF45F67)),
+                        tooltip: 'Mark All As Read',
                       ),
                     ],
                   ),
@@ -236,7 +247,6 @@ class _NotificationPageState extends State<NotificationPage> {
               // Mark as read on tap
               await _notificationService.markAsRead(notification.notificationId);
               _refreshNotifications();
-
               // Then navigate based on notification type
               handleNotificationTap(notification);
             },
