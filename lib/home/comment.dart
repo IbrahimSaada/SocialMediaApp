@@ -320,7 +320,7 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
     final reportRequest = ReportRequest(
       reportedBy: userId,
       reportedUser: comment.userId,
-      contentType: 'Comment',
+      contentType: 'comments',
       contentId: comment.commentId,
       reportReason: reportReason,
       resolutionDetails: '',
