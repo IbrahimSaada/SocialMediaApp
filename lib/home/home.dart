@@ -1,5 +1,3 @@
-// home/home.dart
-
 import 'package:flutter/material.dart';
 import '../services/SessionExpiredException.dart';
 import 'post_card.dart';
@@ -14,8 +12,9 @@ import 'package:cook/models/feed/repost_item.dart';
 import 'story_section.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:flutter/rendering.dart';
-import 'app_bar.dart'; 
-import 'bottom_navigation_bar.dart'; 
+import 'app_bar.dart';
+// IMPORTANT: Import your new bottom nav bar file
+import 'bottom_navigation_bar.dart';
 import 'shimmer_post_card.dart';
 import 'shimmer_repost_card.dart';
 
@@ -36,6 +35,7 @@ class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin 
   int? _userId;
   Map<int, Map<String, dynamic>> _postStates = {};
   bool _isBarVisible = true;
+
   late AnimationController _animationController;
   late Animation<double> _animation;
 
@@ -67,6 +67,7 @@ class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin 
   }
 
   void _scrollListener() {
+    // Hide top/bottom bars on scroll
     if (_scrollController.position.userScrollDirection == ScrollDirection.reverse) {
       if (_isBarVisible) {
         _animationController.reverse();
@@ -83,8 +84,9 @@ class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin 
       }
     }
 
+    // Load more feed items when nearly at the bottom
     if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200 &&
+            _scrollController.position.maxScrollExtent - 200 &&
         !_isFetchingData &&
         _hasMoreData) {
       _fetchMoreFeed();
@@ -120,7 +122,7 @@ class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin 
           pageNumber: _currentPageNumber,
           pageSize: _pageSize,
         );
-      _updatePostStatesFromFeed(feedItems);
+        _updatePostStatesFromFeed(feedItems);
         setState(() {
           _feedItems = feedItems;
           _isFetchingData = false;
@@ -158,10 +160,10 @@ class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin 
           pageSize: _pageSize,
         );
 
-                if (newFeedItems.isNotEmpty) {
-          // CHANGES HERE: Update global post states
+        if (newFeedItems.isNotEmpty) {
+          // Update global post states
           _updatePostStatesFromFeed(newFeedItems);
-                }
+        }
 
         if (newFeedItems.isNotEmpty) {
           setState(() {
@@ -199,7 +201,6 @@ class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin 
     await _fetchFeed();
   }
 
-   // CHANGES HERE: Method to update global post states map
   void _updatePostStatesFromFeed(List<FeedItem> items) {
     for (var item in items) {
       int? postId;
@@ -225,7 +226,7 @@ class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin 
     }
   }
 
-  // CHANGES HERE: Callback called by PostCard/RepostCard to update global state
+  /// Called by PostCard/RepostCard to update global state (like/unlike)
   void updatePostState(int postId, bool isLiked, int likeCount) {
     setState(() {
       _postStates[postId] = {
@@ -311,14 +312,14 @@ class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin 
         isBookmarked: item.isBookmarked,
         createdAt: item.createdAt,
         content: item.content,
-        onPostStateChange: updatePostState, // NEW
-        globalPostStates: _postStates,      // NEW
+        onPostStateChange: updatePostState, // new
+        globalPostStates: _postStates,      // new
       );
     } else if (item is RepostItem) {
-           return RepostCard(
+      return RepostCard(
         feedItem: item,
-        onPostStateChange: updatePostState, // NEW
-        globalPostStates: _postStates,      // NEW
+        onPostStateChange: updatePostState, // new
+        globalPostStates: _postStates,      // new
       );
     } else {
       return Container();
@@ -330,7 +331,7 @@ class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin 
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(kToolbarHeight),
+        preferredSize: const Size.fromHeight(kToolbarHeight),
         child: SizeTransition(
           sizeFactor: _animation,
           axisAlignment: -1.0,
@@ -353,6 +354,7 @@ class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin 
             } else if (index == 3) {
               return buildDivider();
             } else if (_isFetchingData) {
+              // Show shimmer placeholders
               return index % 2 == 0
                   ? const ShimmerPostCard()
                   : const ShimmerRepostCard();
@@ -362,15 +364,18 @@ class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin 
                 child: buildFeedItem(_feedItems[index - 4]),
               );
             } else if (index == _feedItems.length + 4) {
+              // If we have more data to load, show a loading indicator
               return _hasMoreData
                   ? Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Center(
-                        child: CircularProgressIndicator(color: const Color(0xFFF45F67)),
+                        child:
+                            CircularProgressIndicator(color: const Color(0xFFF45F67)),
                       ),
                     )
                   : const SizedBox.shrink();
             } else if (index == _feedItems.length + 5) {
+              // Extra space at the bottom
               return Container(
                 height: 100,
                 color: Colors.grey[300],
@@ -381,10 +386,11 @@ class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin 
           },
         ),
       ),
+      // Use your new bottom nav bar widget instead of buildBottomNavigationBar()
       bottomNavigationBar: SizeTransition(
         sizeFactor: _animation,
         axisAlignment: 1.0,
-        child: buildBottomNavigationBar(context),
+        child: const BottomNavigationBarCook(),
       ),
     );
   }
