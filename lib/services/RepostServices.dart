@@ -3,7 +3,7 @@ import '***REMOVED***/services/SessionExpiredException.dart';
 
 class RepostService {
   static const String baseUrl =
-      '***REMOVED***/api';
+      'https://bace-185-97-92-44.ngrok-free.app/api';
   
   final ApiService _apiService = ApiService();
 

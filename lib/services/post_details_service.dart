@@ -1,64 +1,54 @@
 // services/post_details_service.dart
 
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../models/post_details_model.dart';
-import 'LoginService.dart';
+import '***REMOVED***/models/post_details_model.dart'; // Your custom model
+import '***REMOVED***/services/apiService.dart';
+import '***REMOVED***/services/SessionExpiredException.dart';
 
 class PostDetailsService {
-  static const String baseUrl = '***REMOVED***/api/Feed/Post';
+  // Base URL for fetching a single post by ID
+  // e.g. GET https://<...>/api/Feed/Post/{postId}?userId={userId}
+  static const String baseUrl =
+      'https://bace-185-97-92-44.ngrok-free.app/api/Feed/Post';
 
-  final LoginService _loginService = LoginService();
+  final ApiService _apiService = ApiService();
 
+  /// Fetch details for a specific post
+  /// - Backend expects signatureData = "{postId}:{userId}"
   Future<PostDetailsModel> fetchPostDetails({
     required int postId,
     required int userId,
   }) async {
-    try {
-      String? token = await _loginService.getToken();
+    // Build the Uri: e.g. /Post/10?userId=5
+    final Uri uri = Uri.parse('$baseUrl/$postId?userId=$userId');
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/$postId?userId=$userId'),
-        headers: <String, String>{
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+    // Data to sign
+    final String signatureData = '$postId:$userId';
+
+    try {
+      final response = await _apiService.makeRequestWithToken(
+        uri,
+        signatureData,
+        'GET',
       );
 
-      // Log the response for debugging
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
       if (response.statusCode == 200) {
-        Map<String, dynamic> json = jsonDecode(response.body);
-        return PostDetailsModel.fromJson(json);
+        final Map<String, dynamic> jsonMap = jsonDecode(response.body);
+        return PostDetailsModel.fromJson(jsonMap);
       } else if (response.statusCode == 401) {
-        // Token invalid, try refreshing
-        await _loginService.refreshAccessToken();
-        token = await _loginService.getToken();
-
-        // Retry the request
-        final retryResponse = await http.get(
-          Uri.parse('$baseUrl/$postId?userId=$userId'),
-          headers: <String, String>{
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-        );
-
-        // Log the retry response
-        print('Retry response status: ${retryResponse.statusCode}');
-        print('Retry response body: ${retryResponse.body}');
-
-        if (retryResponse.statusCode == 200) {
-          Map<String, dynamic> json = jsonDecode(retryResponse.body);
-          return PostDetailsModel.fromJson(json);
-        } else {
-          throw Exception('Failed to fetch post details after refreshing token');
-        }
+        // The APIService typically refreshes token automatically,
+        // so 401 here likely means session is truly expired
+        throw Exception('Session expired or token invalid.');
       } else {
-        throw Exception('Failed to fetch post details: ${response.statusCode} ${response.body}');
+        print('Failed to fetch post details: ${response.statusCode}');
+        print('Body: ${response.body}');
+        throw Exception(
+          'Failed to fetch post details: ${response.statusCode} ${response.body}',
+        );
       }
+    } on SessionExpiredException {
+      // Bubble up session-expiration for the UI to handle
+      rethrow;
     } catch (e) {
       print('Error fetching post details: $e');
       rethrow;
