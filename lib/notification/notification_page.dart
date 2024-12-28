@@ -1,5 +1,3 @@
-// pages/notification_page.dart
-
 import 'package:flutter/material.dart';
 import '../models/notification_model.dart';
 import '../page/question_details_page.dart';
@@ -19,11 +17,40 @@ class NotificationPage extends StatefulWidget {
 
 class _NotificationPageState extends State<NotificationPage> {
   late Future<List<NotificationModel>> _futureNotifications;
+  final NotificationService _notificationService = NotificationService();
+  List<NotificationModel> _cachedNotifications = [];
 
   @override
   void initState() {
     super.initState();
-    _futureNotifications = NotificationService().getUserNotifications();
+    _futureNotifications = _notificationService.getUserNotifications();
+  }
+
+  /// Refresh notifications from server
+  void _refreshNotifications() {
+    setState(() {
+      _futureNotifications = _notificationService.getUserNotifications();
+    });
+  }
+
+  /// This method is called when the user swipes (Dismissible) to delete the notification
+  Future<void> _deleteNotification(NotificationModel notification) async {
+    bool success = await _notificationService.deleteNotification(
+      notification.notificationId,
+    );
+    if (!success) {
+      // If delete was unauthorized or failed, restore the item
+      // (because onDismissed removes it from the list)
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to delete notification.'),
+        ),
+      );
+      // Re-insert the notification and refresh
+      setState(() {
+        _cachedNotifications.insert(0, notification);
+      });
+    }
   }
 
   @override
@@ -32,7 +59,10 @@ class _NotificationPageState extends State<NotificationPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notifications', style: TextStyle(color: Colors.black)),
+        title: const Text(
+          'Notifications',
+          style: TextStyle(color: Colors.black),
+        ),
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Color(0xFFF45F67)),
         elevation: 0,
@@ -41,28 +71,32 @@ class _NotificationPageState extends State<NotificationPage> {
         future: _futureNotifications,
         builder: (context, snapshot) {
           if (snapshot.hasData) {
-            List<NotificationModel> notifications = snapshot.data!;
+            // Cache the notifications to a local list so we can manipulate them
+            _cachedNotifications = snapshot.data!;
 
-            final todayNotifications = notifications.where((notification) {
+            final todayNotifications = _cachedNotifications.where((notification) {
               final now = DateTime.now();
               return notification.createdAt.day == now.day &&
                   notification.createdAt.month == now.month &&
                   notification.createdAt.year == now.year;
             }).toList();
 
-            final earlierNotifications = notifications.where((notification) {
+            final earlierNotifications = _cachedNotifications.where((notification) {
               final now = DateTime.now();
               return notification.createdAt.isBefore(now) &&
                   (notification.createdAt.day != now.day ||
-                   notification.createdAt.month != now.month ||
-                   notification.createdAt.year != now.year);
+                      notification.createdAt.month != now.month ||
+                      notification.createdAt.year != now.year);
             }).toList();
 
             return Column(
               children: [
                 Container(
                   color: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 10.0,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -74,10 +108,11 @@ class _NotificationPageState extends State<NotificationPage> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.filter_list, color: Color(0xFFF45F67)),
+                        icon: const Icon(Icons.filter_list,
+                            color: Color(0xFFF45F67)),
                         onPressed: () {
+                          // Implement filter if needed
                           print('Filter icon pressed');
-                          // Implement filter functionality if needed
                         },
                       ),
                     ],
@@ -98,8 +133,10 @@ class _NotificationPageState extends State<NotificationPage> {
                             ),
                           ),
                         ),
-                      ...todayNotifications.map((notification) =>
-                          buildNotificationCard(notification, screenWidth)),
+                      ...todayNotifications.map(
+                        (notification) =>
+                            buildNotificationCard(notification, screenWidth),
+                      ),
                       if (earlierNotifications.isNotEmpty)
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 8.0),
@@ -111,24 +148,31 @@ class _NotificationPageState extends State<NotificationPage> {
                             ),
                           ),
                         ),
-                      ...earlierNotifications.map((notification) =>
-                          buildNotificationCard(notification, screenWidth)),
+                      ...earlierNotifications.map(
+                        (notification) =>
+                            buildNotificationCard(notification, screenWidth),
+                      ),
                     ],
                   ),
                 ),
               ],
             );
           } else if (snapshot.hasError) {
-            return Center(child: Text('Failed to load notifications'));
+            return const Center(
+              child: Text('Failed to load notifications'),
+            );
           } else {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
         },
       ),
     );
   }
 
-  Widget buildNotificationCard(NotificationModel notification, double screenWidth) {
+  Widget buildNotificationCard(
+    NotificationModel notification,
+    double screenWidth,
+  ) {
     IconData iconData = getIconForNotificationType(notification.type);
     String timestamp = getTimeDifference(notification.createdAt);
 
@@ -146,9 +190,13 @@ class _NotificationPageState extends State<NotificationPage> {
             color: Colors.white,
           ),
         ),
-        onDismissed: (direction) {
-          print('Notification dismissed: ${notification.message}');
-          // Implement delete functionality if needed
+        onDismissed: (direction) async {
+          // Temporarily remove it from the list
+          setState(() {
+            _cachedNotifications.remove(notification);
+          });
+          // Attempt to delete from API
+          await _deleteNotification(notification);
         },
         child: Card(
           shape: RoundedRectangleBorder(
@@ -160,18 +208,20 @@ class _NotificationPageState extends State<NotificationPage> {
             leading: Container(
               padding: const EdgeInsets.all(8.0),
               decoration: BoxDecoration(
-                color: Color(0xFFF45F67).withOpacity(0.2),
+                color: const Color(0xFFF45F67).withOpacity(0.2),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 iconData,
-                color: Color(0xFFF45F67),
+                color: const Color(0xFFF45F67),
               ),
             ),
+            // Show bold text if 'isRead' is false
             title: Text(
               notification.message,
               style: TextStyle(
-                fontWeight: FontWeight.bold,
+                fontWeight:
+                    notification.isRead ? FontWeight.normal : FontWeight.bold,
                 fontSize: _getResponsiveFontSize(screenWidth),
               ),
             ),
@@ -182,7 +232,12 @@ class _NotificationPageState extends State<NotificationPage> {
                 fontSize: 12,
               ),
             ),
-            onTap: () {
+            onTap: () async {
+              // Mark as read on tap
+              await _notificationService.markAsRead(notification.notificationId);
+              _refreshNotifications();
+
+              // Then navigate based on notification type
               handleNotificationTap(notification);
             },
           ),
@@ -193,19 +248,13 @@ class _NotificationPageState extends State<NotificationPage> {
 
   void handleNotificationTap(NotificationModel notification) {
     print('Tapped on: ${notification.type}');
-    print('Notification details:');
-    print('Type: ${notification.type}');
-    print('relatedEntityId: ${notification.relatedEntityId}');
-    print('commentId: ${notification.commentId}');
-    print('aggregated_answer_ids: ${notification.aggregated_answer_ids}');
-    print('aggregated_comment_ids: ${notification.aggregated_comment_ids}');
+    print('Notification details: $notification');
 
     if (notification.relatedEntityId != null ||
         notification.type == 'Follow' ||
         notification.type == 'Accept' ||
         notification.type == 'FollowedBack') {
-      if (notification.type == 'Answer' ||
-          notification.type == 'AnswerVerified') {
+      if (notification.type == 'Answer' || notification.type == 'AnswerVerified') {
         int questionId = notification.relatedEntityId!;
         List<int> answerIds = [];
         if (notification.aggregated_answer_ids != null &&
@@ -240,8 +289,9 @@ class _NotificationPageState extends State<NotificationPage> {
           notification.type == 'Comment' ||
           notification.type == 'Share' ||
           notification.type == 'Reply') {
-        if (notification.type == 'Reply' && notification.aggregated_comment_ids != null) {
-          // Parse the aggregated comment IDs
+        if (notification.type == 'Reply' &&
+            notification.aggregated_comment_ids != null) {
+          // Parse aggregated comment IDs
           List<int> commentIds = notification.aggregated_comment_ids!
               .split(',')
               .map((id) => int.parse(id.trim()))
@@ -252,7 +302,7 @@ class _NotificationPageState extends State<NotificationPage> {
             MaterialPageRoute(
               builder: (context) => CommentDetailsPage(
                 postId: notification.relatedEntityId!,
-                aggregatedCommentIds: commentIds, // Pass the IDs to fetch the comment threads
+                aggregatedCommentIds: commentIds,
               ),
             ),
           );
@@ -287,7 +337,8 @@ class _NotificationPageState extends State<NotificationPage> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => PostDetailsPage(postId: notification.relatedEntityId!),
+                builder: (context) =>
+                    PostDetailsPage(postId: notification.relatedEntityId!),
               ),
             );
           }
@@ -305,7 +356,8 @@ class _NotificationPageState extends State<NotificationPage> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => PostDetailsPage(postId: notification.relatedEntityId!),
+              builder: (context) =>
+                  PostDetailsPage(postId: notification.relatedEntityId!),
             ),
           );
         }
