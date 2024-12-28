@@ -1,5 +1,3 @@
-// models/notification_model.dart
-
 class NotificationModel {
   final int notificationId;
   final int recipientUserId;
@@ -28,6 +26,9 @@ class NotificationModel {
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    final dateTimeString = json['createdAt'] ?? json['created_at'];
+    final dateTime = _parseUtcDateTime(dateTimeString);
+
     return NotificationModel(
       notificationId: json['notificationId'] ?? json['notification_id'],
       recipientUserId: json['recipientUserId'] ?? json['recipient_user_id'],
@@ -35,11 +36,22 @@ class NotificationModel {
       type: json['type'] ?? '',
       relatedEntityId: json['relatedEntityId'] ?? json['related_entity_id'],
       message: json['message'] ?? '',
-      createdAt: DateTime.parse(json['createdAt'] ?? json['created_at']),
+      createdAt: dateTime,
       isRead: json['isRead'] ?? json['is_read'] ?? false,
       commentId: json['commentId'] ?? json['comment_id'],
       aggregated_answer_ids: json['aggregated_answer_ids'],
       aggregated_comment_ids: json['aggregated_comment_ids'], // Parse new attribute
     );
+  }
+
+  // Helper function to parse UTC datetime and convert to local time
+  static DateTime _parseUtcDateTime(String? dateTimeString) {
+    if (dateTimeString == null) {
+      throw ArgumentError('Invalid date time string');
+    }
+    if (!dateTimeString.endsWith('Z')) {
+      dateTimeString += 'Z';
+    }
+    return DateTime.parse(dateTimeString).toLocal();
   }
 }
