@@ -1,14 +1,17 @@
+// pluscontact.dart (or new_chat.dart)
+
 import 'package:flutter/material.dart';
 import '***REMOVED***/services/contact_service.dart';
 import '***REMOVED***/models/usercontact_model.dart';
 import '***REMOVED***/services/signalr_service.dart';
-import 'package:collection/collection.dart'; // for firstWhereOrNull
 import '../chat/chat_page.dart';
+import '***REMOVED***/maintenance/expiredtoken.dart';
+import '***REMOVED***/services/SessionExpiredException.dart';
 
 class NewChatPage extends StatefulWidget {
   final int userId;
 
-  NewChatPage({required this.userId});
+  const NewChatPage({Key? key, required this.userId}) : super(key: key);
 
   @override
   _NewChatPageState createState() => _NewChatPageState();
@@ -39,37 +42,30 @@ class _NewChatPageState extends State<NewChatPage> {
   }
 
   Future<void> _initSignalR() async {
-    // Start the connection
     await _signalRService.initSignalR();
-    // Setup listeners including the Error event
+    // Setup listeners for new chat or errors
     _signalRService.setupListeners(
       onChatCreated: _onChatCreated,
       onNewChatNotification: _onNewChatNotification,
-      // Show a dialog if an error is returned from CreateChat
-      onError: (String errorMessage) {
-        _showPermissionErrorDialog(errorMessage);
-      },
+      onError: (String errorMessage) => _showPermissionErrorDialog(errorMessage),
     );
   }
 
-  // Show a nice UI dialog with the error reason
   void _showPermissionErrorDialog(String reason) {
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (ctx) {
         return AlertDialog(
-          title: Text('Create Chat Failed'),
+          title: const Text('Create Chat Failed'),
           content: Text(reason),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text(
                 'OK',
-                style: TextStyle(
-                  color: Color(0xFFF45F67),
-                ),
+                style: TextStyle(color: Color(0xFFF45F67)),
               ),
-            )
+            ),
           ],
         );
       },
@@ -77,37 +73,38 @@ class _NewChatPageState extends State<NewChatPage> {
   }
 
   void _onChatCreated(dynamic chatDto) {
-    // When ChatCreated is successful, we navigate to ChatPage
-    // chatDto might look like: { chatId: 123, recipientUserId: X, ... }
-    print('ChatCreated event received: $chatDto');
-
+    // If ChatCreated => navigate to ChatPage
+    print('ChatCreated event => $chatDto');
     if (chatDto != null && chatDto is Map<String, dynamic>) {
-      int recipientUserId = chatDto['recipientUserId'];
-      int chatId = chatDto['chatId'];
+      final recipientUserId = chatDto['recipientUserId'] as int;
+      final chatId = chatDto['chatId'] as int;
 
-      // find the contact info
-      UserContact? contact = _contacts.firstWhereOrNull((c) => c.userId == recipientUserId);
+      final contact = _contacts.firstWhere(
+        (c) => c.userId == recipientUserId,
+        orElse: () => UserContact(
+          userId: 0,
+          fullname: 'Unknown',
+          profilePicUrl: '',
+        ),
+      );
 
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => ChatPage(
+          builder: (_) => ChatPage(
             chatId: chatId,
             currentUserId: widget.userId,
             recipientUserId: recipientUserId,
-            contactName: contact?.fullname ?? 'Unknown',
-            profileImageUrl: contact?.profilePicUrl ?? '',
+            contactName: contact.fullname,
+            profileImageUrl: contact.profilePicUrl,
           ),
         ),
       );
-    } else {
-      print('Invalid chatDto received in ChatCreated event.');
     }
   }
 
   void _onNewChatNotification(dynamic chatDto) {
-    // If we want to handle a notification that someone else created a chat with us
-    print('NewChatNotification event received: $chatDto');
+    print('NewChatNotification => $chatDto');
   }
 
   Future<void> _fetchContacts({bool isInitialLoad = true}) async {
@@ -134,11 +131,20 @@ class _NewChatPageState extends State<NewChatPage> {
         _filteredContacts = _contacts;
         _isLoading = false;
         _isFetchingMore = false;
+
         if (contacts.length < _pageSize) {
           _hasMoreContacts = false;
         } else {
           _pageNumber++;
         }
+      });
+    } on SessionExpiredException {
+      if (mounted) {
+        handleSessionExpired(context);
+      }
+      setState(() {
+        _isLoading = false;
+        _isFetchingMore = false;
       });
     } catch (e) {
       print('Error fetching contacts: $e');
@@ -169,18 +175,21 @@ class _NewChatPageState extends State<NewChatPage> {
       _searchQuery = query;
       _pageNumber = 1;
       _hasMoreContacts = true;
-      _filteredContacts = _contacts
-          .where((contact) =>
-              contact.fullname.toLowerCase().contains(query.toLowerCase()))
-          .toList();
     });
-    _fetchContacts(); // refetch with new search
+    _fetchContacts();
   }
 
-  void _navigateToChat(BuildContext context, UserContact contact) async {
-    // Attempt to create a new chat
-    // If there's a permission issue, the server calls "Error" => onError => show dialog
-    await _signalRService.createChat(contact.userId);
+  void _navigateToChat(UserContact contact) async {
+    try {
+      await _signalRService.createChat(contact.userId);
+    } catch (e) {
+      final errStr = e.toString();
+      if (errStr.contains('Session expired')) {
+        handleSessionExpired(context);
+      } else {
+        _showPermissionErrorDialog(errStr);
+      }
+    }
   }
 
   Future<void> _refreshContacts() async {
@@ -195,7 +204,7 @@ class _NewChatPageState extends State<NewChatPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Select Contact',
           style: TextStyle(
             color: Colors.white,
@@ -203,66 +212,71 @@ class _NewChatPageState extends State<NewChatPage> {
             fontSize: 22,
           ),
         ),
-        backgroundColor: Color(0xFFF45F67),
+        backgroundColor: const Color(0xFFF45F67),
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: TextField(
-              onChanged: (value) {
-                _filterContacts(value);
-              },
+              onChanged: (value) => _filterContacts(value),
               decoration: InputDecoration(
                 hintText: 'Search contacts...',
-                prefixIcon: Icon(Icons.search, color: Color(0xFFF45F67)),
+                prefixIcon: const Icon(Icons.search, color: Color(0xFFF45F67)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30),
                   borderSide: BorderSide.none,
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide(
+                  borderSide: const BorderSide(
                     color: Color(0xFFF45F67),
                     width: 2,
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide(
-                    color: Colors.grey,
-                    width: 2,
-                  ),
+                  borderSide: const BorderSide(color: Colors.grey, width: 2),
                 ),
-                contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                contentPadding:
+                    const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
               ),
             ),
           ),
           Expanded(
             child: _isLoading
-                ? Center(child: CircularProgressIndicator())
+                ? const Center(child: CircularProgressIndicator())
                 : RefreshIndicator(
                     onRefresh: _refreshContacts,
                     child: ListView.builder(
                       controller: _scrollController,
-                      itemCount:
-                          _filteredContacts.length + (_hasMoreContacts ? 1 : 0),
+                      itemCount: _filteredContacts.length +
+                          (_hasMoreContacts ? 1 : 0),
                       itemBuilder: (context, index) {
-                        if (index == _filteredContacts.length) {
-                          return Center(child: CircularProgressIndicator());
+                        if (index == _filteredContacts.length &&
+                            _hasMoreContacts) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        if (index >= _filteredContacts.length) {
+                          return const SizedBox.shrink();
                         }
                         final contact = _filteredContacts[index];
                         return GestureDetector(
-                          onTap: () => _navigateToChat(context, contact),
+                          onTap: () => _navigateToChat(contact),
                           child: ListTile(
                             leading: CircleAvatar(
-                              backgroundImage: NetworkImage(contact.profilePicUrl),
+                              backgroundImage:
+                                  NetworkImage(contact.profilePicUrl),
                             ),
                             title: Text(
                               contact.fullname,
-                              style: TextStyle(fontWeight: FontWeight.bold),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
                             ),
-                            subtitle: Text(
+                            subtitle: const Text(
                               'Tap to start chat',
                               style: TextStyle(color: Colors.grey),
                             ),
