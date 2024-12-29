@@ -510,8 +510,6 @@ class _ContactsPageState extends State<ContactsPage> {
                                   ? chat.lastMessage
                                   : 'No messages yet',
                               profileImage: _getDisplayProfileImage(chat),
-                              isOnline: true,
-                              lastActive: _formatLastMessageTime(chat.lastMessageTime),
                               isMuted: chat.isMuted,
                               unreadMessages: chat.unreadCount,
                               isTyping: isTyping,

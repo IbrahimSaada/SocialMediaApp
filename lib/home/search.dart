@@ -339,47 +339,34 @@ class _SearchState extends State<Search> {
       debugShowCheckedModeBanner: false,
       home: Scaffold(
         // Custom AppBar with extra spacing
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(80),
-          child: AppBar(
-            backgroundColor: const Color(0xFFF45F67),
-            elevation: 4,
-            shadowColor: Colors.grey.shade200,
-            title: Padding(
-              padding: const EdgeInsets.only(top: 20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Back arrow
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  const Spacer(),
-
-                  // Centered title
-                  const Text(
+      appBar:  AppBar(
+          backgroundColor: const Color(0xFFF45F67),
+          elevation: 4,
+          shadowColor: Colors.grey.shade200,
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Back arrow
+              IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+                onPressed: () => Navigator.pop(context),
+              ),
+              // Centered title
+              const Expanded(
+                child: Center(
+                  child: Text(
                     'SEARCH',
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
-                  const Spacer(),
-
-                  // Optional right icon
-                  IconButton(
-                    icon: const Icon(Icons.local_dining,
-                        color: Colors.white, size: 28),
-                    onPressed: () {
-                      // Define action
-                    },
-                  ),
-                ],
+                ),
               ),
-            ),
+              // Placeholder to balance the layout
+              SizedBox(width: 48), // Same width as the back arrow for symmetry
+            ],
           ),
         ),
         body: Padding(
