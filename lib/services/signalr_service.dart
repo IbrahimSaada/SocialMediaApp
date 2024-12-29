@@ -22,7 +22,7 @@ class SignalRService {
 
     _hubConnection = HubConnectionBuilder()
         .withUrl(
-          'http://development.eba-pue89yyk.eu-central-1.elasticbeanstalk.com/chatHub', // Replace with your actual URL
+          'https://a291-185-97-92-44.ngrok-free.app/chatHub', // Replace with your actual URL
           HttpConnectionOptions(
             accessTokenFactory: () async => accessToken,
           ),
@@ -130,8 +130,7 @@ class SignalRService {
     }
   }
 
-  // New method for sending a message with signature
-  // Server method signature: SendMessage(int recipientUserId, string messageContent, string messageType, List<MediaItemDto> mediaItems, string signature)
+  // This method is unchanged but still handles 'Error' from any server method (SendMessage, CreateChat, etc).
   Future<void> sendMessage(int recipientUserId, String messageContent, String messageType, List<dynamic>? mediaItems) async {
     try {
       int senderId = await _loginService.getUserId() ?? 0;
@@ -186,6 +185,7 @@ class SignalRService {
       });
     }
 
+    // If there's an error in CreateChat/SendMessage, the server calls "Error"
     if (onError != null) {
       _hubConnection.on('Error', (args) {
         if (args != null && args.isNotEmpty) {

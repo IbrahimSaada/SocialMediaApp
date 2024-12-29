@@ -1,12 +1,9 @@
-// new_chat_page.dart
-
 import 'package:flutter/material.dart';
-// Import your contact tile if needed
-import '../chat/chat_page.dart';
 import 'package:cook/services/contact_service.dart';
 import 'package:cook/models/usercontact_model.dart';
 import 'package:cook/services/signalr_service.dart';
-import 'package:collection/collection.dart'; // Import the collection package
+import 'package:collection/collection.dart'; // for firstWhereOrNull
+import '../chat/chat_page.dart';
 
 class NewChatPage extends StatefulWidget {
   final int userId;
@@ -20,15 +17,18 @@ class NewChatPage extends StatefulWidget {
 class _NewChatPageState extends State<NewChatPage> {
   final ContactService _contactService = ContactService();
   final SignalRService _signalRService = SignalRService();
+
   List<UserContact> _contacts = [];
   List<UserContact> _filteredContacts = [];
+
   String _searchQuery = '';
   bool _isLoading = true;
   int _pageNumber = 1;
   final int _pageSize = 10;
   bool _isFetchingMore = false;
   bool _hasMoreContacts = true;
-  ScrollController _scrollController = ScrollController();
+
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -39,22 +39,53 @@ class _NewChatPageState extends State<NewChatPage> {
   }
 
   Future<void> _initSignalR() async {
+    // Start the connection
     await _signalRService.initSignalR();
+    // Setup listeners including the Error event
     _signalRService.setupListeners(
       onChatCreated: _onChatCreated,
       onNewChatNotification: _onNewChatNotification,
-      onError: _onError,
+      // Show a dialog if an error is returned from CreateChat
+      onError: (String errorMessage) {
+        _showPermissionErrorDialog(errorMessage);
+      },
+    );
+  }
+
+  // Show a nice UI dialog with the error reason
+  void _showPermissionErrorDialog(String reason) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Create Chat Failed'),
+          content: Text(reason),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'OK',
+                style: TextStyle(
+                  color: Color(0xFFF45F67),
+                ),
+              ),
+            )
+          ],
+        );
+      },
     );
   }
 
   void _onChatCreated(dynamic chatDto) {
+    // When ChatCreated is successful, we navigate to ChatPage
+    // chatDto might look like: { chatId: 123, recipientUserId: X, ... }
     print('ChatCreated event received: $chatDto');
 
     if (chatDto != null && chatDto is Map<String, dynamic>) {
       int recipientUserId = chatDto['recipientUserId'];
       int chatId = chatDto['chatId'];
 
-      // Use firstWhereOrNull from the collection package
+      // find the contact info
       UserContact? contact = _contacts.firstWhereOrNull((c) => c.userId == recipientUserId);
 
       Navigator.push(
@@ -75,14 +106,8 @@ class _NewChatPageState extends State<NewChatPage> {
   }
 
   void _onNewChatNotification(dynamic chatDto) {
+    // If we want to handle a notification that someone else created a chat with us
     print('NewChatNotification event received: $chatDto');
-    // Optionally handle incoming chat notifications
-  }
-
-  void _onError(String errorMessage) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(errorMessage)),
-    );
   }
 
   Future<void> _fetchContacts({bool isInitialLoad = true}) async {
@@ -124,21 +149,6 @@ class _NewChatPageState extends State<NewChatPage> {
     }
   }
 
-  void _filterContacts(String query) {
-    setState(() {
-      _searchQuery = query;
-      _filteredContacts = _contacts
-          .where((contact) =>
-              contact.fullname.toLowerCase().contains(query.toLowerCase()))
-          .toList();
-    });
-  }
-
-  void _navigateToChat(BuildContext context, UserContact contact) async {
-    await _signalRService.createChat(contact.userId);
-    // The response will be handled in the _onChatCreated method
-  }
-
   void _onScroll() {
     if (_scrollController.position.pixels ==
             _scrollController.position.maxScrollExtent &&
@@ -152,6 +162,25 @@ class _NewChatPageState extends State<NewChatPage> {
     _scrollController.dispose();
     _signalRService.hubConnection.stop();
     super.dispose();
+  }
+
+  void _filterContacts(String query) {
+    setState(() {
+      _searchQuery = query;
+      _pageNumber = 1;
+      _hasMoreContacts = true;
+      _filteredContacts = _contacts
+          .where((contact) =>
+              contact.fullname.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+    });
+    _fetchContacts(); // refetch with new search
+  }
+
+  void _navigateToChat(BuildContext context, UserContact contact) async {
+    // Attempt to create a new chat
+    // If there's a permission issue, the server calls "Error" => onError => show dialog
+    await _signalRService.createChat(contact.userId);
   }
 
   Future<void> _refreshContacts() async {
@@ -169,23 +198,20 @@ class _NewChatPageState extends State<NewChatPage> {
         title: Text(
           'Select Contact',
           style: TextStyle(
-              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+          ),
         ),
         backgroundColor: Color(0xFFF45F67),
       ),
       body: Column(
         children: [
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: TextField(
               onChanged: (value) {
                 _filterContacts(value);
-                setState(() {
-                  _pageNumber = 1;
-                  _hasMoreContacts = true;
-                });
-                _fetchContacts();
               },
               decoration: InputDecoration(
                 hintText: 'Search contacts...',
@@ -196,16 +222,19 @@ class _NewChatPageState extends State<NewChatPage> {
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30),
-                  borderSide:
-                      BorderSide(color: Color(0xFFF45F67), width: 2),
+                  borderSide: BorderSide(
+                    color: Color(0xFFF45F67),
+                    width: 2,
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30),
-                  borderSide:
-                      BorderSide(color: Colors.grey, width: 2),
+                  borderSide: BorderSide(
+                    color: Colors.grey,
+                    width: 2,
+                  ),
                 ),
-                contentPadding:
-                    EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 16),
               ),
             ),
           ),
@@ -227,8 +256,7 @@ class _NewChatPageState extends State<NewChatPage> {
                           onTap: () => _navigateToChat(context, contact),
                           child: ListTile(
                             leading: CircleAvatar(
-                              backgroundImage:
-                                  NetworkImage(contact.profilePicUrl),
+                              backgroundImage: NetworkImage(contact.profilePicUrl),
                             ),
                             title: Text(
                               contact.fullname,

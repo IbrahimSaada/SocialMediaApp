@@ -14,27 +14,6 @@ import 'package:cook/services/crypto/key_manager.dart' show UserKeyPair;
 import 'package:cryptography/cryptography.dart';
 import '../maintenance/expiredtoken.dart';
 
-void showBlockSnackbar(BuildContext context, String reason) {
-  String message;
-  if (reason.contains('You are blocked by the post owner')) {
-    message = 'User blocked you';
-  } else if (reason.contains('You have blocked the post owner')) {
-    message = 'You blocked the user';
-  } else if (reason.toLowerCase().contains('blocked')) {
-    message = 'Action not allowed due to blocking';
-  } else {
-    message = 'Action not allowed.';
-  }
-
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(message),
-      backgroundColor: Colors.redAccent,
-      duration: const Duration(seconds: 3),
-    ),
-  );
-}
-
 class ChatPage extends StatefulWidget {
   final int chatId;
   final int currentUserId;
@@ -145,6 +124,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       print('Initializing SignalR...');
       await _signalRService.initSignalR();
 
+      // Setup all needed hub listeners
       _signalRService.hubConnection.on('ReceiveMessage', _handleReceiveMessage);
       _signalRService.hubConnection.on('MessageSent', _handleMessageSent);
       _signalRService.hubConnection.on('MessageEdited', _handleMessageEdited);
@@ -152,11 +132,41 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       _signalRService.hubConnection.on('UserTyping', _handleUserTyping);
       _signalRService.hubConnection.on('MessagesRead', _handleMessagesRead);
 
+      // IMPORTANT: handle the Error event in a nice UI
+      _signalRService.hubConnection.on('Error', (args) {
+        if (args != null && args.isNotEmpty) {
+          String errorMsg = args[0] ?? 'Unknown error occurred';
+          _showPermissionErrorDialog(errorMsg);
+        }
+      });
+
       await _fetchMessages();
       _signalRService.markMessagesAsRead(widget.chatId);
     } catch (e) {
       print('Error initializing SignalR: $e');
     }
+  }
+
+  // Show a simple dialog with the error reason
+  void _showPermissionErrorDialog(String reason) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Message Failed'),
+          content: Text(reason),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('OK',
+                  style: TextStyle(
+                    color: Color(0xFFF45F67),
+                  )),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   String _forceUtc(String dateStr) {
@@ -253,20 +263,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     } catch (e) {
       print('Error fetching messages via SignalR: $e');
       final errStr = e.toString();
-      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
-        String reason;
-        if (errStr.startsWith('Exception: BLOCKED:')) {
-          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
-        } else {
-          reason = errStr;
-        }
-        showBlockSnackbar(context, reason);
-      } else if (errStr.contains('Session expired')) {
+      if (errStr.contains('Session expired')) {
         handleSessionExpired(context);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error fetching messages.')),
-        );
+        // No extra snackbars needed here
       }
       setState(() {
         _isLoading = false;
@@ -486,20 +486,11 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     } catch (e) {
       print('Error sending message: $e');
       final errStr = e.toString();
-      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
-        String reason;
-        if (errStr.startsWith('Exception: BLOCKED:')) {
-          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
-        } else {
-          reason = errStr;
-        }
-        showBlockSnackbar(context, reason);
-      } else if (errStr.contains('Session expired')) {
+      if (errStr.contains('Session expired')) {
         handleSessionExpired(context);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send message')),
-        );
+        // We no longer show extra snackbars; we rely on the 
+        // server’s “Error” event to open the dialog with reason
       }
     }
   }
@@ -535,20 +526,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     } catch (e) {
       print('Error editing message: $e');
       final errStr = e.toString();
-      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
-        String reason;
-        if (errStr.startsWith('Exception: BLOCKED:')) {
-          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
-        } else {
-          reason = errStr;
-        }
-        showBlockSnackbar(context, reason);
-      } else if (errStr.contains('Session expired')) {
+      if (errStr.contains('Session expired')) {
         handleSessionExpired(context);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to edit message')),
-        );
+        // again, rely on "Error" event if it's a permission block
       }
     }
   }
@@ -560,20 +541,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     } catch (e) {
       print('Error deleting message: $e');
       final errStr = e.toString();
-      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
-        String reason;
-        if (errStr.startsWith('Exception: BLOCKED:')) {
-          reason = errStr.replaceFirst('Exception: BLOCKED:', '');
-        } else {
-          reason = errStr;
-        }
-        showBlockSnackbar(context, reason);
-      } else if (errStr.contains('Session expired')) {
+      if (errStr.contains('Session expired')) {
         handleSessionExpired(context);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete message')),
-        );
+        // again, rely on "Error" event
       }
     }
   }
