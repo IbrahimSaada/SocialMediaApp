@@ -371,8 +371,7 @@ class _ContactsPageState extends State<ContactsPage> {
           recipientUserId: recipientUserId,
           contactName: _getDisplayName(chat),
           profileImageUrl: _getDisplayProfileImage(chat),
-          isOnline: true,
-          lastSeen: chat.createdAt.toString(),
+
         ),
       ),
     ).then((_) {

@@ -66,8 +66,6 @@ class _NewChatPageState extends State<NewChatPage> {
             recipientUserId: recipientUserId,
             contactName: contact?.fullname ?? 'Unknown',
             profileImageUrl: contact?.profilePicUrl ?? '',
-            isOnline: true, // Placeholder
-            lastSeen: '', // Placeholder
           ),
         ),
       );
