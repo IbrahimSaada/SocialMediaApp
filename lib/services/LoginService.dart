@@ -9,7 +9,7 @@ import 'BannedException.dart';
 
 class LoginService {
   final String baseUrl =
-      'https://a291-185-97-92-44.ngrok-free.app/api';
+      '***REMOVED***/api';
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   final SignatureService _signatureService = SignatureService();
 

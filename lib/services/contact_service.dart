@@ -7,7 +7,7 @@ import '***REMOVED***/services/SessionExpiredException.dart';
 
 class ContactService {
   final String baseUrl =
-      'https://a291-185-97-92-44.ngrok-free.app/api/Chat';
+      '***REMOVED***/api/Chat';
   final ApiService _apiService = ApiService();
 
   Future<List<UserContact>> fetchContacts(
