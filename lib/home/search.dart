@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 
-// Models
+// Models (Adjust imports as per your project structure)
 import '***REMOVED***/models/SearchUserModel.dart';
 
 // Services
@@ -28,6 +30,10 @@ class Search extends StatefulWidget {
 }
 
 class _SearchState extends State<Search> {
+  // Controllers & Debounce
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
+
   // Search results & saved (favorited) users
   List<SearchUserModel> searchResults = [];
   List<SearchUserModel> savedUsers = [];
@@ -48,6 +54,7 @@ class _SearchState extends State<Search> {
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(_onSearchChanged);
     loadSavedUsers();
     getCurrentUserId();
 
@@ -57,6 +64,25 @@ class _SearchState extends State<Search> {
           _scrollController.position.maxScrollExtent) {
         fetchMoreUsers();
       }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _debounce?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// Debounce logic to avoid calling search on every character instantly
+  void _onSearchChanged() {
+    // Cancel previous timer
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    // Wait 300ms after user stops typing
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      final query = _searchController.text.trim();
+      searchUsers(query);
     });
   }
 
@@ -80,6 +106,14 @@ class _SearchState extends State<Search> {
       searchResults.clear();
     });
 
+    // If query is empty, just clear results & stop
+    if (query.isEmpty) {
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+
     try {
       // Call the search service
       List<SearchUserModel> users = await _searchService.searchUsers(
@@ -89,7 +123,7 @@ class _SearchState extends State<Search> {
         pageSize,
       );
 
-      // Remove any duplicates or already-saved users
+      // Remove duplicates or already-saved users
       users.removeWhere((u) =>
           searchResults.any((existing) => existing.userId == u.userId));
       users.removeWhere((u) =>
@@ -103,18 +137,12 @@ class _SearchState extends State<Search> {
     }
     // Handle blocked & banned logic
     on BlockedUserException catch (bue) {
-      // The user or target might be blocked
       final reason = bue.reason;
       showSnackBarMessage(reason, Colors.redAccent);
     } on BannedException catch (bex) {
-      // The user is banned
       showSnackBarMessage("You are banned. Reason: ${bex.reason}", Colors.red);
     } catch (e) {
-      // Other errors
-      setState(() {
-        searchResults.clear();
-      });
-      print("Error in searchUsers: $e");
+      debugPrint("Error in searchUsers: $e");
       showSnackBarMessage(
         'An error occurred while searching. Please try again.',
         Colors.red,
@@ -143,7 +171,7 @@ class _SearchState extends State<Search> {
         pageSize,
       );
 
-      // Remove duplicates
+      // Remove duplicates or saved
       moreUsers.removeWhere((u) =>
           searchResults.any((existing) => existing.userId == u.userId));
       moreUsers.removeWhere((u) =>
@@ -159,7 +187,7 @@ class _SearchState extends State<Search> {
     } on BannedException catch (bex) {
       showSnackBarMessage("You are banned. Reason: ${bex.reason}", Colors.red);
     } catch (e) {
-      print("Error in fetchMoreUsers: $e");
+      debugPrint("Error in fetchMoreUsers: $e");
       showSnackBarMessage(
         'An error occurred while fetching more users.',
         Colors.red,
@@ -171,7 +199,7 @@ class _SearchState extends State<Search> {
     }
   }
 
-  /// Save a user to local favorites (prevents duplicates)
+  /// Save a user to local favorites
   Future<void> saveUser(SearchUserModel user) async {
     if (savedUsers.any((savedUser) => savedUser.userId == user.userId)) {
       return;
@@ -250,24 +278,18 @@ class _SearchState extends State<Search> {
   Widget buildFollowButton(SearchUserModel user, int currentUserId) {
     return StatefulBuilder(
       builder: (context, setButtonState) {
-        // Derive button text/color from user.isFollowing & user.amFollowing
         String buttonText = "Follow";
         Color buttonColor = const Color(0xFFF45F67);
 
         if (user.isFollowing && !user.amFollowing) {
           // They follow you, you don't follow them => "Follow Back"
           buttonText = "Follow Back";
-          buttonColor = const Color(0xFFF45F67);
         } else if (!user.isFollowing && user.amFollowing) {
-          // You follow them, they don't follow you => "Following"
+          // You follow them => "Following"
           buttonText = "Following";
           buttonColor = Colors.grey;
-        } else if (!user.isFollowing && !user.amFollowing) {
-          // Neither follows each other => "Follow"
-          buttonText = "Follow";
-          buttonColor = const Color(0xFFF45F67);
         } else if (user.isFollowing && user.amFollowing) {
-          // Mutual follow => "Following"
+          // Mutual => "Following"
           buttonText = "Following";
           buttonColor = Colors.grey;
         }
@@ -315,7 +337,7 @@ class _SearchState extends State<Search> {
               setButtonState(() {
                 user.amFollowing = !user.amFollowing;
               });
-              print("Error in buildFollowButton onPressed: $e");
+              debugPrint("Error in buildFollowButton onPressed: $e");
               showSnackBarMessage(
                 "An error occurred. Please try again.",
                 Colors.red,
@@ -339,7 +361,7 @@ class _SearchState extends State<Search> {
       debugShowCheckedModeBanner: false,
       home: Scaffold(
         // Custom AppBar with extra spacing
-      appBar:  AppBar(
+        appBar: AppBar(
           backgroundColor: const Color(0xFFF45F67),
           elevation: 4,
           shadowColor: Colors.grey.shade200,
@@ -365,7 +387,7 @@ class _SearchState extends State<Search> {
                 ),
               ),
               // Placeholder to balance the layout
-              SizedBox(width: 48), // Same width as the back arrow for symmetry
+              const SizedBox(width: 48),
             ],
           ),
         ),
@@ -375,26 +397,43 @@ class _SearchState extends State<Search> {
             children: [
               // Search Bar
               TextField(
-                onSubmitted: searchUsers,
+                controller: _searchController,
+                cursorColor: const Color(0xFFF45F67),
                 decoration: InputDecoration(
                   hintText: 'Search for a user...',
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: 0, horizontal: 20),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 0,
+                    horizontal: 20,
+                  ),
                   filled: true,
                   fillColor: Colors.white,
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      _searchController.clear();
+                      searchUsers('');
+                    },
+                  ),
                   border: OutlineInputBorder(
-                    borderSide:
-                        const BorderSide(color: Color(0xFFF45F67), width: 2),
+                    borderSide: const BorderSide(
+                      color: Color(0xFFF45F67),
+                      width: 2,
+                    ),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderSide:
-                        const BorderSide(color: Color(0xFFF45F67), width: 2),
+                    borderSide: const BorderSide(
+                      color: Color(0xFFF45F67),
+                      width: 2,
+                    ),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderSide:
-                        const BorderSide(color: Color(0xFFF45F67), width: 2),
+                    borderSide: const BorderSide(
+                      color: Color(0xFFF45F67),
+                      width: 2,
+                    ),
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),
@@ -402,10 +441,19 @@ class _SearchState extends State<Search> {
               const SizedBox(height: 20),
 
               // Loading shimmer
-              if (isLoading) Expanded(child: buildShimmer()),
+              if (isLoading)
+                Expanded(child: buildShimmer()),
+
+              // Show "No Results Found" if not loading, search is not empty, and results are 0
+              if (!isLoading && currentQuery.isNotEmpty && searchResults.isEmpty)
+                Expanded(
+                  child: Center(
+                    child: Text("No results found for '$currentQuery'."),
+                  ),
+                ),
 
               // Saved Users Section
-              if (!isLoading && savedUsers.isNotEmpty)
+              if (!isLoading && savedUsers.isNotEmpty && currentQuery.isEmpty)
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -450,12 +498,7 @@ class _SearchState extends State<Search> {
                   ),
                 ),
 
-              const Divider(
-                color: Color(0xFFF45F67),
-                thickness: 2,
-              ),
-
-              // Search Results
+              // Search Results (Only show if we have results)
               if (!isLoading && searchResults.isNotEmpty)
                 Expanded(
                   child: Column(
@@ -471,8 +514,7 @@ class _SearchState extends State<Search> {
                       Expanded(
                         child: ListView.builder(
                           controller: _scrollController,
-                          itemCount:
-                              searchResults.length + (isFetchingMore ? 1 : 0),
+                          itemCount: searchResults.length + (isFetchingMore ? 1 : 0),
                           itemBuilder: (context, index) {
                             // Loader indicator at the bottom
                             if (index == searchResults.length) {
@@ -505,8 +547,7 @@ class _SearchState extends State<Search> {
                                 softWrap: false,
                                 style: TextStyle(color: Colors.grey[600]),
                               ),
-                              trailing:
-                                  buildFollowButton(user, currentUserId!),
+                              trailing: buildFollowButton(user, currentUserId!),
                               onTap: () {
                                 // Save the user to local favorites
                                 selectUser(user);
