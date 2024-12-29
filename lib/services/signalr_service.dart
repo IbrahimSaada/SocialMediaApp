@@ -1,28 +1,28 @@
+// signalr_service.dart
+
 import 'package:signalr_core/signalr_core.dart';
-import 'package:cook/services/loginservice.dart';
-import 'package:cook/services/signatureservice.dart';
+import 'package:cook/services/LoginService.dart';
+import 'package:cook/services/SignatureService.dart';
+import 'package:cook/services/SessionExpiredException.dart';
 
 class SignalRService {
   late HubConnection _hubConnection;
   final LoginService _loginService = LoginService();
   final SignatureService _signatureService = SignatureService();
 
+  /// Initialize the SignalR connection with session expiration checks
   Future<void> initSignalR() async {
-    String? accessToken = await _loginService.getToken();
-    DateTime? expiration = await _loginService.getTokenExpiration();
-
-    if (expiration == null || DateTime.now().isAfter(expiration)) {
-      await _loginService.refreshAccessToken();
-      accessToken = await _loginService.getToken();
-    }
-
+    // 1) Check if token is valid or refresh it
+    String? accessToken = await _ensureValidToken();
     if (accessToken == null) {
-      throw Exception('Access token is null. User might not be logged in.');
+      // If we cannot get a valid token, explicitly throw
+      throw SessionExpiredException('No valid token for SignalR connection');
     }
 
+    // 2) Build the HubConnection
     _hubConnection = HubConnectionBuilder()
         .withUrl(
-          'https://a291-185-97-92-44.ngrok-free.app/chatHub', // Replace with your actual URL
+          'https://a291-185-97-92-44.ngrok-free.app/chatHub',
           HttpConnectionOptions(
             accessTokenFactory: () async => accessToken,
           ),
@@ -30,10 +30,46 @@ class SignalRService {
         .withAutomaticReconnect()
         .build();
 
+    // 3) Start the connection
+    // If the token is invalid, the server might respond with 401 or close the socket,
+    // but typically SignalR won't fire a 401 for a websockets handshake.
     await _hubConnection.start();
+
+    // 4) Setup any local events (reconnect, onclose, etc.)
     _setupConnectionEvents();
+
+    print('SignalR connection started successfully');
   }
 
+  /// Helper method to ensure the token is valid or refresh it
+  Future<String?> _ensureValidToken() async {
+    String? accessToken = await _loginService.getToken();
+    final DateTime? expiration = await _loginService.getTokenExpiration();
+
+    // If the token is missing or expired, attempt refresh
+    if (accessToken == null ||
+        expiration == null ||
+        DateTime.now().isAfter(expiration)) {
+      print('Access token is invalid or expired. Attempting refresh...');
+      try {
+        await _loginService.refreshAccessToken();
+        accessToken = await _loginService.getToken();
+      } catch (e) {
+        print('Failed to refresh token => $e');
+        // If we fail here, we throw SessionExpired so UI can handle re-login
+        throw SessionExpiredException('Failed to refresh token for SignalR');
+      }
+    }
+
+    // If still null, session is expired
+    if (accessToken == null) {
+      throw SessionExpiredException('No valid token found for SignalR');
+    }
+
+    return accessToken;
+  }
+
+  /// Setup connection events (close, reconnected, reconnecting)
   void _setupConnectionEvents() {
     _hubConnection.onclose((error) {
       print('Connection closed: $error');
@@ -44,51 +80,81 @@ class SignalRService {
     });
 
     _hubConnection.onreconnected((connectionId) {
-      print('Reconnected: $connectionId');
+      print('Reconnected with connectionId=$connectionId');
     });
   }
 
+  /// Stop the SignalR connection
   Future<void> stopConnection() async {
     await _hubConnection.stop();
     print('SignalR connection stopped.');
   }
 
-  // Helper method to generate signature and invoke a hub method with it
-  Future<dynamic> _invokeWithSignature(String methodName, List<Object?> args, String dataToSign) async {
-    String signature = await _signatureService.generateHMAC(dataToSign);
+  /// Private helper to generate signature & invoke a Hub method
+  Future<dynamic> _invokeWithSignature(
+    String methodName,
+    List<Object?> args,
+    String dataToSign,
+  ) async {
+    final String signature = await _signatureService.generateHMAC(dataToSign);
+    // Append signature as last argument
     args.add(signature);
+
+    // If we suspect the token might be expired in the middle, we can re-check it:
+    await _ensureValidToken(); // optional extra check
+
     return await _hubConnection.invoke(methodName, args: args);
   }
 
+  /// --------------- TYPING ---------------
   Future<void> sendTypingNotification(int recipientUserId) async {
     try {
-      int senderId = await _loginService.getUserId() ?? 0;
-      String dataToSign = "$senderId:$recipientUserId";
+      final int senderId = await _loginService.getUserId() ?? 0;
+      final String dataToSign = '$senderId:$recipientUserId';
 
       await _invokeWithSignature('Typing', [recipientUserId], dataToSign);
       print('Typing notification sent successfully');
+    } on SessionExpiredException {
+      rethrow; // Let UI handle session expired
     } catch (e) {
       print('Error sending typing notification: $e');
     }
   }
 
-  Future<List<dynamic>> fetchMessages(int chatId, int pageNumber, int pageSize) async {
+  /// --------------- MESSAGES CRUD ---------------
+  Future<void> sendMessage(
+    int recipientUserId,
+    String messageContent,
+    String messageType,
+    List<dynamic>? mediaItems,
+  ) async {
     try {
-      var result = await _hubConnection.invoke('FetchMessages', args: [chatId, pageNumber, pageSize]);
-      return result as List<dynamic>;
+      final int senderId = await _loginService.getUserId() ?? 0;
+      final String dataToSign = '$senderId:$recipientUserId:$messageContent';
+
+      await _invokeWithSignature(
+        'SendMessage',
+        [recipientUserId, messageContent, messageType, mediaItems],
+        dataToSign,
+      );
+      print('SendMessage invoked successfully');
+    } on SessionExpiredException {
+      rethrow;
     } catch (e) {
-      print('Error fetching messages via SignalR: $e');
-      return [];
+      print('Error invoking SendMessage: $e');
+      rethrow; // Rethrow so UI can handle error events (like blocked)
     }
   }
 
   Future<void> editMessage(int messageId, String newContent) async {
     try {
-      int userId = await _loginService.getUserId() ?? 0;
-      String dataToSign = "$userId:$messageId:$newContent";
+      final int userId = await _loginService.getUserId() ?? 0;
+      final String dataToSign = '$userId:$messageId:$newContent';
 
       await _invokeWithSignature('EditMessage', [messageId, newContent], dataToSign);
       print('EditMessage invoked successfully');
+    } on SessionExpiredException {
+      rethrow;
     } catch (e) {
       print('Error invoking EditMessage: $e');
     }
@@ -96,11 +162,13 @@ class SignalRService {
 
   Future<void> unsendMessage(int messageId) async {
     try {
-      int userId = await _loginService.getUserId() ?? 0;
-      String dataToSign = "$userId:$messageId";
+      final int userId = await _loginService.getUserId() ?? 0;
+      final String dataToSign = '$userId:$messageId';
 
       await _invokeWithSignature('UnsendMessage', [messageId], dataToSign);
       print('UnsendMessage invoked successfully');
+    } on SessionExpiredException {
+      rethrow;
     } catch (e) {
       print('Error invoking UnsendMessage: $e');
     }
@@ -108,134 +176,122 @@ class SignalRService {
 
   Future<void> markMessagesAsRead(int chatId) async {
     try {
-      int userId = await _loginService.getUserId() ?? 0;
-      String dataToSign = "$userId:$chatId";
+      final int userId = await _loginService.getUserId() ?? 0;
+      final String dataToSign = '$userId:$chatId';
 
       await _invokeWithSignature('MarkMessagesAsRead', [chatId], dataToSign);
       print('MarkMessagesAsRead invoked successfully');
+    } on SessionExpiredException {
+      rethrow;
     } catch (e) {
       print('Error invoking MarkMessagesAsRead: $e');
     }
   }
 
+  /// --------------- CHATS ---------------
   Future<void> createChat(int recipientUserId) async {
     try {
-      int initiatorUserId = await _loginService.getUserId() ?? 0;
-      String dataToSign = "$initiatorUserId:$recipientUserId";
+      final int initiatorUserId = await _loginService.getUserId() ?? 0;
+      final String dataToSign = '$initiatorUserId:$recipientUserId';
 
       await _invokeWithSignature('CreateChat', [recipientUserId], dataToSign);
       print('CreateChat invoked successfully');
+    } on SessionExpiredException {
+      rethrow;
     } catch (e) {
       print('Error invoking CreateChat: $e');
+      rethrow; // Let UI handle blocked or other errors
     }
   }
 
-  // This method is unchanged but still handles 'Error' from any server method (SendMessage, CreateChat, etc).
-  Future<void> sendMessage(int recipientUserId, String messageContent, String messageType, List<dynamic>? mediaItems) async {
+  /// If you needed to fetch messages via Hub calls
+  Future<List<dynamic>> fetchMessages(int chatId, int pageNumber, int pageSize) async {
     try {
-      int senderId = await _loginService.getUserId() ?? 0;
-      String dataToSign = "$senderId:$recipientUserId:$messageContent";
-
-      await _invokeWithSignature('SendMessage', [recipientUserId, messageContent, messageType, mediaItems], dataToSign);
-      print('SendMessage invoked successfully');
-    } catch (e) {
-      print('Error invoking SendMessage: $e');
+      // This method doesn't do signature in your code, but you can do so if the server requires it
+      return await _hubConnection.invoke(
+        'FetchMessages',
+        args: [chatId, pageNumber, pageSize],
+      ) as List<dynamic>;
+    } on SessionExpiredException {
       rethrow;
+    } catch (e) {
+      print('Error fetching messages via SignalR: $e');
+      return [];
     }
   }
 
+  /// Setup listeners for server events
   void setupListeners({
-    Function(dynamic chatDto)? onChatCreated,
-    Function(dynamic chatDto)? onNewChatNotification,
-    Function(String errorMessage)? onError,
+    Function(dynamic)? onChatCreated,
+    Function(dynamic)? onNewChatNotification,
+    Function(String)? onError,
     Function()? onReceiveMessage,
     Function()? onMessageSent,
     Function()? onMessageEdited,
     Function()? onMessageUnsent,
     Function()? onMessagesRead,
-    Function(int senderId)? onUserTyping,
+    Function(int)? onUserTyping,
   }) {
+    // ChatCreated
     if (onChatCreated != null) {
       _hubConnection.on('ChatCreated', (args) {
         if (args != null && args.isNotEmpty) {
-          var chatDto = args[0];
+          final chatDto = args[0];
           if (chatDto != null) {
             onChatCreated(chatDto);
           } else {
-            print('ChatCreated event received with null chatDto.');
+            print('ChatCreated event => null chatDto');
           }
-        } else {
-          print('ChatCreated event received with null or empty args.');
         }
       });
     }
 
+    // NewChatNotification
     if (onNewChatNotification != null) {
       _hubConnection.on('NewChatNotification', (args) {
         if (args != null && args.isNotEmpty) {
-          var chatDto = args[0];
+          final chatDto = args[0];
           if (chatDto != null) {
             onNewChatNotification(chatDto);
-          } else {
-            print('NewChatNotification event received with null chatDto.');
           }
-        } else {
-          print('NewChatNotification event received with null or empty args.');
         }
       });
     }
 
-    // If there's an error in CreateChat/SendMessage, the server calls "Error"
+    // Error
     if (onError != null) {
       _hubConnection.on('Error', (args) {
         if (args != null && args.isNotEmpty) {
-          var errorMessage = args[0];
+          final errorMessage = args[0];
           if (errorMessage != null) {
             print('Server Error: $errorMessage');
             onError(errorMessage);
-          } else {
-            print('Error event received with null errorMessage.');
           }
-        } else {
-          print('Error event received with null or empty args.');
         }
       });
     }
 
+    // Some events just signal “something changed”; no data
     if (onReceiveMessage != null) {
-      _hubConnection.on('ReceiveMessage', (args) {
-        onReceiveMessage();
-      });
+      _hubConnection.on('ReceiveMessage', (args) => onReceiveMessage());
     }
-
     if (onMessageSent != null) {
-      _hubConnection.on('MessageSent', (args) {
-        onMessageSent();
-      });
+      _hubConnection.on('MessageSent', (args) => onMessageSent());
     }
-
     if (onMessageEdited != null) {
-      _hubConnection.on('MessageEdited', (args) {
-        onMessageEdited();
-      });
+      _hubConnection.on('MessageEdited', (args) => onMessageEdited());
     }
-
     if (onMessageUnsent != null) {
-      _hubConnection.on('MessageUnsent', (args) {
-        onMessageUnsent();
-      });
+      _hubConnection.on('MessageUnsent', (args) => onMessageUnsent());
     }
-
     if (onMessagesRead != null) {
-      _hubConnection.on('MessagesRead', (args) {
-        onMessagesRead();
-      });
+      _hubConnection.on('MessagesRead', (args) => onMessagesRead());
     }
 
     if (onUserTyping != null) {
       _hubConnection.on('UserTyping', (args) {
         if (args != null && args.isNotEmpty) {
-          int senderId = args[0] as int;
+          final senderId = args[0] as int;
           onUserTyping(senderId);
         }
       });
