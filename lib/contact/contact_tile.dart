@@ -4,8 +4,6 @@ class ContactTile extends StatelessWidget {
   final String contactName;
   final String lastMessage;
   final String profileImage;
-  final bool isOnline;
-  final String lastActive;
   final bool isMuted;
   final bool isTyping;
   final int unreadMessages;
@@ -16,8 +14,6 @@ class ContactTile extends StatelessWidget {
     required this.contactName,
     required this.lastMessage,
     required this.profileImage,
-    required this.isOnline,
-    required this.lastActive,
     required this.isMuted,
     required this.isTyping,
     required this.unreadMessages,
@@ -103,20 +99,6 @@ class ContactTile extends StatelessWidget {
               backgroundImage: NetworkImage(profileImage),
               radius: 25,
             ),
-            if (isOnline)
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                ),
-              ),
           ],
         ),
         title: Text(
@@ -129,10 +111,6 @@ class ContactTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(lastMessage, style: lastMessageStyle),
-                  Text(
-                    isOnline ? 'Active now' : 'Active $lastActive',
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
                 ],
               ),
         trailing: Row(
