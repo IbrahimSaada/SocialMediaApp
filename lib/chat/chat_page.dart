@@ -41,8 +41,6 @@ class ChatPage extends StatefulWidget {
   final int recipientUserId;
   final String contactName;
   final String profileImageUrl;
-  final bool isOnline;
-  final String lastSeen;
 
   ChatPage({
     required this.chatId,
@@ -50,8 +48,6 @@ class ChatPage extends StatefulWidget {
     required this.recipientUserId,
     required this.contactName,
     required this.profileImageUrl,
-    required this.isOnline,
-    required this.lastSeen,
   });
 
   @override
@@ -78,7 +74,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _status = widget.isOnline ? 'Online' : 'Offline';
     _initE2EE().then((_) {
       _initSignalR();
     });
@@ -380,7 +375,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     _typingTimer = Timer(Duration(seconds: 3), () {
       setState(() {
         _isRecipientTyping = false;
-        _status = widget.isOnline ? 'Online' : 'Offline';
       });
     });
   }
