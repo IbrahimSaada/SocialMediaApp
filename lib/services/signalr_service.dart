@@ -31,11 +31,11 @@ class SignalRService {
         .build();
 
     // 3) Start the connection
-    // If the token is invalid, the server might respond with 401 or close the socket,
-    // but typically SignalR won't fire a 401 for a websockets handshake.
     await _hubConnection.start();
+    // If the token is invalid, typically the server might close the socket,
+    // but we do our best to validate before building.
 
-    // 4) Setup any local events (reconnect, onclose, etc.)
+    // 4) Setup local events
     _setupConnectionEvents();
 
     print('SignalR connection started successfully');

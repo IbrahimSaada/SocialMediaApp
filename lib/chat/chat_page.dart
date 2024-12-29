@@ -1,3 +1,5 @@
+// chat_page.dart
+
 import 'package:flutter/material.dart';
 import '***REMOVED***/services/chat_service.dart';
 import '***REMOVED***/models/message_model.dart';
@@ -13,6 +15,7 @@ import '***REMOVED***/services/crypto/encryption_service.dart';
 import '***REMOVED***/services/crypto/key_manager.dart' show UserKeyPair;
 import 'package:cryptography/cryptography.dart';
 import '../maintenance/expiredtoken.dart';
+import '***REMOVED***/services/SessionExpiredException.dart';
 
 class ChatPage extends StatefulWidget {
   final int chatId;
@@ -21,45 +24,57 @@ class ChatPage extends StatefulWidget {
   final String contactName;
   final String profileImageUrl;
 
-  ChatPage({
+  const ChatPage({
+    Key? key,
     required this.chatId,
     required this.currentUserId,
     required this.recipientUserId,
     required this.contactName,
     required this.profileImageUrl,
-  });
+  }) : super(key: key);
 
   @override
   _ChatPageState createState() => _ChatPageState();
 }
 
 class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
+  // Services
   final ChatService _chatService = ChatService();
   final SignalRService _signalRService = SignalRService();
+
+  // UI & Data
+  final ScrollController _scrollController = ScrollController();
   List<Message> messages = [];
   bool _isLoading = true;
-  final ScrollController _scrollController = ScrollController();
   bool _isRecipientTyping = false;
-  Timer? _typingTimer;
-  String _status = '';
-  int _currentPage = 1;
-  final int _pageSize = 20;
   bool _isFetchingMore = false;
   bool _hasMoreMessages = true;
   bool _shouldScrollToBottom = false;
+
+  String _status = '';
+  int _currentPage = 1;
+  final int _pageSize = 20;
+  Timer? _typingTimer;
+
+  // E2EE session
   SessionKeys? _sessionKeys;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    // 1) Initialize encryption keys
     _initE2EE().then((_) {
+      // 2) Connect & init SignalR
       _initSignalR();
     });
 
+    // 3) Set up infinite scroll to fetch older messages
     _scrollController.addListener(() {
       if (_scrollController.position.atEdge &&
-          _scrollController.position.pixels == _scrollController.position.minScrollExtent &&
+          _scrollController.position.pixels ==
+              _scrollController.position.minScrollExtent &&
           !_isLoading &&
           _hasMoreMessages &&
           !_isFetchingMore) {
@@ -71,29 +86,38 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+
+    // Remove Hub listeners
     _signalRService.hubConnection.off('ReceiveMessage', method: _handleReceiveMessage);
     _signalRService.hubConnection.off('MessageSent', method: _handleMessageSent);
     _signalRService.hubConnection.off('MessageEdited', method: _handleMessageEdited);
     _signalRService.hubConnection.off('MessageUnsent', method: _handleMessageUnsent);
     _signalRService.hubConnection.off('UserTyping', method: _handleUserTyping);
     _signalRService.hubConnection.off('MessagesRead', method: _handleMessagesRead);
+
     _scrollController.dispose();
     super.dispose();
   }
 
   @override
   void didChangeMetrics() {
+    // Auto-scroll if keyboard closes or other changes happen
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
     });
   }
 
+  /// (A) E2EE Initialization
   Future<void> _initE2EE() async {
     print('Initializing E2EE...');
     final myKeyPair = await _loadMyUserKeyPair();
-    print('My private key length: ${myKeyPair.privateKey.length}, public key length: ${myKeyPair.publicKey.length}');
+    print(
+      'My private key length: ${myKeyPair.privateKey.length}, '
+      'public key length: ${myKeyPair.publicKey.length}',
+    );
 
-    final recipientPublicKey = await _fetchRecipientPublicKeyFromServer(widget.recipientUserId);
+    final recipientPublicKey =
+        await _fetchRecipientPublicKeyFromServer(widget.recipientUserId);
     print('Recipient public key length: ${recipientPublicKey.length}');
 
     final keyExchangeService = KeyExchangeService();
@@ -111,20 +135,23 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     }
 
     final sessionKeys = await keyExchangeService.deriveSessionKeys(sharedSecret);
-
-    print('Session keys derived. EncryptionKey length: ${sessionKeys.encryptionKey.length}, macKey length: ${sessionKeys.macKey.length}');
+    print(
+      'Session keys derived. EncryptionKey length: '
+      '${sessionKeys.encryptionKey.length}, macKey length: ${sessionKeys.macKey.length}',
+    );
 
     setState(() {
       _sessionKeys = sessionKeys;
     });
   }
 
+  /// (B) Connect to SignalR, set up listeners
   Future<void> _initSignalR() async {
     try {
       print('Initializing SignalR...');
       await _signalRService.initSignalR();
 
-      // Setup all needed hub listeners
+      // Setup hub listeners
       _signalRService.hubConnection.on('ReceiveMessage', _handleReceiveMessage);
       _signalRService.hubConnection.on('MessageSent', _handleMessageSent);
       _signalRService.hubConnection.on('MessageEdited', _handleMessageEdited);
@@ -132,36 +159,43 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       _signalRService.hubConnection.on('UserTyping', _handleUserTyping);
       _signalRService.hubConnection.on('MessagesRead', _handleMessagesRead);
 
-      // IMPORTANT: handle the Error event in a nice UI
+      // Server "Error" event => permission or block error
       _signalRService.hubConnection.on('Error', (args) {
         if (args != null && args.isNotEmpty) {
-          String errorMsg = args[0] ?? 'Unknown error occurred';
+          final errorMsg = args[0] ?? 'Unknown error occurred';
           _showPermissionErrorDialog(errorMsg);
         }
       });
 
+      // Fetch initial messages
       await _fetchMessages();
+      // Mark them as read
       _signalRService.markMessagesAsRead(widget.chatId);
+
+    } on SessionExpiredException {
+      // If session is expired up front, show your SessionExpired UI
+      if (mounted) {
+        handleSessionExpired(context);
+      }
     } catch (e) {
       print('Error initializing SignalR: $e');
     }
   }
 
-  // Show a simple dialog with the error reason
   void _showPermissionErrorDialog(String reason) {
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (ctx) {
         return AlertDialog(
-          title: Text('Message Failed'),
+          title: const Text('Message Failed'),
           content: Text(reason),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('OK',
-                  style: TextStyle(
-                    color: Color(0xFFF45F67),
-                  )),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text(
+                'OK',
+                style: TextStyle(color: Color(0xFFF45F67)),
+              ),
             ),
           ],
         );
@@ -169,32 +203,32 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     );
   }
 
-  String _forceUtc(String dateStr) {
-    if (!dateStr.endsWith('Z')) {
-      dateStr = dateStr + 'Z';
-    }
-    return dateStr;
-  }
-
+  /// (C) Fetch messages (paging)
   Future<void> _fetchMessages({bool loadMore = false}) async {
     if (_isFetchingMore) return;
     _isFetchingMore = true;
 
     try {
       if (!loadMore) {
+        // resetting the page
         _currentPage = 1;
         _hasMoreMessages = true;
       }
 
       print('Fetching messages, page=$_currentPage, pageSize=$_pageSize');
-      var result = await _signalRService.hubConnection.invoke('FetchMessages',
-          args: [widget.chatId, _currentPage, _pageSize]);
+      final result = await _signalRService.hubConnection.invoke(
+        'FetchMessages',
+        args: [widget.chatId, _currentPage, _pageSize],
+      );
 
-      List<dynamic> messagesData = result as List<dynamic>;
+      final List<dynamic> messagesData = result as List<dynamic>;
       List<Message> fetchedMessages = [];
+
+      // 1) Convert & decrypt
       for (var messageData in messagesData) {
         try {
-          Map<String, dynamic> messageMap = Map<String, dynamic>.from(messageData);
+          final Map<String, dynamic> messageMap =
+              Map<String, dynamic>.from(messageData);
 
           if (messageMap['createdAt'] is String) {
             messageMap['createdAt'] = _forceUtc(messageMap['createdAt']);
@@ -205,6 +239,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
           var message = Message.fromJson(messageMap);
 
+          // Decrypt if we have keys
           if (_sessionKeys != null && message.messageContent.isNotEmpty) {
             try {
               final encryptionService = EncryptionService();
@@ -226,30 +261,36 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         }
       }
 
+      // 2) Reverse them so older appear at the top
       fetchedMessages = fetchedMessages.reversed.toList();
 
       setState(() {
         if (loadMore) {
-          double prevScrollHeight = _scrollController.position.extentAfter;
-          double prevScrollOffset = _scrollController.offset;
+          final prevScrollHeight = _scrollController.position.extentAfter;
+          final prevScrollOffset = _scrollController.offset;
+
           messages.insertAll(0, fetchedMessages);
           messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
           _isLoading = false;
           _currentPage++;
+
           if (fetchedMessages.length < _pageSize) {
             _hasMoreMessages = false;
           }
 
+          // Adjust scroll offset so user sees same position
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            double newScrollHeight = _scrollController.position.extentAfter;
-            double scrollOffsetDelta = newScrollHeight - prevScrollHeight;
+            final newScrollHeight = _scrollController.position.extentAfter;
+            final scrollOffsetDelta = newScrollHeight - prevScrollHeight;
             _scrollController.jumpTo(prevScrollOffset + scrollOffsetDelta);
           });
         } else {
+          // initial fetch
           messages = fetchedMessages;
           messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
           _isLoading = false;
           _currentPage++;
+
           if (fetchedMessages.length < _pageSize) {
             _hasMoreMessages = false;
           }
@@ -260,23 +301,74 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
           });
         }
       });
+    } on SessionExpiredException {
+      if (mounted) {
+        handleSessionExpired(context);
+      }
+      setState(() => _isLoading = false);
     } catch (e) {
       print('Error fetching messages via SignalR: $e');
-      final errStr = e.toString();
-      if (errStr.contains('Session expired')) {
-        handleSessionExpired(context);
-      } else {
-        // No extra snackbars needed here
+      if (e.toString().contains('Session expired')) {
+        if (mounted) {
+          handleSessionExpired(context);
+        }
       }
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     } finally {
       _isFetchingMore = false;
     }
   }
 
+  /// Region: Hub Event Handlers
   void _handleReceiveMessage(List<Object?>? arguments) async {
+    if (arguments != null && arguments.isNotEmpty) {
+      final messageData = Map<String, dynamic>.from(arguments[0] as Map);
+
+      // fix date fields
+      if (messageData['createdAt'] is String) {
+        messageData['createdAt'] = _forceUtc(messageData['createdAt']);
+      }
+      if (messageData['readAt'] != null && messageData['readAt'] is String) {
+        messageData['readAt'] = _forceUtc(messageData['readAt']);
+      }
+
+      var message = Message.fromJson(messageData);
+
+      if (message.chatId == widget.chatId) {
+        // Decrypt
+        if (_sessionKeys != null && message.messageContent.isNotEmpty) {
+          try {
+            final ciphertext = base64Decode(message.messageContent);
+            final encryptionService = EncryptionService();
+            final decryptedBytes = await encryptionService.decryptMessage(
+              encryptionKey: _sessionKeys!.encryptionKey,
+              ciphertext: ciphertext,
+            );
+            final decryptedText = utf8.decode(decryptedBytes);
+            message = message.copyWith(messageContent: decryptedText);
+          } catch (e) {
+            print('Error decrypting message: $e');
+            message = message.copyWith(
+              messageContent: 'Could not decrypt this message.',
+            );
+          }
+        }
+
+        setState(() {
+          messages.add(message);
+          messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        });
+
+        _shouldScrollToBottom = true;
+        _scrollToBottom();
+      }
+    }
+
+    // mark read
+    _signalRService.markMessagesAsRead(widget.chatId);
+  }
+
+  void _handleMessageSent(List<Object?>? arguments) async {
     if (arguments != null && arguments.isNotEmpty) {
       final messageData = Map<String, dynamic>.from(arguments[0] as Map);
 
@@ -290,48 +382,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       var message = Message.fromJson(messageData);
 
       if (message.chatId == widget.chatId) {
-        if (_sessionKeys != null && message.messageContent.isNotEmpty) {
-          try {
-            final ciphertext = base64Decode(message.messageContent);
-            final encryptionService = EncryptionService();
-            final decryptedBytes = await encryptionService.decryptMessage(
-              encryptionKey: _sessionKeys!.encryptionKey,
-              ciphertext: ciphertext,
-            );
-            final decryptedText = utf8.decode(decryptedBytes);
-            message = message.copyWith(messageContent: decryptedText);
-          } catch (e) {
-            print('Error decrypting message: $e');
-            message = message.copyWith(messageContent: 'Could not decrypt this message.');
-          }
-        }
-
-        setState(() {
-          messages.add(message);
-          messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-        });
-
-        _shouldScrollToBottom = true;
-        _scrollToBottom();
-      }
-    }
-    _signalRService.markMessagesAsRead(widget.chatId);
-  }
-
-  void _handleMessageSent(List<Object?>? arguments) async {
-    if (arguments != null && arguments.isNotEmpty) {
-      final Map<String, dynamic> messageData = Map<String, dynamic>.from(arguments[0] as Map);
-
-      if (messageData['createdAt'] is String) {
-        messageData['createdAt'] = _forceUtc(messageData['createdAt']);
-      }
-      if (messageData['readAt'] != null && messageData['readAt'] is String) {
-        messageData['readAt'] = _forceUtc(messageData['readAt']);
-      }
-
-      var message = Message.fromJson(messageData);
-
-      if (message.chatId == widget.chatId) {
+        // decrypt if needed
         if (_sessionKeys != null && message.messageContent.isNotEmpty) {
           try {
             final encryptionService = EncryptionService();
@@ -343,7 +394,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
             final decryptedText = utf8.decode(decrypted);
             message = message.copyWith(messageContent: decryptedText);
           } catch (e) {
-            print('Error decrypting received sent message: $e');
+            print('Error decrypting received message: $e');
           }
         }
 
@@ -359,7 +410,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
   void _handleUserTyping(List<Object?>? arguments) {
     if (arguments != null && arguments.isNotEmpty) {
-      int senderId = arguments[0] as int;
+      final senderId = arguments[0] as int;
       if (senderId == widget.recipientUserId) {
         setState(() {
           _isRecipientTyping = true;
@@ -372,7 +423,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
   void _resetTypingTimer() {
     _typingTimer?.cancel();
-    _typingTimer = Timer(Duration(seconds: 3), () {
+    _typingTimer = Timer(const Duration(seconds: 3), () {
       setState(() {
         _isRecipientTyping = false;
       });
@@ -409,7 +460,9 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
       if (editedMessage.chatId == widget.chatId) {
         setState(() {
-          int index = messages.indexWhere((msg) => msg.messageId == editedMessage.messageId);
+          final index = messages.indexWhere(
+            (msg) => msg.messageId == editedMessage.messageId,
+          );
           if (index != -1) {
             messages[index] = editedMessage;
           }
@@ -421,10 +474,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
   void _handleMessageUnsent(List<Object?>? arguments) {
     if (arguments != null && arguments.isNotEmpty) {
-      int messageId = arguments[0] as int;
+      final messageId = arguments[0] as int;
 
       setState(() {
-        int index = messages.indexWhere((msg) => msg.messageId == messageId);
+        final index = messages.indexWhere((msg) => msg.messageId == messageId);
         if (index != -1) {
           messages[index] = messages[index].copyWith(
             isUnsent: true,
@@ -439,22 +492,24 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
   void _handleMessagesRead(List<Object?>? arguments) {
     if (arguments != null && arguments.length >= 2) {
-      int chatId = arguments[0] as int;
-      int readerUserId = arguments[1] as int;
+      final chatId = arguments[0] as int;
+      final readerUserId = arguments[1] as int;
 
       if (chatId == widget.chatId && readerUserId == widget.recipientUserId) {
         setState(() {
-          messages = messages.map((message) {
-            if (message.senderId == widget.currentUserId && message.readAt == null) {
-              return message.copyWith(readAt: DateTime.now().toLocal());
+          messages = messages.map((m) {
+            if (m.senderId == widget.currentUserId && m.readAt == null) {
+              return m.copyWith(readAt: DateTime.now().toLocal());
             }
-            return message;
+            return m;
           }).toList();
         });
       }
     }
   }
 
+  // Region: UI Actions
+  /// (1) Send a message
   void _handleSendMessage(String messageContent) async {
     try {
       if (_sessionKeys == null) {
@@ -479,22 +534,23 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         null,
       );
 
-      setState(() {
-        _shouldScrollToBottom = true;
-      });
+      setState(() => _shouldScrollToBottom = true);
       _scrollToBottom();
+    } on SessionExpiredException {
+      if (mounted) {
+        handleSessionExpired(context);
+      }
     } catch (e) {
       print('Error sending message: $e');
-      final errStr = e.toString();
-      if (errStr.contains('Session expired')) {
-        handleSessionExpired(context);
-      } else {
-        // We no longer show extra snackbars; we rely on the 
-        // server’s “Error” event to open the dialog with reason
+      if (e.toString().contains('Session expired')) {
+        if (mounted) {
+          handleSessionExpired(context);
+        }
       }
     }
   }
 
+  /// (2) Edit a message
   void _handleEditMessage(int messageId, String newContent) async {
     try {
       if (_sessionKeys == null) {
@@ -512,8 +568,9 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
       await _signalRService.editMessage(messageId, encodedCiphertext);
 
+      // Locally update the message
       setState(() {
-        int index = messages.indexWhere((msg) => msg.messageId == messageId);
+        final index = messages.indexWhere((msg) => msg.messageId == messageId);
         if (index != -1) {
           messages[index] = messages[index].copyWith(
             messageContent: newContent,
@@ -523,32 +580,40 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       });
 
       FocusScope.of(context).unfocus();
+    } on SessionExpiredException {
+      if (mounted) {
+        handleSessionExpired(context);
+      }
     } catch (e) {
       print('Error editing message: $e');
-      final errStr = e.toString();
-      if (errStr.contains('Session expired')) {
-        handleSessionExpired(context);
-      } else {
-        // again, rely on "Error" event if it's a permission block
+      if (e.toString().contains('Session expired')) {
+        if (mounted) {
+          handleSessionExpired(context);
+        }
       }
     }
   }
 
+  /// (3) Unsend (delete for everyone)
   void _handleDeleteForAll(int messageId) async {
     try {
       await _signalRService.unsendMessage(messageId);
       FocusScope.of(context).unfocus();
+    } on SessionExpiredException {
+      if (mounted) {
+        handleSessionExpired(context);
+      }
     } catch (e) {
       print('Error deleting message: $e');
-      final errStr = e.toString();
-      if (errStr.contains('Session expired')) {
-        handleSessionExpired(context);
-      } else {
-        // again, rely on "Error" event
+      if (e.toString().contains('Session expired')) {
+        if (mounted) {
+          handleSessionExpired(context);
+        }
       }
     }
   }
 
+  /// Auto-scroll
   void _scrollToBottom() {
     if (_shouldScrollToBottom) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -556,7 +621,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
           try {
             _scrollController.animateTo(
               _scrollController.position.maxScrollExtent,
-              duration: Duration(milliseconds: 200),
+              duration: const Duration(milliseconds: 200),
               curve: Curves.easeOut,
             );
           } catch (e) {
@@ -570,11 +635,11 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
   bool _isNewDay(int index) {
     if (index == 0) return true;
-    DateTime currentMessageDate = messages[index].createdAt;
-    DateTime previousMessageDate = messages[index - 1].createdAt;
-    return currentMessageDate.day != previousMessageDate.day ||
-        currentMessageDate.month != previousMessageDate.month ||
-        currentMessageDate.year != previousMessageDate.year;
+    final currentDate = messages[index].createdAt;
+    final previousDate = messages[index - 1].createdAt;
+    return currentDate.day != previousDate.day ||
+        currentDate.month != previousDate.month ||
+        currentDate.year != previousDate.year;
   }
 
   String _formatDate(DateTime date) {
@@ -590,6 +655,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     }
   }
 
+  /// Provide stable seed for demonstration
   Future<UserKeyPair> _loadMyUserKeyPair() async {
     print('Generating user key pair with a fixed seed for stable keys...');
     final seed = List<int>.filled(32, 1);
@@ -597,7 +663,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     final kp = await algo.newKeyPairFromSeed(seed);
     final privateKey = await kp.extractPrivateKeyBytes();
     final publicKey = (await kp.extractPublicKey()).bytes;
-    print('Generated user key pair (stable): privateKey length=${privateKey.length}, publicKey length=${publicKey.length}');
+    print(
+      'Generated user key pair (stable): privateKey length=${privateKey.length}, '
+      'publicKey length=${publicKey.length}',
+    );
     return UserKeyPair(privateKey: privateKey, publicKey: publicKey);
   }
 
@@ -611,9 +680,17 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     return publicKey;
   }
 
+  String _forceUtc(String dateStr) {
+    if (!dateStr.endsWith('Z')) {
+      dateStr += 'Z';
+    }
+    return dateStr;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Top bar
       appBar: ChatAppBar(
         username: widget.contactName,
         profileImageUrl: widget.profileImageUrl,
@@ -622,57 +699,67 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => OtherUserProfilePage(otherUserId: widget.recipientUserId),
+              builder: (ctx) => OtherUserProfilePage(
+                otherUserId: widget.recipientUserId,
+              ),
             ),
           );
         },
       ),
+      // Body
       body: GestureDetector(
-        onTap: () {
-          FocusScope.of(context).unfocus();
-        },
+        onTap: () => FocusScope.of(context).unfocus(),
         child: SafeArea(
           child: Column(
             children: [
+              // Messages
               Expanded(
                 child: _isLoading
-                    ? Center(child: CircularProgressIndicator())
+                    ? const Center(child: CircularProgressIndicator())
                     : ListView.builder(
                         controller: _scrollController,
                         reverse: false,
                         itemCount: messages.length + (_hasMoreMessages ? 1 : 0),
-                        itemBuilder: (context, index) {
+                        itemBuilder: (ctx, index) {
+                          // Show loader at top if more messages exist
                           if (_hasMoreMessages && index == 0) {
-                            return Padding(
-                              padding: const EdgeInsets.all(8.0),
+                            return const Padding(
+                              padding: EdgeInsets.all(8.0),
                               child: Center(child: CircularProgressIndicator()),
                             );
                           }
 
-                          final actualIndex = _hasMoreMessages ? index - 1 : index;
-                          if (actualIndex < 0 || actualIndex >= messages.length) {
-                            return SizedBox.shrink();
+                          final actualIndex =
+                              _hasMoreMessages ? index - 1 : index;
+                          if (actualIndex < 0 ||
+                              actualIndex >= messages.length) {
+                            return const SizedBox.shrink();
                           }
 
                           final message = messages[actualIndex];
-                          final isSender = message.senderId == widget.currentUserId;
+                          final isSender =
+                              (message.senderId == widget.currentUserId);
                           final showDate = _isNewDay(actualIndex);
 
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              // Show the date if new day
                               if (showDate)
                                 Padding(
                                   padding: const EdgeInsets.all(8.0),
                                   child: Center(
                                     child: Text(
                                       _formatDate(message.createdAt),
-                                      style: TextStyle(color: Colors.grey),
+                                      style: const TextStyle(color: Colors.grey),
                                     ),
                                   ),
                                 ),
+                              // Actual bubble
                               Align(
-                                alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
+                                alignment: isSender
+                                    ? Alignment.centerRight
+                                    : Alignment.centerLeft,
                                 child: MessageBubble(
                                   isSender: isSender,
                                   readAt: message.readAt,
@@ -680,16 +767,16 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                                       ? 'This message was deleted'
                                       : message.messageContent,
                                   timestamp: message.createdAt,
-                                  isSeen: message.readAt != null,
+                                  isSeen: (message.readAt != null),
                                   isEdited: message.isEdited,
                                   isUnsent: message.isUnsent,
                                   messageType: message.messageType,
-                                  onEdit: (newText) {
-                                    _handleEditMessage(message.messageId, newText);
-                                  },
-                                  onDeleteForAll: () {
-                                    _handleDeleteForAll(message.messageId);
-                                  },
+                                  onEdit: (newText) => _handleEditMessage(
+                                    message.messageId,
+                                    newText,
+                                  ),
+                                  onDeleteForAll: () =>
+                                      _handleDeleteForAll(message.messageId),
                                 ),
                               ),
                             ],
@@ -697,6 +784,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                         },
                       ),
               ),
+
+              // Bottom text input
               MessageInput(
                 onSendMessage: _handleSendMessage,
                 onTyping: () => _signalRService.sendTypingNotification(widget.recipientUserId),

@@ -1,4 +1,4 @@
-// pluscontact.dart (or new_chat.dart)
+// pluscontact.dart (NewChatPage)
 
 import 'package:flutter/material.dart';
 import '***REMOVED***/services/contact_service.dart';
@@ -42,13 +42,22 @@ class _NewChatPageState extends State<NewChatPage> {
   }
 
   Future<void> _initSignalR() async {
-    await _signalRService.initSignalR();
-    // Setup listeners for new chat or errors
-    _signalRService.setupListeners(
-      onChatCreated: _onChatCreated,
-      onNewChatNotification: _onNewChatNotification,
-      onError: (String errorMessage) => _showPermissionErrorDialog(errorMessage),
-    );
+    try {
+      await _signalRService.initSignalR();
+      // Setup listeners for new chat or errors
+      _signalRService.setupListeners(
+        onChatCreated: _onChatCreated,
+        onNewChatNotification: _onNewChatNotification,
+        onError: (String errorMessage) => _showPermissionErrorDialog(errorMessage),
+      );
+    } on SessionExpiredException {
+      // If we cannot connect due to session expired, show the session-expired UI
+      if (mounted) {
+        handleSessionExpired(context);
+      }
+    } catch (e) {
+      print('Error in _initSignalR => $e');
+    }
   }
 
   void _showPermissionErrorDialog(String reason) {
@@ -182,6 +191,10 @@ class _NewChatPageState extends State<NewChatPage> {
   void _navigateToChat(UserContact contact) async {
     try {
       await _signalRService.createChat(contact.userId);
+    } on SessionExpiredException {
+      if (mounted) {
+        handleSessionExpired(context);
+      }
     } catch (e) {
       final errStr = e.toString();
       if (errStr.contains('Session expired')) {
@@ -216,9 +229,9 @@ class _NewChatPageState extends State<NewChatPage> {
       ),
       body: Column(
         children: [
+          // (A) Search
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: TextField(
               onChanged: (value) => _filterContacts(value),
               decoration: InputDecoration(
@@ -244,6 +257,8 @@ class _NewChatPageState extends State<NewChatPage> {
               ),
             ),
           ),
+
+          // (B) Contacts list or loading
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -273,8 +288,7 @@ class _NewChatPageState extends State<NewChatPage> {
                             ),
                             title: Text(
                               contact.fullname,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
+                              style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
                             subtitle: const Text(
                               'Tap to start chat',
