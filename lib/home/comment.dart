@@ -167,6 +167,7 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
         _totalPages = paginated.totalPages;
       });
     } on SessionExpiredException {
+      // Handle token expiration
       if (context.mounted) {
         handleSessionExpired(context);
       }
@@ -214,6 +215,7 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
       _currentPage = 1;
       await _fetchComments(page: _currentPage, pageSize: _pageSize, append: false);
     } on SessionExpiredException {
+      // Handle token expiration
       if (context.mounted) {
         handleSessionExpired(context);
       }
@@ -254,6 +256,7 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
       // Refresh current page after edit
       await _fetchComments(page: _currentPage, pageSize: _pageSize, append: false);
     } on SessionExpiredException {
+      // Handle token expiration
       if (context.mounted) {
         handleSessionExpired(context);
       }
@@ -282,6 +285,7 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
       // Refresh current page after delete
       await _fetchComments(page: _currentPage, pageSize: _pageSize, append: false);
     } on SessionExpiredException {
+      // Handle token expiration
       if (context.mounted) {
         handleSessionExpired(context);
       }
@@ -332,16 +336,16 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Comment reported successfully')),
       );
-    } catch (e) {
-      if (e.toString().contains("Session expired")) {
-        if (context.mounted) {
-          handleSessionExpired(context);
-        }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to report comment')),
-        );
+    } on SessionExpiredException {
+      // Handle token expiration
+      if (context.mounted) {
+        handleSessionExpired(context);
       }
+    } catch (e) {
+      // If an error occurs that's not session-expired, show a generic message.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to report comment')),
+      );
     }
   }
 
@@ -788,7 +792,8 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
                   ? null
                   : () {
                       // If the comment being edited is by the same user, treat it as edit
-                      if (_replyingTo != null && _replyingTo!.userId == _currentUserId) {
+                      if (_replyingTo != null &&
+                          _replyingTo!.userId == _currentUserId) {
                         _editComment(_replyingTo!);
                       } else {
                         _postComment();
