@@ -72,13 +72,15 @@ class _RegisterPageState extends State<RegisterPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                  FadeInUp(
-                    duration: const Duration(milliseconds: 1000), // Use const here for the Duration
-                    child: const Text(
-                      "Register",
-                      style: TextStyle(color: Colors.white, fontSize: 40),
+                    FadeInUp(
+                      duration: const Duration(
+                          milliseconds:
+                              1000), // Use const here for the Duration
+                      child: const Text(
+                        "Register",
+                        style: TextStyle(color: Colors.white, fontSize: 40),
+                      ),
                     ),
-                  ),
                     const SizedBox(height: 10),
                   ],
                 ),
@@ -248,8 +250,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                         context: context,
                                         initialDate: _dob ?? DateTime(2000),
                                         firstDate: DateTime(1900),
-                                        lastDate: DateTime(
-                                            DateTime.now().year - 12),
+                                        lastDate:
+                                            DateTime(DateTime.now().year - 12),
                                       ).then((date) {
                                         setState(() {
                                           if (date != null) {
@@ -302,13 +304,24 @@ class _RegisterPageState extends State<RegisterPage> {
                                       ),
                                     ),
                                     validator: (value) {
-                                      if (value == null ||
-                                          value.isEmpty ||
-                                          value.length < 8 ||
-                                          !RegExp(
-                                                  r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$')
-                                              .hasMatch(value)) {
-                                        return 'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character';
+                                      if (value == null || value.isEmpty) {
+                                        return 'Password cannot be empty';
+                                      }
+                                      if (value.length < 8) {
+                                        return 'Password must be at least 8 characters long';
+                                      }
+                                      if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                                        return 'Password must include at least one uppercase letter';
+                                      }
+                                      if (!RegExp(r'[a-z]').hasMatch(value)) {
+                                        return 'Password must include at least one lowercase letter';
+                                      }
+                                      if (!RegExp(r'\d').hasMatch(value)) {
+                                        return 'Password must include at least one number';
+                                      }
+                                      if (!RegExp(r'[@$!%*?&]')
+                                          .hasMatch(value)) {
+                                        return 'Password must include at least one special character';
                                       }
                                       return null;
                                     },
@@ -365,7 +378,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                 }
 
                                 try {
-                                  await _userRegistrationService.registerUser(user);
+                                  await _userRegistrationService
+                                      .registerUser(user);
                                   Navigator.of(context).pushReplacement(
                                     MaterialPageRoute(
                                         builder: (context) => VerificationPage(
