@@ -19,18 +19,18 @@ class SearchUserModel {
     required this.amFollowing,
   });
 
-  factory SearchUserModel.fromJson(Map<String, dynamic> json) {
-    return SearchUserModel(
-      userId: json['user_id'] as int,
-      fullName: json['fullname'] as String,
-      username: json['username'] as String,
-      profilePic: json['profile_pic'] as String,
-      bio: json['bio'] as String,
-      phoneNumber: json['phone_number'] as String,
-      isFollowing: json['is_following'] as bool,
-      amFollowing: json['am_following'] as bool,
-    );
-  }
+factory SearchUserModel.fromJson(Map<String, dynamic> json) {
+  return SearchUserModel(
+    userId: json['user_id'] as int,
+    fullName: json['fullname'] ?? '',
+    username: json['username'] ?? '',
+    profilePic: json['profile_pic'] ?? '',
+    bio: json['bio'] ?? '',
+    phoneNumber: json['phone_number'] ?? '', // Provide a default value for null
+    isFollowing: json['is_following'] ?? false,
+    amFollowing: json['am_following'] ?? false,
+  );
+}
 
   Map<String, dynamic> toJson() {
     return {
