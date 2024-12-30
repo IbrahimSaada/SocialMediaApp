@@ -18,9 +18,9 @@ import '***REMOVED***/profile/followingpage.dart';
 import '***REMOVED***/maintenance/expiredtoken.dart';
 import '***REMOVED***/services/SessionExpiredException.dart';
 import '***REMOVED***/profile/qr_code.dart';
-
-import '../services/blocked_user_exception.dart';
-import '../services/bannedexception.dart'; // Import BannedException
+import '***REMOVED***/services/blocked_user_exception.dart';
+import '***REMOVED***/services/bannedexception.dart'; 
+import '../profile/report_dialog_user.dart'; // <-- Update path if needed
 
 class OtherUserProfilePage extends StatefulWidget {
   final int otherUserId;
@@ -63,8 +63,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   bool amFollowing = false;
   bool isBlockedBy = false;
   bool isUserBlocked = false;
-  bool isUserBanned = false; // NEW FLAG to indicate user is banned
-
+  bool isUserBanned = false; // indicates user is banned
   int? currentUserId;
 
   @override
@@ -214,7 +213,8 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     currentUserId = await _loginService.getUserId();
 
     try {
-      userProfile = await _userProfileService.fetchUserProfile(widget.otherUserId);
+      userProfile =
+          await _userProfileService.fetchUserProfile(widget.otherUserId);
 
       if (userProfile != null) {
         setState(() {
@@ -226,7 +226,8 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
           followingNb = userProfile!.followingNb;
         });
 
-        Map<String, bool> privacySettings = await _userProfileService.checkProfilePrivacy(widget.otherUserId);
+        Map<String, bool> privacySettings =
+            await _userProfileService.checkProfilePrivacy(widget.otherUserId);
         setState(() {
           isProfilePublic = privacySettings['isPublic'] ?? false;
           isFollowersPublic = privacySettings['isFollowersPublic'] ?? false;
@@ -274,7 +275,8 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     } catch (e) {
       print("Error fetching user profile: $e");
       final errStr = e.toString();
-      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+      if (errStr.startsWith('Exception: BLOCKED:') ||
+          errStr.toLowerCase().contains('blocked')) {
         String reason;
         if (errStr.startsWith('Exception: BLOCKED:')) {
           reason = errStr.replaceFirst('Exception: BLOCKED:', '');
@@ -306,7 +308,8 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   Future<void> _fetchUserPosts() async {
     if (isPaginating || currentUserId == null) return;
 
-    print("[DEBUG] _fetchUserPosts started. otherUserId=${widget.otherUserId}, currentUserId=$currentUserId");
+    print(
+        "[DEBUG] _fetchUserPosts started. otherUserId=${widget.otherUserId}, currentUserId=$currentUserId");
     try {
       setState(() {
         isPaginating = true;
@@ -326,7 +329,8 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
       });
       print("[DEBUG] _fetchUserPosts success. Loaded ${newPosts.length} posts.");
     } on BlockedUserException catch (e) {
-      print("[DEBUG] BlockedUserException caught in _fetchUserPosts: reason=${e.reason} isBlockedBy=${e.isBlockedBy}, isUserBlocked=${e.isUserBlocked}");
+      print(
+          "[DEBUG] BlockedUserException in _fetchUserPosts: reason=${e.reason}, isBlockedBy=${e.isBlockedBy}, isUserBlocked=${e.isUserBlocked}");
       setState(() {
         isPaginating = false;
         isBlockedBy = e.isBlockedBy;
@@ -334,19 +338,19 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
       });
       showBlockSnackbar(context, e.reason);
     } on BannedException {
-      print("[DEBUG] BannedException caught in _fetchUserPosts");
+      print("[DEBUG] BannedException in _fetchUserPosts");
       setState(() {
         isUserBanned = true;
         isPaginating = false;
       });
     } on PrivacyException catch (e) {
-      print("[DEBUG] PrivacyException caught in _fetchUserPosts: message=${e.message}");
+      print("[DEBUG] PrivacyException in _fetchUserPosts: ${e.message}");
       setState(() {
         isPrivateAccount = true;
         isPaginating = false;
       });
     } on SessionExpiredException {
-      print("[DEBUG] SessionExpiredException caught in _fetchUserPosts");
+      print("[DEBUG] SessionExpiredException in _fetchUserPosts");
       setState(() {
         isPaginating = false;
       });
@@ -364,15 +368,18 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   }
 
   Future<void> _fetchSharedPosts() async {
-    if (isPaginatingSharedPosts || currentUserId == null || !hasMoreSharedPosts) return;
+    if (isPaginatingSharedPosts || currentUserId == null || !hasMoreSharedPosts)
+      return;
 
-    print("[DEBUG] _fetchSharedPosts started. otherUserId=${widget.otherUserId}, currentUserId=$currentUserId");
+    print(
+        "[DEBUG] _fetchSharedPosts started. otherUserId=${widget.otherUserId}, currentUserId=$currentUserId");
     try {
       setState(() {
         isPaginatingSharedPosts = true;
       });
 
-      List<SharedPostDetails> newSharedPosts = await _userpostService.fetchSharedPosts(
+      List<SharedPostDetails> newSharedPosts =
+          await _userpostService.fetchSharedPosts(
         widget.otherUserId,
         currentUserId!,
         currentSharedPageNumber,
@@ -388,9 +395,11 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
           hasMoreSharedPosts = false;
         }
       });
-      print("[DEBUG] _fetchSharedPosts success. Loaded ${newSharedPosts.length} shared posts.");
+      print(
+          "[DEBUG] _fetchSharedPosts success. Loaded ${newSharedPosts.length} shared posts.");
     } on BlockedUserException catch (e) {
-      print("[DEBUG] BlockedUserException caught in _fetchSharedPosts: reason=${e.reason} isBlockedBy=${e.isBlockedBy}, isUserBlocked=${e.isUserBlocked}");
+      print(
+          "[DEBUG] BlockedUserException in _fetchSharedPosts: reason=${e.reason}, isBlockedBy=${e.isBlockedBy}, isUserBlocked=${e.isUserBlocked}");
       setState(() {
         isPaginatingSharedPosts = false;
         isBlockedBy = e.isBlockedBy;
@@ -398,19 +407,19 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
       });
       showBlockSnackbar(context, e.reason);
     } on BannedException {
-      print("[DEBUG] BannedException caught in _fetchSharedPosts");
+      print("[DEBUG] BannedException in _fetchSharedPosts");
       setState(() {
         isUserBanned = true;
         isPaginatingSharedPosts = false;
       });
     } on PrivacyException catch (e) {
-      print("[DEBUG] PrivacyException caught in _fetchSharedPosts: message=${e.message}");
+      print("[DEBUG] PrivacyException in _fetchSharedPosts: ${e.message}");
       setState(() {
         isPrivateAccount = true;
         isPaginatingSharedPosts = false;
       });
     } on SessionExpiredException {
-      print("[DEBUG] SessionExpiredException caught in _fetchSharedPosts");
+      print("[DEBUG] SessionExpiredException in _fetchSharedPosts");
       setState(() {
         isPaginatingSharedPosts = false;
       });
@@ -428,10 +437,13 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   }
 
   void _scrollListener() {
-    if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
+    if (_scrollController.position.pixels ==
+        _scrollController.position.maxScrollExtent) {
       if (isPostsSelected && !isPaginating) {
         _fetchUserPosts();
-      } else if (isSharedPostsSelected && !isPaginatingSharedPosts && hasMoreSharedPosts) {
+      } else if (isSharedPostsSelected &&
+          !isPaginatingSharedPosts &&
+          hasMoreSharedPosts) {
         _fetchSharedPosts();
       }
     }
@@ -442,7 +454,8 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     if (currentUserId == null) {
       return null;
     }
-    return await _userProfileService.checkFollowStatus(widget.otherUserId, currentUserId!);
+    return await _userProfileService.checkFollowStatus(
+        widget.otherUserId, currentUserId!);
   }
 
   void _toggleFollow() async {
@@ -475,7 +488,8 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     } catch (e) {
       print("Error in _toggleFollow: $e");
       final errStr = e.toString();
-      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+      if (errStr.startsWith('Exception: BLOCKED:') ||
+          errStr.toLowerCase().contains('blocked')) {
         String reason;
         if (errStr.startsWith('Exception: BLOCKED:')) {
           reason = errStr.replaceFirst('Exception: BLOCKED:', '');
@@ -509,74 +523,18 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
       isPrivateAccount = false;
       isBlockedBy = false;
       isUserBlocked = false;
-      isUserBanned = false; // Reset banned flag on refresh
+      isUserBanned = false; 
     });
 
     await _loadUserProfile();
   }
 
-  void _showReportOptions() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      builder: (BuildContext context) {
-        return Padding(
-          padding: EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                "Report User",
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFF45F67)
-                ),
-              ),
-              Divider(color: Color(0xFFF45F67)),
-              ListTile(
-                title: Text('Spam'),
-                leading: Icon(Icons.error, color: Color(0xFFF45F67)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _reportUser();
-                },
-              ),
-              ListTile(
-                title: Text('Harassment'),
-                leading: Icon(Icons.report_problem, color: Color(0xFFF45F67)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _reportUser();
-                },
-              ),
-              ListTile(
-                title: Text('Inappropriate Content'),
-                leading: Icon(Icons.block, color: Color(0xFFF45F67)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _reportUser();
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
+  // Instead of _showReportOptions, we directly call showReportDialog from the popup menu:
   void _reportUser() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("User reported successfully!"),
-        backgroundColor: Color(0xFFF45F67),
-      ),
+    showReportDialog(
+      context: context,
+      reportedUser: widget.otherUserId, 
+      contentId: widget.otherUserId,
     );
   }
 
@@ -674,7 +632,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
         child: ElevatedButton(
           onPressed: null, // Disabled
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey, // Greyed out color
+            backgroundColor: Colors.grey, 
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(30),
             ),
@@ -801,7 +759,8 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
       child: Column(
         children: [
           Text(
-            (label == 'Followers' && !isFollowersPublic) || (label == 'Following' && !isFollowingPublic)
+            (label == 'Followers' && !isFollowersPublic) ||
+                    (label == 'Following' && !isFollowingPublic)
                 ? '-'
                 : count,
             style: TextStyle(
@@ -839,7 +798,10 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
               height: screenHeight * 0.28,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFFF45F67), Color(0xFFF45F67).withOpacity(0.8)],
+                  colors: [
+                    Color(0xFFF45F67),
+                    Color(0xFFF45F67).withOpacity(0.8),
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -878,7 +840,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                 color: Colors.white,
                 onSelected: (value) {
                   if (value == "report") {
-                    _showReportOptions();
+                    _reportUser();
                   } else if (value == "block") {
                     _blockOrUnblockUser();
                   }
@@ -887,7 +849,10 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                   return [
                     PopupMenuItem<String>(
                       value: "report",
-                      child: Text("Report User", style: TextStyle(color: Color(0xFFF45F67))),
+                      child: Text(
+                        "Report User",
+                        style: TextStyle(color: Color(0xFFF45F67)),
+                      ),
                     ),
                     PopupMenuItem<String>(
                       value: "block",
@@ -895,10 +860,6 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                         isUserBlocked ? "Unblock User" : "Block User",
                         style: TextStyle(color: Color(0xFFF45F67)),
                       ),
-                    ),
-                    PopupMenuItem<String>(
-                      value: "share",
-                      child: Text("Share Profile", style: TextStyle(color: Color(0xFFF45F67))),
                     ),
                   ];
                 },
@@ -913,7 +874,8 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                     radius: 60,
                     backgroundImage: userProfile != null
                         ? CachedNetworkImageProvider(userProfile!.profilePic)
-                        : AssetImage('assets/images/default.png') as ImageProvider,
+                        : AssetImage('assets/images/default.png')
+                            as ImageProvider,
                   ),
                   SizedBox(height: 10),
                   Row(
@@ -965,7 +927,8 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                   ),
                   SizedBox(height: 10),
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.1),
                     child: Container(
                       height: MediaQuery.of(context).size.height * 0.07,
                       child: SingleChildScrollView(
@@ -979,9 +942,11 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                     children: [
                       _buildStatItem(postNb.toString(), 'Posts', screenWidth),
                       SizedBox(width: screenWidth * 0.08),
-                      _buildStatItem(followersNb.toString(), 'Followers', screenWidth),
+                      _buildStatItem(
+                          followersNb.toString(), 'Followers', screenWidth),
                       SizedBox(width: screenWidth * 0.08),
-                      _buildStatItem(followingNb.toString(), 'Following', screenWidth),
+                      _buildStatItem(
+                          followingNb.toString(), 'Following', screenWidth),
                     ],
                   ),
                   SizedBox(height: 16),
@@ -999,9 +964,13 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                             isSharedPostsSelected = false;
                           });
                         },
-                        child: Icon(Icons.grid_on,
-                            color: isPostsSelected ? Color(0xFFF45F67) : Colors.grey,
-                            size: screenWidth * 0.07),
+                        child: Icon(
+                          Icons.grid_on,
+                          color: isPostsSelected
+                              ? Color(0xFFF45F67)
+                              : Colors.grey,
+                          size: screenWidth * 0.07,
+                        ),
                       ),
                       SizedBox(width: screenWidth * 0.2),
                       GestureDetector(
@@ -1011,9 +980,13 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                             isSharedPostsSelected = true;
                           });
                         },
-                        child: Icon(Icons.near_me,
-                            color: isSharedPostsSelected ? Color(0xFFF45F67) : Colors.grey,
-                            size: screenWidth * 0.07),
+                        child: Icon(
+                          Icons.near_me,
+                          color: isSharedPostsSelected
+                              ? Color(0xFFF45F67)
+                              : Colors.grey,
+                          size: screenWidth * 0.07,
+                        ),
                       ),
                     ],
                   ),
@@ -1031,7 +1004,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                                 isPrivateAccount: isPrivateAccount,
                                 isBlockedBy: isBlockedBy,
                                 isUserBlocked: isUserBlocked,
-                                isUserBanned: isUserBanned, // Pass banned flag
+                                isUserBanned: isUserBanned,
                               )
                             : SharedPostsGrid(
                                 sharedPosts: sharedPosts,
@@ -1043,7 +1016,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                                 isPrivateAccount: isPrivateAccount,
                                 isBlockedBy: isBlockedBy,
                                 isUserBlocked: isUserBlocked,
-                                isUserBanned: isUserBanned, // Pass banned flag
+                                isUserBanned: isUserBanned,
                               ),
                   ),
                 ],
