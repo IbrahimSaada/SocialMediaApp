@@ -71,11 +71,6 @@ class _LoginPageState extends State<LoginPage> {
 
           // Show a Snackbar to confirm credentials were loaded
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("Saved credentials loaded."),
-              ),
-            );
           });
         }
       }
