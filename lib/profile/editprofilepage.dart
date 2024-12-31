@@ -49,80 +49,121 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
-Future<void> _saveChanges() async {
-  setState(() {
-    isUploading = true;
-  });
+  Future<void> _saveChanges() async {
+    setState(() {
+      isUploading = true;
+    });
 
-  String? uploadedImageUrl;
-  if (_imageFile != null) {
-    uploadedImageUrl = await _uploadProfileImage(_imageFile!);
-  }
+    String? uploadedImageUrl;
+    if (_imageFile != null) {
+      uploadedImageUrl = await _uploadProfileImage(_imageFile!);
+    }
 
-  String? newUsername = (usernameController.text != widget.currentUsername) ? usernameController.text : null;
-  String? newBio = (bioController.text != widget.currentBio) ? bioController.text : null;
-  String? newProfilePic = (uploadedImageUrl != null) ? uploadedImageUrl : null;
+    String? newUsername =
+        (usernameController.text != widget.currentUsername) ? usernameController.text : null;
+    String? newBio = (bioController.text != widget.currentBio) ? bioController.text : null;
+    String? newProfilePic = (uploadedImageUrl != null) ? uploadedImageUrl : null;
 
-  if (newProfilePic != null || newUsername != null || newBio != null) {
-    UserProfileService userProfileService = UserProfileService();
-    int userId = await LoginService().getUserId() ?? 0;
+    if (newProfilePic != null || newUsername != null || newBio != null) {
+      UserProfileService userProfileService = UserProfileService();
+      int userId = await LoginService().getUserId() ?? 0;
 
-    EditUserProfile updatedProfile = EditUserProfile(
-      profilePic: newProfilePic,
-      fullName: newUsername,
-      bio: newBio,
-    );
-
-    try {
-      bool success = await userProfileService.editUserProfile(
-        id: userId.toString(),
-        editUserProfile: updatedProfile,
+      EditUserProfile updatedProfile = EditUserProfile(
+        profilePic: newProfilePic,
+        fullName: newUsername,
+        bio: newBio,
       );
 
-      if (success) {
-        Navigator.pop(context, {
-          'username': usernameController.text,
-          'bio': bioController.text,
-          'imageFile': _imageFile,
-        });
-      } else {
+      try {
+        bool success = await userProfileService.editUserProfile(
+          id: userId.toString(),
+          editUserProfile: updatedProfile,
+        );
+
+        if (success) {
+          Navigator.pop(context, {
+            'username': usernameController.text,
+            'bio': bioController.text,
+            'imageFile': _imageFile,
+          });
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to update profile')),
+          );
+        }
+      } on SessionExpiredException {
+        handleSessionExpired(context);
+      } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update profile')),
+          SnackBar(content: Text('Error occurred: $e')),
         );
       }
-    } on SessionExpiredException {
-      // Handle the session expired UI
-      handleSessionExpired(context);  // Call the globally defined session expired handler
-    } catch (e) {
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error occurred: $e')),
+        const SnackBar(content: Text('No changes detected')),
       );
     }
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('No changes detected')),
-    );
-  }
 
-  setState(() {
-    isUploading = false;
-  });
-}
+    setState(() {
+      isUploading = false;
+    });
+  }
 
   Future<String?> _uploadProfileImage(File imageFile) async {
     try {
       S3UploadService s3UploadService = S3UploadService();
       String fileName = imageFile.path.split('/').last;
-      List<PresignedUrl> presignedUrls = await s3UploadService.getPresignedUrls([fileName], folderName: 'users');
+      List<PresignedUrl> presignedUrls =
+          await s3UploadService.getPresignedUrls([fileName], folderName: 'users');
 
       if (presignedUrls.isNotEmpty) {
-        String uploadedUrl = await s3UploadService.uploadFile(presignedUrls[0], XFile(imageFile.path));
+        String uploadedUrl = await s3UploadService.uploadFile(
+          presignedUrls[0],
+          XFile(imageFile.path),
+        );
         return uploadedUrl;
       }
     } catch (e) {
       print('Error uploading profile image: $e');
     }
     return null;
+  }
+
+  void _showImageSourceActionSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: <Widget>[
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Choose from Gallery'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Take a Photo'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.close),
+                title: const Text('Cancel'),
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -132,16 +173,17 @@ Future<void> _saveChanges() async {
     return Material(
       type: MaterialType.transparency,
       child: Scaffold(
+        /// Typically we let the edit page push content up on keyboard open:
         resizeToAvoidBottomInset: true,
+
         backgroundColor: Colors.transparent,
         body: SafeArea(
           child: Stack(
             children: [
+              /// Tap anywhere outside to close
               GestureDetector(
                 onTap: () => Navigator.pop(context),
-                child: Container(
-                  color: Colors.transparent,
-                ),
+                child: Container(color: Colors.transparent),
               ),
               Align(
                 alignment: Alignment.center,
@@ -150,32 +192,29 @@ Future<void> _saveChanges() async {
                     width: screenWidth * 0.85,
                     padding: const EdgeInsets.all(20.0),
                     decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: Color(0xFFF45F67), width: 2), // Border with primary color
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 15,
-                            spreadRadius: 5,
-                            offset: Offset(0, 8),
-                          ),
-                        ],
-                        borderRadius: BorderRadius.circular(30),  // Rounded corners
-                      ),
-
+                      color: Colors.white,
+                      border: Border.all(color: const Color(0xFFF45F67), width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 15,
+                          spreadRadius: 5,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                      borderRadius: BorderRadius.circular(30),
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Align(
                           alignment: Alignment.topRight,
                           child: GestureDetector(
-                            onTap: () {
-                              Navigator.pop(context);
-                            },
-                            child: Icon(Icons.close, color: Colors.grey, size: 24),
+                            onTap: () => Navigator.pop(context),
+                            child: const Icon(Icons.close, color: Colors.grey, size: 24),
                           ),
                         ),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
                         GestureDetector(
                           onTap: () {
                             _showImageSourceActionSheet(context);
@@ -186,7 +225,8 @@ Future<void> _saveChanges() async {
                                 ? FileImage(_imageFile!)
                                 : widget.currentImage != null
                                     ? FileImage(widget.currentImage!)
-                                    : AssetImage('assets/images/chef-image.jpg'),
+                                    : const AssetImage('assets/images/chef-image.jpg')
+                                        as ImageProvider,
                             child: Align(
                               alignment: Alignment.bottomRight,
                               child: CircleAvatar(
@@ -197,54 +237,57 @@ Future<void> _saveChanges() async {
                             ),
                           ),
                         ),
-                        SizedBox(height: 20),
+                        const SizedBox(height: 20),
                         TextField(
                           controller: usernameController,
                           decoration: InputDecoration(
                             labelText: 'Username',
-                            labelStyle: TextStyle(color: Color(0xFFF45F67)),
+                            labelStyle: const TextStyle(color: Color(0xFFF45F67)),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(15),
-                              borderSide: BorderSide(color: Color(0xFFF45F67)),
+                              borderSide: const BorderSide(color: Color(0xFFF45F67)),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(15),
-                              borderSide: BorderSide(color: Colors.grey),
+                              borderSide: const BorderSide(color: Colors.grey),
                             ),
-                            prefixIcon: Icon(Icons.person_outline, color: Color(0xFFF45F67)),
+                            prefixIcon:
+                                const Icon(Icons.person_outline, color: Color(0xFFF45F67)),
                           ),
                         ),
-                        SizedBox(height: 20),
+                        const SizedBox(height: 20),
                         TextField(
                           controller: bioController,
                           maxLines: 6,
                           maxLength: 100,
                           decoration: InputDecoration(
                             labelText: 'Bio',
-                            labelStyle: TextStyle(color: Color(0xFFF45F67)),
+                            labelStyle: const TextStyle(color: Color(0xFFF45F67)),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(15),
-                              borderSide: BorderSide(color: Color(0xFFF45F67)),
+                              borderSide: const BorderSide(color: Color(0xFFF45F67)),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(15),
-                              borderSide: BorderSide(color: Colors.grey),
+                              borderSide: const BorderSide(color: Colors.grey),
                             ),
-                            prefixIcon: Icon(Icons.info_outline, color: Color(0xFFF45F67)),
+                            prefixIcon:
+                                const Icon(Icons.info_outline, color: Color(0xFFF45F67)),
                             counterText: '',
                           ),
                         ),
-                        SizedBox(height: 30),
+                        const SizedBox(height: 30),
                         isUploading
-                            ? CircularProgressIndicator()
+                            ? const CircularProgressIndicator()
                             : SizedBox(
                                 width: screenWidth * 0.7,
                                 child: ElevatedButton.icon(
-                                  icon: Icon(Icons.check, color: Colors.white),
-                                  label: Text('Save', style: TextStyle(color: Colors.white, fontSize: 16)),
+                                  icon: const Icon(Icons.check, color: Colors.white),
+                                  label: const Text('Save',
+                                      style: TextStyle(color: Colors.white, fontSize: 16)),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Color(0xFFF45F67),
-                                    padding: EdgeInsets.symmetric(vertical: 15),
+                                    backgroundColor: const Color(0xFFF45F67),
+                                    padding: const EdgeInsets.symmetric(vertical: 15),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(50),
                                     ),
@@ -261,43 +304,6 @@ Future<void> _saveChanges() async {
           ),
         ),
       ),
-    );
-  }
-
-  void _showImageSourceActionSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return SafeArea(
-          child: Wrap(
-            children: <Widget>[
-              ListTile(
-                leading: Icon(Icons.photo_library),
-                title: Text('Choose from Gallery'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.gallery);
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.camera_alt),
-                title: Text('Take a Photo'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.camera);
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.close),
-                title: Text('Cancel'),
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }

@@ -22,7 +22,6 @@ import '***REMOVED***/maintenance/expiredtoken.dart';
 import '***REMOVED***/services/SessionExpiredException.dart';
 import '../services/blocked_user_exception.dart';
 
-
 class ProfilePage extends StatefulWidget {
   @override
   _ProfilePageState createState() => _ProfilePageState();
@@ -129,8 +128,7 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  // Reorder exceptions: BlockedUserException before PrivacyException
-     Future<void> _fetchSharedPosts() async {
+  Future<void> _fetchSharedPosts() async {
     if (isPaginatingSharedPosts || userId == null || !hasMoreSharedPosts) return;
 
     print("[DEBUG] _fetchSharedPosts in ProfilePage started. userId=$userId");
@@ -146,7 +144,7 @@ class _ProfilePageState extends State<ProfilePage> {
         currentUserId,
         viewerUserId,
         currentSharedPostsPageNumber,
-        pageSize
+        pageSize,
       );
 
       setState(() {
@@ -158,42 +156,44 @@ class _ProfilePageState extends State<ProfilePage> {
           hasMoreSharedPosts = false;
         }
       });
-      print("[DEBUG] _fetchSharedPosts in ProfilePage success. Loaded ${newSharedPosts.length} shared posts.");
+      print("[DEBUG] _fetchSharedPosts success. Loaded ${newSharedPosts.length} shared posts.");
     } on BlockedUserException catch (e) {
-      print("[DEBUG] BlockedUserException caught in ProfilePage _fetchSharedPosts: reason=${e.reason}, isBlockedBy=${e.isBlockedBy}, isUserBlocked=${e.isUserBlocked}");
+      print("[DEBUG] BlockedUserException caught in _fetchSharedPosts: reason=${e.reason}, "
+          "isBlockedBy=${e.isBlockedBy}, isUserBlocked=${e.isUserBlocked}");
       setState(() {
         isPaginatingSharedPosts = false;
         isBlockedBy = e.isBlockedBy;
         isUserBlocked = e.isUserBlocked;
       });
-      print("[DEBUG] After BlockedUserException in ProfilePage _fetchSharedPosts: isBlockedBy=$isBlockedBy, isUserBlocked=$isUserBlocked, isPrivateAccount=$isPrivateAccount");
+      print("[DEBUG] After BlockedUserException: isBlockedBy=$isBlockedBy, "
+          "isUserBlocked=$isUserBlocked, isPrivateAccount=$isPrivateAccount");
     } on PrivacyException catch (e) {
-      print("[DEBUG] PrivacyException caught in ProfilePage _fetchSharedPosts: message=${e.message}");
+      print("[DEBUG] PrivacyException caught in _fetchSharedPosts: message=${e.message}");
       setState(() {
         isPrivateAccount = true;
         isPaginatingSharedPosts = false;
       });
-      print("[DEBUG] After PrivacyException in ProfilePage _fetchSharedPosts: isBlockedBy=$isBlockedBy, isUserBlocked=$isUserBlocked, isPrivateAccount=$isPrivateAccount");
+      print("[DEBUG] After PrivacyException: isBlockedBy=$isBlockedBy, "
+          "isUserBlocked=$isUserBlocked, isPrivateAccount=$isPrivateAccount");
     } on SessionExpiredException {
-      print("[DEBUG] SessionExpiredException caught in ProfilePage _fetchSharedPosts");
+      print("[DEBUG] SessionExpiredException caught in _fetchSharedPosts");
       setState(() {
         isPaginatingSharedPosts = false;
       });
       handleSessionExpired(context);
     } catch (e) {
-      print("[DEBUG] Unknown exception in ProfilePage _fetchSharedPosts: $e");
+      print("[DEBUG] Unknown exception in _fetchSharedPosts: $e");
       setState(() {
         isPaginatingSharedPosts = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('An error occurred while fetching shared posts.'),
         backgroundColor: Colors.red,
       ));
     }
   }
 
-  // Reorder exceptions: BlockedUserException before PrivacyException
-      Future<void> _fetchUserPosts() async {
+  Future<void> _fetchUserPosts() async {
     print("[DEBUG] _fetchUserPosts in ProfilePage started. userId=$userId");
     try {
       if (userId != null) {
@@ -213,41 +213,43 @@ class _ProfilePageState extends State<ProfilePage> {
           currentPageNumber++;
           isPaginating = false;
         });
-        print("[DEBUG] _fetchUserPosts in ProfilePage success. Loaded ${newPosts.length} posts.");
+        print("[DEBUG] _fetchUserPosts success. Loaded ${newPosts.length} posts.");
       }
     } on BlockedUserException catch (e) {
-      print("[DEBUG] BlockedUserException caught in ProfilePage _fetchUserPosts: reason=${e.reason}, isBlockedBy=${e.isBlockedBy}, isUserBlocked=${e.isUserBlocked}");
+      print("[DEBUG] BlockedUserException caught in _fetchUserPosts: reason=${e.reason}, "
+          "isBlockedBy=${e.isBlockedBy}, isUserBlocked=${e.isUserBlocked}");
       setState(() {
         isPaginating = false;
         isBlockedBy = e.isBlockedBy;
         isUserBlocked = e.isUserBlocked;
       });
-      print("[DEBUG] After BlockedUserException in ProfilePage _fetchUserPosts: isBlockedBy=$isBlockedBy, isUserBlocked=$isUserBlocked, isPrivateAccount=$isPrivateAccount");
+      print("[DEBUG] After BlockedUserException in _fetchUserPosts: "
+          "isBlockedBy=$isBlockedBy, isUserBlocked=$isUserBlocked, isPrivateAccount=$isPrivateAccount");
     } on PrivacyException catch (e) {
-      print("[DEBUG] PrivacyException caught in ProfilePage _fetchUserPosts: message=${e.message}");
+      print("[DEBUG] PrivacyException caught in _fetchUserPosts: message=${e.message}");
       setState(() {
         isPrivateAccount = true;
         isPaginating = false;
       });
-      print("[DEBUG] After PrivacyException in ProfilePage _fetchUserPosts: isBlockedBy=$isBlockedBy, isUserBlocked=$isUserBlocked, isPrivateAccount=$isPrivateAccount");
+      print("[DEBUG] After PrivacyException in _fetchUserPosts: isBlockedBy=$isBlockedBy, "
+          "isUserBlocked=$isUserBlocked, isPrivateAccount=$isPrivateAccount");
     } on SessionExpiredException {
-      print("[DEBUG] SessionExpiredException caught in ProfilePage _fetchUserPosts");
+      print("[DEBUG] SessionExpiredException caught in _fetchUserPosts");
       setState(() {
         isPaginating = false;
       });
       handleSessionExpired(context);
     } catch (e) {
-      print("[DEBUG] Unknown exception in ProfilePage _fetchUserPosts: $e");
+      print("[DEBUG] Unknown exception in _fetchUserPosts: $e");
       setState(() {
         isPaginating = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('An error occurred while fetching user posts.'),
         backgroundColor: Colors.red,
       ));
     }
   }
-
 
   Future<void> _fetchBookmarkedPosts() async {
     if (isPaginatingBookmarks || userId == null) return;
@@ -257,7 +259,10 @@ class _ProfilePageState extends State<ProfilePage> {
         isPaginatingBookmarks = true;
       });
       List<Post> newBookmarks = await _userpostService.fetchBookmarkedPosts(
-          userId!, currentBookmarkedPageNumber, pageSize);
+        userId!,
+        currentBookmarkedPageNumber,
+        pageSize,
+      );
       setState(() {
         bookmarkedPosts.addAll(newBookmarks);
         currentBookmarkedPageNumber++;
@@ -274,7 +279,7 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() {
         isPaginatingBookmarks = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('An error occurred while fetching bookmarked posts.'),
         backgroundColor: Colors.red,
       ));
@@ -282,12 +287,17 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _scrollListener() {
-    if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
+    if (_scrollController.position.pixels ==
+        _scrollController.position.maxScrollExtent) {
       if (isPostsSelected && !isPaginating) {
         _fetchUserPosts();
-      } else if (!isPostsSelected && !isSharedPostsSelected && !isPaginatingBookmarks) {
+      } else if (!isPostsSelected &&
+          !isSharedPostsSelected &&
+          !isPaginatingBookmarks) {
         _fetchBookmarkedPosts();
-      } else if (isSharedPostsSelected && !isPaginatingSharedPosts && hasMoreSharedPosts) {
+      } else if (isSharedPostsSelected &&
+          !isPaginatingSharedPosts &&
+          hasMoreSharedPosts) {
         _fetchSharedPosts();
       }
     }
@@ -410,7 +420,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildShimmerGrid() {
     return GridView.builder(
       itemCount: 9,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
@@ -458,7 +468,7 @@ class _ProfilePageState extends State<ProfilePage> {
               color: Colors.black87,
             ),
           ),
-          SizedBox(height: 5),
+          const SizedBox(height: 5),
           Text(
             label,
             style: TextStyle(
@@ -477,10 +487,13 @@ class _ProfilePageState extends State<ProfilePage> {
     double screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
+      /// PREVENTS the background `Stack` from shifting up when keyboard appears:
+      resizeToAvoidBottomInset: false,
+
       backgroundColor: Colors.white,
       body: RefreshIndicator(
         onRefresh: _refreshUserProfile,
-        color: Color(0xFFF45F67),
+        color: const Color(0xFFF45F67),
         child: Stack(
           children: [
             Container(
@@ -499,7 +512,7 @@ class _ProfilePageState extends State<ProfilePage> {
               right: 0,
               child: Container(
                 height: screenHeight * 0.8,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(60),
@@ -512,7 +525,7 @@ class _ProfilePageState extends State<ProfilePage> {
               top: 50,
               left: 10,
               child: IconButton(
-                icon: Icon(Icons.arrow_back, color: Colors.white),
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
                 onPressed: () {
                   Navigator.pop(context);
                 },
@@ -522,7 +535,7 @@ class _ProfilePageState extends State<ProfilePage> {
               top: 50,
               right: 10,
               child: IconButton(
-                icon: Icon(Icons.settings, color: Colors.white),
+                icon: const Icon(Icons.settings, color: Colors.white),
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -540,9 +553,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     radius: 60,
                     backgroundImage: userProfile != null
                         ? CachedNetworkImageProvider(userProfile!.profilePic)
-                        : AssetImage('assets/images/default.png') as ImageProvider,
+                        : const AssetImage('assets/images/default.png') as ImageProvider,
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -550,11 +563,11 @@ class _ProfilePageState extends State<ProfilePage> {
                         onTap: _openEditProfilePage,
                         child: Icon(
                           Icons.edit,
-                          color: Color(0xFFF45F67),
+                          color: const Color(0xFFF45F67),
                           size: screenWidth * 0.07,
                         ),
                       ),
-                      SizedBox(width: 10),
+                      SizedBox(width: screenWidth * 0.03),
                       Text(
                         username,
                         style: TextStyle(
@@ -563,7 +576,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           color: Colors.black87,
                         ),
                       ),
-                      SizedBox(width: 10),
+                      SizedBox(width: screenWidth * 0.03),
                       GestureDetector(
                         onTap: () {
                           if (userProfile != null && userProfile!.qrCode.isNotEmpty) {
@@ -583,14 +596,14 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ],
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        padding: EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Color(0xFFF45F67).withOpacity(0.1),
+                          color: const Color(0xFFF45F67).withOpacity(0.1),
                           shape: BoxShape.circle,
                         ),
                         child: Text(
@@ -598,15 +611,15 @@ class _ProfilePageState extends State<ProfilePage> {
                           style: TextStyle(
                             fontSize: screenWidth * 0.05,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFFF45F67),
+                            color: const Color(0xFFF45F67),
                           ),
                         ),
                       ),
-                      SizedBox(width: 10),
+                      SizedBox(width: screenWidth * 0.02),
                       buildStars(rating, screenWidth),
                     ],
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
                     child: Container(
@@ -617,7 +630,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -628,8 +641,8 @@ class _ProfilePageState extends State<ProfilePage> {
                       _buildStatItem(followingNb.toString(), 'Following', screenWidth),
                     ],
                   ),
-                  SizedBox(height: 16),
-                  Divider(color: Color(0xFFF45F67), thickness: 2),
+                  const SizedBox(height: 16),
+                  const Divider(color: Color(0xFFF45F67), thickness: 2),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -640,9 +653,11 @@ class _ProfilePageState extends State<ProfilePage> {
                             isSharedPostsSelected = false;
                           });
                         },
-                        child: Icon(Icons.grid_on,
-                            color: isPostsSelected ? Color(0xFFF45F67) : Colors.grey,
-                            size: screenWidth * 0.07),
+                        child: Icon(
+                          Icons.grid_on,
+                          color: isPostsSelected ? const Color(0xFFF45F67) : Colors.grey,
+                          size: screenWidth * 0.07,
+                        ),
                       ),
                       SizedBox(width: screenWidth * 0.15),
                       GestureDetector(
@@ -652,9 +667,13 @@ class _ProfilePageState extends State<ProfilePage> {
                             isSharedPostsSelected = false;
                           });
                         },
-                        child: Icon(Icons.bookmark,
-                            color: (!isPostsSelected && !isSharedPostsSelected) ? Color(0xFFF45F67) : Colors.grey,
-                            size: screenWidth * 0.07),
+                        child: Icon(
+                          Icons.bookmark,
+                          color: (!isPostsSelected && !isSharedPostsSelected)
+                              ? const Color(0xFFF45F67)
+                              : Colors.grey,
+                          size: screenWidth * 0.07,
+                        ),
                       ),
                       SizedBox(width: screenWidth * 0.15),
                       GestureDetector(
@@ -666,13 +685,13 @@ class _ProfilePageState extends State<ProfilePage> {
                         },
                         child: Icon(
                           Icons.near_me,
-                          color: isSharedPostsSelected ? Color(0xFFF45F67) : Colors.grey,
+                          color: isSharedPostsSelected ? const Color(0xFFF45F67) : Colors.grey,
                           size: screenWidth * 0.07,
                         ),
                       ),
                     ],
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Expanded(
                     child: isLoading
                         ? _buildShimmerGrid()

@@ -37,15 +37,14 @@ void showBlockSnackbar(BuildContext context, String reason) {
 
 class RepostCard extends StatefulWidget {
   final RepostItem feedItem;
-
-    final Function(int postId, bool isLiked, int likeCount)? onPostStateChange; // NEW
-  final Map<int, Map<String, dynamic>> globalPostStates; // NEW
+  final Function(int postId, bool isLiked, int likeCount)? onPostStateChange; // Notifies parent
+  final Map<int, Map<String, dynamic>> globalPostStates; // Global states
 
   const RepostCard({
     Key? key,
     required this.feedItem,
-    required this.onPostStateChange,  // NEW
-    required this.globalPostStates,    // NEW
+    required this.onPostStateChange,
+    required this.globalPostStates,
   }) : super(key: key);
 
   @override
@@ -56,13 +55,20 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
   late bool _isLiked;
   late int _likeCount;
   late bool _isBookmarked;
-  late AnimationController _bookmarkAnimationController;
   int? _currentUserId;
+
+  // Booleans to handle show more/show less
+  bool _isRepostCaptionExpanded = false;
+  bool _isOriginalCaptionExpanded = false;
+
+  late AnimationController _bookmarkAnimationController;
 
   @override
   void initState() {
     super.initState();
-        final postId = widget.feedItem.post.postId;
+    final postId = widget.feedItem.post.postId;
+
+    // If a global state entry exists, use it:
     if (widget.globalPostStates.containsKey(postId)) {
       _isLiked = widget.globalPostStates[postId]!["isLiked"];
       _likeCount = widget.globalPostStates[postId]!["likeCount"];
@@ -70,6 +76,8 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
       _isLiked = widget.feedItem.isLiked;
       _likeCount = widget.feedItem.post.likeCount;
     }
+
+    // Ensure local variables are definitely set
     _isLiked = widget.feedItem.isLiked;
     _likeCount = widget.feedItem.post.likeCount;
     _isBookmarked = widget.feedItem.isBookmarked;
@@ -84,10 +92,10 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
     _fetchCurrentUserId();
   }
 
-    @override
+  @override
   void didUpdateWidget(covariant RepostCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // CHANGES HERE: If global states change, update local state
+    // If global states change, update local state
     final postId = widget.feedItem.post.postId;
     if (widget.globalPostStates.containsKey(postId)) {
       setState(() {
@@ -147,11 +155,10 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
         });
       }
 
-      // CHANGES HERE: Notify parent about state change
+      // Notify parent about like state change
       if (widget.onPostStateChange != null) {
         widget.onPostStateChange!(postId, _isLiked, _likeCount);
       }
-
     } on SessionExpiredException {
       if (context.mounted) {
         handleSessionExpired(context);
@@ -229,9 +236,8 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
       if (userId == null) {
         throw SessionExpiredException();
       }
-      // Implement repost deletion functionality here:
+      // Implement repost deletion functionality if needed:
       // await PostService.deleteRepost(widget.feedItem.post.postId);
-      // After deletion, you may need to refresh the feed.
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Repost deleted successfully')),
       );
@@ -274,6 +280,7 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          /// =========== Repost Header (Sharer info) ==============
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -299,7 +306,8 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
                 child: CircleAvatar(
                   backgroundImage: sharer.profilePictureUrl.isNotEmpty
                       ? CachedNetworkImageProvider(sharer.profilePictureUrl)
-                      : const AssetImage('assets/images/default.png') as ImageProvider,
+                      : const AssetImage('assets/images/default.png')
+                          as ImageProvider,
                   radius: 18,
                 ),
               ),
@@ -344,7 +352,7 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
               ),
               if (_currentUserId != null)
                 PopupMenuButton<String>(
-                  icon: Icon(Icons.more_vert, color: Color(0xFFF45F67)),
+                  icon: const Icon(Icons.more_vert, color: Color(0xFFF45F67)),
                   onSelected: (value) {
                     if (value == 'report') {
                       // Report original post
@@ -392,14 +400,35 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
                 ),
             ],
           ),
+
+          /// =========== Repost Caption (the text user wrote when reposting) ===========
           if (widget.feedItem.content.isNotEmpty) ...[
             const SizedBox(height: 8.0),
-            Text(
-              widget.feedItem.content,
-              style: const TextStyle(fontSize: 16.0, color: Colors.black87),
-            ),
+            // If expanded, show full text; otherwise, show truncated text
+            _isRepostCaptionExpanded
+                ? Text(widget.feedItem.content)
+                : Text(
+                    widget.feedItem.content,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                  ),
+            // If more than 100 chars, show the toggle
+            if (widget.feedItem.content.length > 100)
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _isRepostCaptionExpanded = !_isRepostCaptionExpanded;
+                  });
+                },
+                child: Text(
+                  _isRepostCaptionExpanded ? 'Show Less' : 'Show More',
+                  style: const TextStyle(color: Color(0xFFF45F67)),
+                ),
+              ),
           ],
           const SizedBox(height: 8.0),
+
+          /// =========== Original Post Card ==============
           _buildOriginalPost(context),
         ],
       ),
@@ -422,6 +451,7 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          /// =========== Original Post Header ==============
           Row(
             children: [
               GestureDetector(
@@ -446,9 +476,10 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
                   }
                 },
                 child: CircleAvatar(
-                  backgroundImage: author != null && author.profilePictureUrl.isNotEmpty
+                  backgroundImage: (author != null && author.profilePictureUrl.isNotEmpty)
                       ? CachedNetworkImageProvider(author.profilePictureUrl)
-                      : const AssetImage('assets/images/default.png') as ImageProvider,
+                      : const AssetImage('assets/images/default.png')
+                          as ImageProvider,
                   radius: 18,
                 ),
               ),
@@ -469,14 +500,35 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
             ],
           ),
           const SizedBox(height: 8.0),
+
+          /// =========== Original Post Caption/Content with Show More/Less ===========
           if (post.content.isNotEmpty)
-            Text(
-              post.content,
-              style: const TextStyle(fontSize: 16.0),
+            _isOriginalCaptionExpanded
+                ? Text(post.content)
+                : Text(
+                    post.content,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                  ),
+          if (post.content.length > 100)
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _isOriginalCaptionExpanded = !_isOriginalCaptionExpanded;
+                });
+              },
+              child: Text(
+                _isOriginalCaptionExpanded ? 'Show Less' : 'Show More',
+                style: const TextStyle(color: Color(0xFFF45F67)),
+              ),
             ),
           const SizedBox(height: 8.0),
+
+          /// =========== Media (Photos/Videos) ===========
           _buildMediaContent(screenWidth),
           const SizedBox(height: 8.0),
+
+          /// =========== Post Actions (Like, Comment, Bookmark) ===========
           _buildPostActions(),
         ],
       ),
@@ -503,7 +555,6 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
         itemCount: post.media.length,
         itemBuilder: (context, index) {
           final media = post.media[index];
-
           if (media.mediaType == 'photo') {
             return GestureDetector(
               onTap: () {
@@ -551,10 +602,11 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
 
     return Row(
       children: [
+        // Like
         IconButton(
           icon: Icon(
             _isLiked ? Icons.favorite : Icons.favorite_border,
-            color: Color(0xFFF45F67),
+            color: const Color(0xFFF45F67),
             size: 28,
           ),
           onPressed: _handleLike,
@@ -564,6 +616,8 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
           style: const TextStyle(color: Color(0xFFF45F67)),
         ),
         const SizedBox(width: 16.0),
+
+        // Comment
         IconButton(
           icon: const Icon(
             Icons.comment,
@@ -577,12 +631,14 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
           style: const TextStyle(color: Color(0xFFF45F67)),
         ),
         const Spacer(),
+
+        // Bookmark
         ScaleTransition(
           scale: _bookmarkAnimationController,
           child: IconButton(
             icon: Icon(
               _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-              color: Color(0xFFF45F67),
+              color: const Color(0xFFF45F67),
               size: 28,
             ),
             onPressed: _handleBookmark,
