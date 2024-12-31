@@ -467,7 +467,6 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
               _newCaption = value;
             },
             controller: TextEditingController(text: _newCaption),
-            maxLines: 3,
             decoration: InputDecoration(
               hintText: "Edit caption...",
               border: OutlineInputBorder(),

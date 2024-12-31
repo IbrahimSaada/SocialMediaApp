@@ -624,7 +624,6 @@ class _SharedPostCardState extends State<SharedPostCard> {
               Text(
                 widget.sharedPost.comment!,
                 overflow: TextOverflow.ellipsis,
-                maxLines: 2,
               )
             else
               Text(widget.sharedPost.comment!),
@@ -658,7 +657,6 @@ class _SharedPostCardState extends State<SharedPostCard> {
       children: [
         TextField(
           controller: _commentController,
-          maxLines: 3,
           decoration: InputDecoration(
             hintText: 'Edit your comment...',
             border: OutlineInputBorder(
@@ -735,7 +733,6 @@ class _SharedPostCardState extends State<SharedPostCard> {
               Text(
                 widget.sharedPost.postContent,
                 overflow: TextOverflow.ellipsis,
-                maxLines: 2,
               )
             else
               Text(widget.sharedPost.postContent),

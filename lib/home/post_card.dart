@@ -440,7 +440,6 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                     : Text(
                         widget.content,
                         overflow: TextOverflow.ellipsis,
-                        maxLines: 2,
                       ),
               if (widget.content.length > 100)
                 GestureDetector(
