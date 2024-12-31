@@ -17,8 +17,6 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _isFollowersPublic = true;
   bool _isFollowingPublic = true;
   bool _isNotificationsMuted = true;
-  String _language = 'English';
-  bool _darkMode = false;
   final UserProfileService _userProfileService = UserProfileService();
   final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
   int? _userId;
@@ -179,40 +177,6 @@ void _updatePrivacySettings() async {
                 _isNotificationsMuted = value;
               });
               _updatePrivacySettings(); // Update backend on change
-            },
-          ),
-          Divider(),
-          ListTile(
-            leading: Icon(Icons.language, color: primaryColor),
-            title: Text(
-              'Language',
-              style: TextStyle(fontSize: screenWidth * 0.045, color: Colors.black87),
-            ),
-            trailing: DropdownButton<String>(
-              value: _language,
-              items: <String>['English', 'Spanish', 'French', 'German']
-                  .map((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value, style: TextStyle(fontSize: screenWidth * 0.04)),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  _language = newValue!;
-                });
-              },
-            ),
-          ),
-          Divider(),
-          _buildSwitchTile(
-            title: 'Dark Mode',
-            value: _darkMode,
-            icon: Icons.brightness_6,
-            onChanged: (value) {
-              setState(() {
-                _darkMode = value;
-              });
             },
           ),
           Divider(),

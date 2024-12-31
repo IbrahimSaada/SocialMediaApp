@@ -1,5 +1,3 @@
-// comment.dart
-
 import 'package:flutter/material.dart';
 import 'package:cook/models/comment_model.dart';
 import 'package:cook/models/comment_request_model.dart';
@@ -53,10 +51,8 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
   /// `_isLoading` controls the **initial** page load (show shimmer).
   bool _isLoading = false;
 
-  /// `_isLoadingMore` controls whether we’re fetching the **next** page
-  /// (shows a small bottom loader, not a full shimmer).
+  /// `_isLoadingMore` controls whether we’re fetching the **next** page.
   bool _isLoadingMore = false;
-
   bool _isPosting = false;
   bool _showScrollToBottom = false;
   Comment? _replyingTo;
@@ -65,7 +61,10 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
   // For pagination
   int _currentPage = 1;
   int _pageSize = 10;
-  int _totalPages = 1; // We'll keep track of total pages from backend
+  int _totalPages = 1; // We'll track total pages from backend
+
+  // Set of comment IDs that are expanded (for Show More / Show Less).
+  final Set<int> _expandedComments = <int>{};
 
   @override
   void initState() {
@@ -74,13 +73,15 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
 
     _focusNode.addListener(() {
       if (_focusNode.hasFocus) {
-        // Scroll to bottom after focusing (e.g. to show the text field).
+        // Scroll to bottom after focusing on text field
         Future.delayed(const Duration(milliseconds: 300), () {
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
+          if (mounted) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
         });
       }
     });
@@ -100,15 +101,18 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  /// If user scrolls near the bottom, load more if more pages are available.
+  Future<void> _fetchCurrentUserId() async {
+    _currentUserId = await LoginService().getUserId();
+  }
+
+  /// If user scrolls near the bottom, load more if possible.
   void _scrollListener() {
-    // How close we are to the bottom before loading more:
+    // If within threshold of bottom, load next page if possible.
     const double threshold = 200.0;
     final position = _scrollController.position;
     final maxScroll = position.maxScrollExtent;
     final currentScroll = position.pixels;
 
-    // If within `threshold` pixels of the bottom, load next page if possible.
     if (currentScroll >= (maxScroll - threshold)) {
       if (!_isLoadingMore && !_isLoading && _currentPage < _totalPages) {
         _currentPage++;
@@ -116,33 +120,19 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
       }
     }
 
-    // Show or hide the "scroll to bottom" FAB
+    // Show/hide the "scroll to bottom" FAB
     if (position.atEdge) {
-      // Reached top or bottom
-      setState(() {
-        _showScrollToBottom = false;
-      });
+      setState(() => _showScrollToBottom = false);
     } else {
-      setState(() {
-        _showScrollToBottom = true;
-      });
+      setState(() => _showScrollToBottom = true);
     }
   }
 
-  Future<void> _fetchCurrentUserId() async {
-    _currentUserId = await LoginService().getUserId();
-  }
-
-  /// Fetch (and optionally append) comments from the backend.
-  /// `append: false` => initial or "replace" load
-  /// `append: true`  => load next page & add to existing list
   Future<void> _fetchComments({
     int page = 1,
     int pageSize = 10,
     bool append = false,
   }) async {
-    // If this is an "append" load (next page), show small loader at bottom.
-    // Otherwise, show the shimmer for initial load.
     if (append) {
       setState(() => _isLoadingMore = true);
     } else {
@@ -167,7 +157,6 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
         _totalPages = paginated.totalPages;
       });
     } on SessionExpiredException {
-      // Handle token expiration
       if (context.mounted) {
         handleSessionExpired(context);
       }
@@ -185,24 +174,19 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
   Future<void> _postComment() async {
     if (_commentController.text.isEmpty || _isPosting) return;
 
-    setState(() {
-      _isPosting = true;
-    });
+    setState(() => _isPosting = true);
 
     try {
       final userId = await LoginService().getUserId();
       if (userId == null) {
-        setState(() {
-          _isPosting = false;
-        });
+        setState(() => _isPosting = false);
         return;
       }
 
-      final newCommentText = _commentController.text;
       final commentRequest = CommentRequest(
         postId: widget.postId,
         userId: userId,
-        text: newCommentText,
+        text: _commentController.text,
         parentCommentId: _replyingTo?.commentId,
       );
 
@@ -215,7 +199,6 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
       _currentPage = 1;
       await _fetchComments(page: _currentPage, pageSize: _pageSize, append: false);
     } on SessionExpiredException {
-      // Handle token expiration
       if (context.mounted) {
         handleSessionExpired(context);
       }
@@ -228,18 +211,14 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
         print('Failed to post comment: $e');
       }
     } finally {
-      setState(() {
-        _isPosting = false;
-      });
+      setState(() => _isPosting = false);
     }
   }
 
   Future<void> _editComment(Comment comment) async {
     if (_commentController.text.isEmpty || _isPosting) return;
 
-    setState(() {
-      _isPosting = true;
-    });
+    setState(() => _isPosting = true);
 
     try {
       final commentRequest = CommentRequest(
@@ -253,10 +232,9 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
       _commentController.clear();
       _replyingTo = null;
 
-      // Refresh current page after edit
+      // Refresh after edit
       await _fetchComments(page: _currentPage, pageSize: _pageSize, append: false);
     } on SessionExpiredException {
-      // Handle token expiration
       if (context.mounted) {
         handleSessionExpired(context);
       }
@@ -269,9 +247,7 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
         print('Failed to edit comment: $e');
       }
     } finally {
-      setState(() {
-        _isPosting = false;
-      });
+      setState(() => _isPosting = false);
     }
   }
 
@@ -282,10 +258,8 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
         comment.commentId,
         _currentUserId!,
       );
-      // Refresh current page after delete
       await _fetchComments(page: _currentPage, pageSize: _pageSize, append: false);
     } on SessionExpiredException {
-      // Handle token expiration
       if (context.mounted) {
         handleSessionExpired(context);
       }
@@ -337,12 +311,10 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
         const SnackBar(content: Text('Comment reported successfully')),
       );
     } on SessionExpiredException {
-      // Handle token expiration
       if (context.mounted) {
         handleSessionExpired(context);
       }
     } catch (e) {
-      // If an error occurs that's not session-expired, show a generic message.
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to report comment')),
       );
@@ -350,7 +322,10 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
   }
 
   void _showCommentOptions(
-      BuildContext context, TapDownDetails details, Comment comment) {
+    BuildContext context,
+    TapDownDetails details,
+    Comment comment,
+  ) {
     final RenderBox overlay =
         Overlay.of(context).context.findRenderObject() as RenderBox;
 
@@ -382,7 +357,7 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
               ),
               PopupMenuItem(
                 value: 'inappropriate',
-                child: _buildMenuItem(Icons.visibility_off, 'Inappropriate Content'),
+                child: _buildMenuItem(Icons.visibility_off, 'Inappropriate'),
               ),
               PopupMenuItem(
                 value: 'misinformation',
@@ -390,7 +365,7 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
               ),
               PopupMenuItem(
                 value: 'harassment',
-                child: _buildMenuItem(Icons.flag, 'Harassment or Bullying'),
+                child: _buildMenuItem(Icons.flag, 'Harassment/Bullying'),
               ),
             ],
       color: Colors.white,
@@ -410,16 +385,12 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
   Widget _buildMenuItem(IconData icon, String text) {
     return ListTile(
       leading: Icon(icon, color: Colors.redAccent),
-      title: Text(
-        text,
-        style: const TextStyle(color: Colors.redAccent),
-      ),
+      title: Text(text, style: const TextStyle(color: Colors.redAccent)),
     );
   }
 
   Widget _buildParentComment(Comment comment) {
     bool showReplies = comment.isRepliesVisible;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -458,9 +429,8 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
             padding: const EdgeInsets.only(left: 16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: comment.replies
-                  .expand((reply) => _flattenReplies(reply, comment.fullName))
-                  .toList(),
+              children:
+                  comment.replies.expand((r) => _flattenReplies(r, comment.fullName)).toList(),
             ),
           ),
         _buildDivider(),
@@ -498,9 +468,9 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
 
     if (reply.replies.isNotEmpty) {
       flatReplies.addAll(
-        reply.replies.expand((nestedReply) {
-          return _flattenReplies(nestedReply, reply.fullName);
-        }).toList(),
+        reply.replies
+            .expand((nestedReply) => _flattenReplies(nestedReply, reply.fullName))
+            .toList(),
       );
     }
 
@@ -544,60 +514,37 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
           ),
           const SizedBox(width: 12.0),
           Expanded(
-            child: GestureDetector(
-              onTap: () async {
-                int? currentUserId = await LoginService().getUserId();
-                if (currentUserId == comment.userId) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => ProfilePage()),
-                  );
-                } else {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => OtherUserProfilePage(
-                        otherUserId: comment.userId,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      comment.fullName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                        fontSize: 16,
                       ),
                     ),
-                  );
-                }
-              },
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        comment.fullName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(width: 8.0),
-                      Text(
-                        timeDisplay,
-                        style: const TextStyle(color: Colors.grey, fontSize: 14),
-                      ),
-                    ],
-                  ),
-                  if (parentFullName != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4.0),
-                      child: Text(
-                        'Replying to $parentFullName',
-                        style: const TextStyle(color: Colors.grey, fontSize: 14),
-                      ),
+                    const SizedBox(width: 8.0),
+                    Text(
+                      timeDisplay,
+                      style: const TextStyle(color: Colors.grey, fontSize: 14),
                     ),
-                  const SizedBox(height: 6.0),
-                  Text(
-                    comment.text,
-                    style: const TextStyle(color: Colors.black, fontSize: 16),
+                  ],
+                ),
+                if (parentFullName != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Text(
+                      'Replying to $parentFullName',
+                      style: const TextStyle(color: Colors.grey, fontSize: 14),
+                    ),
                   ),
-                ],
-              ),
+                const SizedBox(height: 6.0),
+                _buildCommentText(comment),
+              ],
             ),
           ),
         ],
@@ -605,20 +552,69 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
     );
   }
 
+  /// Builds the text with "Show More" / "Show Less" for each comment.
+  Widget _buildCommentText(Comment comment) {
+    final text = comment.text;
+    final isExpanded = _expandedComments.contains(comment.commentId);
+
+    if (text.length <= 100) {
+      // No need for Show More / Show Less
+      return Text(text, style: const TextStyle(color: Colors.black, fontSize: 16));
+    }
+
+    if (isExpanded) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(text, style: const TextStyle(color: Colors.black, fontSize: 16)),
+          const SizedBox(height: 4.0),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _expandedComments.remove(comment.commentId);
+              });
+            },
+            child: const Text(
+              'Show Less',
+              style: TextStyle(color: Color(0xFFF45F67), fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      );
+    } else {
+      // Collapsed
+      final truncated = text.substring(0, 100) + '...';
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(truncated, style: const TextStyle(color: Colors.black, fontSize: 16)),
+          const SizedBox(height: 4.0),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _expandedComments.add(comment.commentId);
+              });
+            },
+            child: const Text(
+              'Show More',
+              style: TextStyle(color: Color(0xFFF45F67), fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      );
+    }
+  }
+
   Widget _buildDivider() {
     return Column(
       children: [
         const SizedBox(height: 8.0),
-        Divider(
-          color: Colors.grey[300],
-          thickness: 1,
-        ),
+        Divider(color: Colors.grey[300], thickness: 1),
         const SizedBox(height: 8.0),
       ],
     );
   }
 
-  /// Builds the shimmer placeholders for the initial load.
   Widget _buildShimmerComment() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12.0),
@@ -695,7 +691,6 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
     );
   }
 
-  /// A simple loader shown at the bottom when loading more pages
   Widget _buildLoadMoreIndicator() {
     return const Padding(
       padding: EdgeInsets.symmetric(vertical: 16.0),
@@ -723,14 +718,10 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // If we're loading the very first page, show the shimmer placeholders
                   if (_isLoading)
                     ...List.generate(10, (index) => _buildShimmerComment())
                   else
-                    // Otherwise show the actual list of comments
                     ..._comments.map((comment) => _buildParentComment(comment)).toList(),
-
-                  // If we're fetching next pages, show a small loader at the bottom
                   if (_isLoadingMore) _buildLoadMoreIndicator(),
                 ],
               ),
@@ -791,9 +782,9 @@ class _CommentPageState extends State<CommentPage> with WidgetsBindingObserver {
               onPressed: _isPosting
                   ? null
                   : () {
-                      // If the comment being edited is by the same user, treat it as edit
                       if (_replyingTo != null &&
                           _replyingTo!.userId == _currentUserId) {
+                        // Editing own comment
                         _editComment(_replyingTo!);
                       } else {
                         _postComment();

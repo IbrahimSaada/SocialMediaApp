@@ -84,7 +84,7 @@ class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin 
       }
     }
 
-    // Load more feed items when nearly at the bottom
+    // Load more feed items when near the bottom
     if (_scrollController.position.pixels >=
             _scrollController.position.maxScrollExtent - 200 &&
         !_isFetchingData &&
@@ -369,8 +369,9 @@ class HomePageState extends State<HomePage> with SingleTickerProviderStateMixin 
                   ? Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Center(
-                        child:
-                            CircularProgressIndicator(color: const Color(0xFFF45F67)),
+                        child: CircularProgressIndicator(
+                          color: const Color(0xFFF45F67),
+                        ),
                       ),
                     )
                   : const SizedBox.shrink();

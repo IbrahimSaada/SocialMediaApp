@@ -46,8 +46,14 @@ class PostCard extends StatefulWidget {
   final bool isBookmarked;
   final DateTime createdAt;
   final String content;
+
+  // Called if something in the post changes that requires a refresh
   final VoidCallback? onRefreshNeeded;
+
+  // Notifies a parent widget that the post's like state changed.
   final Function(int postId, bool isLiked, int likeCount)? onPostStateChange; // NEW
+
+  // Holds global states for posts (e.g., if many cards share the same data).
   final Map<int, Map<String, dynamic>> globalPostStates; // NEW
 
   const PostCard({
@@ -59,7 +65,7 @@ class PostCard extends StatefulWidget {
     required this.createdAt,
     required this.content,
     this.onRefreshNeeded,
-        required this.onPostStateChange,  // NEW
+    required this.onPostStateChange,  // NEW
     required this.globalPostStates,    // NEW
   }) : super(key: key);
 
@@ -69,24 +75,29 @@ class PostCard extends StatefulWidget {
 
 class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
-  bool _isExpanded = false;
+  bool _isExpanded = false; // Tracks whether the caption is expanded
   late bool _isLiked;
   late bool _isBookmarked;
   late AnimationController _animationController;
   int? _currentUserId;
 
-
   @override
   void initState() {
     super.initState();
-     if (widget.globalPostStates.containsKey(widget.postInfo.postId)) {
+
+    // If there's a global state for this post, use it. Otherwise, use the local data
+    if (widget.globalPostStates.containsKey(widget.postInfo.postId)) {
       _isLiked = widget.globalPostStates[widget.postInfo.postId]!["isLiked"];
-      widget.postInfo.likeCount = widget.globalPostStates[widget.postInfo.postId]!["likeCount"];
+      widget.postInfo.likeCount =
+          widget.globalPostStates[widget.postInfo.postId]!["likeCount"];
     } else {
       _isLiked = widget.isLiked;
     }
+
+    // Ensure local states are set if above logic doesn't override them
     _isLiked = widget.isLiked;
     _isBookmarked = widget.isBookmarked;
+
     _fetchCurrentUserId();
 
     _animationController = AnimationController(
@@ -97,14 +108,15 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     );
   }
 
-    @override
+  @override
   void didUpdateWidget(covariant PostCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // CHANGES HERE: If global states change, update local state
+    // If global states have changed, update local state
     if (widget.globalPostStates.containsKey(widget.postInfo.postId)) {
       setState(() {
         _isLiked = widget.globalPostStates[widget.postInfo.postId]!["isLiked"];
-        widget.postInfo.likeCount = widget.globalPostStates[widget.postInfo.postId]!["likeCount"];
+        widget.postInfo.likeCount =
+            widget.globalPostStates[widget.postInfo.postId]!["likeCount"];
       });
     }
   }
@@ -154,7 +166,8 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
       }
     } catch (e) {
       final errStr = e.toString();
-      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+      if (errStr.startsWith('Exception: BLOCKED:') ||
+          errStr.toLowerCase().contains('blocked')) {
         String reason = errStr.startsWith('Exception: BLOCKED:')
             ? errStr.replaceFirst('Exception: BLOCKED:', '')
             : errStr;
@@ -208,7 +221,9 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
           widget.postInfo.likeCount += 1;
         });
       }
-        if (widget.onPostStateChange != null) {
+
+      // Notify parent of state change
+      if (widget.onPostStateChange != null) {
         widget.onPostStateChange!(
           widget.postInfo.postId,
           _isLiked,
@@ -221,7 +236,8 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
       }
     } catch (e) {
       final errStr = e.toString();
-      if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+      if (errStr.startsWith('Exception: BLOCKED:') ||
+          errStr.toLowerCase().contains('blocked')) {
         String reason = errStr.startsWith('Exception: BLOCKED:')
             ? errStr.replaceFirst('Exception: BLOCKED:', '')
             : errStr;
@@ -252,9 +268,9 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
       if (userId == null) {
         throw SessionExpiredException();
       }
-      // Implement post deletion functionality here. For example:
-      // await PostService.deletePost(widget.postInfo.postId);
-      // After deletion, maybe refresh parent:
+      // Implement post deletion functionality here.
+      // Example: await PostService.deletePost(widget.postInfo.postId);
+      // Then refresh if needed:
       if (widget.onRefreshNeeded != null) {
         widget.onRefreshNeeded!();
       }
@@ -292,6 +308,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              /// =========== Header (Profile Pic, Name, Time, More Menu) ===========
               Row(
                 children: [
                   GestureDetector(
@@ -363,10 +380,9 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                     ),
                   ),
                   const Spacer(),
-                  // Show different popup menu options based on whether current user is the post owner
                   if (_currentUserId != null)
                     PopupMenuButton<String>(
-                      icon: Icon(Icons.more_vert, color: Color(0xFFF45F67)),
+                      icon: const Icon(Icons.more_vert, color: Color(0xFFF45F67)),
                       onSelected: (value) async {
                         if (value == 'report') {
                           // Report post
@@ -414,7 +430,10 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                     ),
                 ],
               ),
+
               const SizedBox(height: 12.0),
+
+              /// =========== Caption with Show More / Show Less ===========
               if (widget.content.isNotEmpty)
                 _isExpanded
                     ? Text(widget.content)
@@ -431,12 +450,17 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                     children: [
                       Text(
                         _isExpanded ? 'Show Less' : 'Show More',
-                        style: TextStyle(color: Colors.grey.shade600),
+                        style: const TextStyle(
+                          color: Color(0xFFF45F67), // <== Updated color
+                        ),
                       ),
                     ],
                   ),
                 ),
+
               const SizedBox(height: 16.0),
+
+              /// =========== Media Carousel ===========
               if (post.media.isNotEmpty)
                 SizedBox(
                   height: 300,
@@ -470,7 +494,8 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                                       color: Colors.white,
                                     ),
                                   ),
-                                  errorWidget: (context, url, error) => const Icon(Icons.error),
+                                  errorWidget: (context, url, error) =>
+                                      const Icon(Icons.error),
                                 )
                               : VideoPost(mediaUrl: media.mediaUrl),
                         ),
@@ -495,9 +520,13 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                     );
                   }),
                 ),
+
               const SizedBox(height: 16.0),
+
+              /// =========== Post Actions (Like, Comment, Share, Bookmark) ===========
               Row(
                 children: [
+                  // Like
                   IconButton(
                     icon: Icon(
                       _isLiked ? Icons.favorite : Icons.favorite_border,
@@ -508,7 +537,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                   GestureDetector(
                     onTap: () async {
                       try {
-                        List<UserLike> likes = await PostService.fetchPostLikes(widget.postInfo.postId);
+                        final likes = await PostService.fetchPostLikes(widget.postInfo.postId);
                         if (context.mounted) {
                           showModalBottomSheet(
                             context: context,
@@ -527,7 +556,8 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                         }
                       } catch (e) {
                         final errStr = e.toString();
-                        if (errStr.startsWith('Exception: BLOCKED:') || errStr.toLowerCase().contains('blocked')) {
+                        if (errStr.startsWith('Exception: BLOCKED:') ||
+                            errStr.toLowerCase().contains('blocked')) {
                           String reason = errStr.startsWith('Exception: BLOCKED:')
                               ? errStr.replaceFirst('Exception: BLOCKED:', '')
                               : errStr;
@@ -537,9 +567,15 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                         }
                       }
                     },
-                    child: Text('${post.likeCount}', style: const TextStyle(color: Color(0xFFF45F67))),
+                    child: Text(
+                      '${post.likeCount}',
+                      style: const TextStyle(color: Color(0xFFF45F67)),
+                    ),
                   ),
+
                   const SizedBox(width: 16.0),
+
+                  // Comment
                   IconButton(
                     icon: const Icon(Icons.comment, color: Color(0xFFF45F67)),
                     onPressed: () {
@@ -551,14 +587,22 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                       );
                     },
                   ),
-                  Text('${post.commentCount}', style: const TextStyle(color: Color(0xFFF45F67))),
+                  Text(
+                    '${post.commentCount}',
+                    style: const TextStyle(color: Color(0xFFF45F67)),
+                  ),
+
+                  // Share
                   IconButton(
                     icon: const Icon(Icons.share, color: Color(0xFFF45F67)),
                     onPressed: () {
                       _showShareBottomSheet(context);
                     },
                   ),
+
                   const Spacer(),
+
+                  // Bookmark
                   ScaleTransition(
                     scale: _animationController,
                     child: IconButton(

@@ -54,7 +54,9 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startStoryTimer();
-      _viewStory(widget.stories[_currentStoryIndex].storyId);
+      if (_currentStoryIndex < widget.stories.length) {
+        _viewStory(widget.stories[_currentStoryIndex].storyId);
+      }
     });
 
     _pageController.addListener(_handlePageChange);
@@ -67,7 +69,7 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
   }
 
   void _handlePageChange() {
-    int pageIndex = _pageController.page?.round() ?? 0;
+    final pageIndex = _pageController.page?.round() ?? 0;
     if (pageIndex != _currentStoryIndex) {
       setState(() {
         _currentStoryIndex = pageIndex;
@@ -75,7 +77,9 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
         _resetStoryTimer();
         _startStoryTimer();
       });
-      _viewStory(widget.stories[_currentStoryIndex].storyId);
+      if (_currentStoryIndex < widget.stories.length) {
+        _viewStory(widget.stories[_currentStoryIndex].storyId);
+      }
     }
   }
 
@@ -101,12 +105,8 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
 
   Future<void> _viewStory(int storyId) async {
     if (_loggedInUserId != null && storyId != _lastViewedStoryId) {
-      StoryViewRequest request = StoryViewRequest(
-        storyId: storyId,
-        viewerId: _loggedInUserId!,
-      );
-      StoryViewResponse? response =
-          await StoryServiceRequest().recordStoryView(request);
+      final request = StoryViewRequest(storyId: storyId, viewerId: _loggedInUserId!);
+      final response = await StoryServiceRequest().recordStoryView(request);
 
       if (response != null) {
         _lastViewedStoryId = storyId;
@@ -118,13 +118,10 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
 
   Future<void> _fetchStoryViewers(int storyId) async {
     try {
-      // Retrieve the paginated response
       final paginatedViewers =
           await StoryServiceRequest().getStoryViewers(storyId);
-
       if (paginatedViewers != null) {
         setState(() {
-          // Extract the actual list of StoryViewer objects
           viewersList = paginatedViewers.data;
         });
       }
@@ -163,7 +160,14 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
     if (_hasNavigatedToHomePage) return;
     if (!await _checkSession(context)) return;
 
+    // Safeguard in case stories were removed
+    if (_currentStoryIndex >= widget.stories.length) {
+      _navigateHome();
+      return;
+    }
+
     final currentStory = widget.stories[_currentStoryIndex];
+    // If we still have valid media
     if (_currentMediaIndex < currentStory.media.length - 1) {
       setState(() {
         _currentMediaIndex++;
@@ -188,8 +192,16 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
         duration: const Duration(milliseconds: 500),
         curve: Curves.easeInOut,
       );
-      _viewStory(widget.stories[_currentStoryIndex].storyId);
+      if (_currentStoryIndex < widget.stories.length) {
+        _viewStory(widget.stories[_currentStoryIndex].storyId);
+      }
     } else {
+      _navigateHome();
+    }
+  }
+
+  void _navigateHome() {
+    if (!_hasNavigatedToHomePage) {
       _hasNavigatedToHomePage = true;
       Navigator.of(context).popUntil((route) => route.isFirst);
     }
@@ -197,6 +209,12 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
 
   void _previousMedia() async {
     if (!await _checkSession(context)) return;
+
+    // Safeguard
+    if (_currentStoryIndex >= widget.stories.length) {
+      _navigateHome();
+      return;
+    }
 
     if (_currentMediaIndex > 0) {
       setState(() {
@@ -206,23 +224,34 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
     } else if (_currentStoryIndex > 0) {
       setState(() {
         _currentStoryIndex--;
-        _currentMediaIndex =
-            widget.stories[_currentStoryIndex].media.length - 1;
-        _startStoryTimer();
       });
-      _pageController.previousPage(
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-      );
-      _viewStory(widget.stories[_currentStoryIndex].storyId);
+      // If the new story still exists
+      if (_currentStoryIndex < widget.stories.length) {
+        final newStory = widget.stories[_currentStoryIndex];
+        _currentMediaIndex = newStory.media.isNotEmpty
+            ? newStory.media.length - 1
+            : 0; // fallback
+        _startStoryTimer();
+        _pageController.previousPage(
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+        _viewStory(newStory.storyId);
+      } else {
+        // If there's no story to go back to, pop
+        Navigator.of(context).pop();
+      }
     } else {
+      // We are at the first story => pop
       Navigator.of(context).pop();
     }
   }
 
   Future<void> _showViewersBottomSheet() async {
     _pauseStory(); // pause while showing viewers
-    await _fetchStoryViewers(widget.stories[_currentStoryIndex].storyId);
+    if (_currentStoryIndex < widget.stories.length) {
+      await _fetchStoryViewers(widget.stories[_currentStoryIndex].storyId);
+    }
 
     await showModalBottomSheet(
       context: context,
@@ -281,8 +310,7 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
                             ),
                             title: Text(
                               viewer.fullname,
-                              style:
-                                  const TextStyle(color: Colors.black, fontSize: 14),
+                              style: const TextStyle(color: Colors.black, fontSize: 14),
                             ),
                             subtitle: Text(
                               _formatTime(viewer.localViewedAt),
@@ -407,13 +435,11 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
       },
     );
 
-    // If user cancels deletion
     if (!confirmDelete) {
       _resumeStory();
       return;
     }
 
-    // Session check
     if (!await _checkSession(context)) {
       _resumeStory();
       return;
@@ -427,59 +453,68 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
         return;
       }
 
-      // Identify the current story & media we want to delete
-      final currentStory = widget.stories[_currentStoryIndex];
-      final mediaId = currentStory.media[_currentMediaIndex].mediaId;
+      // Safeguard in case stories were removed
+      if (_currentStoryIndex >= widget.stories.length) {
+        _navigateHome();
+        return;
+      }
 
-      // Call the backend to delete this single media item
-      bool isDeleted = await StoryService().deleteStoryMedia(mediaId, userId);
+      final currentStory = widget.stories[_currentStoryIndex];
+
+      // Also check if mediaIndex is valid
+      if (_currentMediaIndex >= currentStory.media.length) {
+        _currentMediaIndex = currentStory.media.length - 1;
+        if (_currentMediaIndex < 0) {
+          // No media left
+          widget.stories.removeAt(_currentStoryIndex);
+          if (widget.stories.isEmpty) {
+            _navigateHome();
+            return;
+          }
+          if (_currentStoryIndex >= widget.stories.length) {
+            _currentStoryIndex = widget.stories.length - 1;
+          }
+          _pageController.jumpToPage(_currentStoryIndex);
+          _resumeStory();
+          return;
+        }
+      }
+
+      final mediaId = currentStory.media[_currentMediaIndex].mediaId;
+      final isDeleted = await StoryService().deleteStoryMedia(mediaId, userId);
 
       if (isDeleted) {
-        // Remove the single media from our local list
         setState(() {
           currentStory.media.removeAt(_currentMediaIndex);
         });
 
-        // If the story now has zero media left, remove the entire story
+        // If the story has zero media, remove the story entirely
         if (currentStory.media.isEmpty) {
           setState(() {
             widget.stories.removeAt(_currentStoryIndex);
           });
+          widget.onStoriesChanged?.call();
 
-          // If we have zero stories left, go home
           if (widget.stories.isEmpty) {
-            Navigator.of(context).popUntil((route) => route.isFirst);
-            widget.onStoriesChanged?.call(); // refresh the home list
+            _navigateHome();
             return;
           }
-
-          // If not empty, we're still in this user's story list
-          // but want to update the home list to remove the entire box
-          widget.onStoriesChanged?.call();
+          if (_currentStoryIndex >= widget.stories.length) {
+            _currentStoryIndex = widget.stories.length - 1;
+          }
+          _pageController.jumpToPage(_currentStoryIndex);
+        } else {
+          // If media index is now out of range
+          if (_currentMediaIndex >= currentStory.media.length) {
+            _currentMediaIndex = currentStory.media.length - 1;
+          }
         }
 
-        // If we have no stories left, go home
-        if (widget.stories.isEmpty) {
-          Navigator.of(context).popUntil((route) => route.isFirst);
-          return;
+        widget.onStoriesChanged?.call();
+        if (_currentStoryIndex < widget.stories.length) {
+          _viewStory(widget.stories[_currentStoryIndex].storyId);
         }
 
-        // Otherwise, if the current index is now out of bounds (e.g. last story was removed),
-        // shift it to the last valid story
-        if (_currentStoryIndex >= widget.stories.length) {
-          _currentStoryIndex = widget.stories.length - 1;
-        }
-
-        // If the current story still has media but we removed the last media index,
-        // shift to the new last media
-        if (currentStory.media.isNotEmpty &&
-            _currentMediaIndex >= currentStory.media.length) {
-          _currentMediaIndex = currentStory.media.length - 1;
-        }
-
-        // Reset the timer & jump to our updated story
-        _pageController.jumpToPage(_currentStoryIndex);
-        _viewStory(widget.stories[_currentStoryIndex].storyId);
         _startStoryTimer();
       } else {
         _showSnackbar("Failed to delete story media.");
@@ -488,12 +523,10 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
       _showSnackbar("Error occurred while deleting story media: $e");
     }
 
-    // Resume the story after all operations
     _resumeStory();
   }
 
-  void _submitReport(
-      String reportReason, int reportedUserId, int contentId) async {
+  void _submitReport(String reportReason, int reportedUserId, int contentId) async {
     if (!await _checkSession(context)) return;
 
     try {
@@ -599,13 +632,14 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
   }
 
   void _showSnackbar(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
   }
 
   String _formatTime(DateTime dateTime) {
-    Duration difference = DateTime.now().difference(dateTime);
+    final difference = DateTime.now().difference(dateTime);
     if (difference.inHours > 0) {
       return '${difference.inHours}h';
     } else if (difference.inMinutes > 0) {
@@ -615,8 +649,7 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
     }
   }
 
-  /// This is the key part where the zooming is addressed:
-  /// Changed from BoxFit.cover to BoxFit.contain to show the entire image.
+  /// Changed from BoxFit.cover to BoxFit.contain
   Widget _buildMedia(Story story, int mediaIndex) {
     final mediaItem = story.media[mediaIndex];
     return CachedNetworkImage(
@@ -627,7 +660,7 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
         decoration: BoxDecoration(
           image: DecorationImage(
             image: imageProvider,
-            fit: BoxFit.contain, // Changed from BoxFit.cover
+            fit: BoxFit.contain, 
           ),
         ),
       ),
@@ -639,10 +672,7 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
           mainAxisAlignment: MainAxisAlignment.center,
           children: const [
             Icon(Icons.error, color: Colors.white),
-            Text(
-              'Failed to load media',
-              style: TextStyle(color: Colors.white),
-            ),
+            Text('Failed to load media', style: TextStyle(color: Colors.white)),
           ],
         ),
       ),
@@ -650,23 +680,25 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
   }
 
   Widget _buildProgressIndicator() {
+    final currentStory = widget.stories[_currentStoryIndex];
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children:
-          widget.stories[_currentStoryIndex].media.asMap().entries.map((entry) {
-        int mediaIndex = entry.key;
+      children: currentStory.media.asMap().entries.map((entry) {
+        final mediaIndex = entry.key;
         return Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2.0),
             child: AnimatedBuilder(
               animation: _animationController,
               builder: (context, child) {
+                double value = 0.0;
+                if (mediaIndex < _currentMediaIndex) {
+                  value = 1.0;
+                } else if (mediaIndex == _currentMediaIndex) {
+                  value = _animationController.value;
+                }
                 return LinearProgressIndicator(
-                  value: (mediaIndex < _currentMediaIndex)
-                      ? 1.0
-                      : (mediaIndex == _currentMediaIndex
-                          ? _animationController.value
-                          : 0.0),
+                  value: value,
                   backgroundColor: Colors.white.withOpacity(0.3),
                   valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                 );
@@ -680,7 +712,37 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
 
   @override
   Widget build(BuildContext context) {
+    // If stories have become empty or _currentStoryIndex is out of range, pop home
+    if (_currentStoryIndex >= widget.stories.length) {
+      // Ensure we only pop once
+      if (!_hasNavigatedToHomePage) {
+        _hasNavigatedToHomePage = true;
+        Future.microtask(() {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        });
+      }
+      return Container(color: Colors.black);
+    }
+
     final story = widget.stories[_currentStoryIndex];
+    // Also ensure currentMediaIndex is valid
+    if (_currentMediaIndex >= story.media.length) {
+      _currentMediaIndex = story.media.isNotEmpty ? story.media.length - 1 : 0;
+      if (_currentMediaIndex < 0) {
+        // No media => remove story or pop
+        widget.stories.removeAt(_currentStoryIndex);
+        if (widget.stories.isEmpty) {
+          if (!_hasNavigatedToHomePage) {
+            _hasNavigatedToHomePage = true;
+            Future.microtask(() {
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            });
+          }
+          return Container(color: Colors.black);
+        }
+      }
+    }
+
     final isOwner = (story.userId == _loggedInUserId);
 
     return Scaffold(
@@ -691,15 +753,14 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
           final isLastStory = _currentStoryIndex == widget.stories.length - 1;
           final isLastMedia =
               _currentMediaIndex ==
-                  widget.stories[_currentStoryIndex].media.length - 1;
+              widget.stories[_currentStoryIndex].media.length - 1;
 
           if (details.globalPosition.dx < screenWidth / 3) {
             _previousMedia();
           } else if (details.globalPosition.dx > 2 * screenWidth / 3) {
             // If last story & last media => exit
             if (isLastStory && isLastMedia) {
-              _hasNavigatedToHomePage = true;
-              Navigator.of(context).popUntil((route) => route.isFirst);
+              _navigateHome();
             } else {
               _nextMediaOrStory();
             }
@@ -709,13 +770,14 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
         onLongPressEnd: (_) => _resumeStory(),
         child: PageView.builder(
           controller: _pageController,
+          physics: const NeverScrollableScrollPhysics(),
           itemCount: widget.stories.length,
           itemBuilder: (context, index) {
-            final story = widget.stories[index];
-
+            final current = widget.stories[index];
             return Stack(
               children: [
-                _buildMedia(story, _currentMediaIndex),
+                if (_currentMediaIndex < current.media.length)
+                  _buildMedia(current, _currentMediaIndex),
                 Positioned(
                   top: 40.0,
                   left: 10.0,
@@ -727,47 +789,42 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
                       const SizedBox(height: 10.0),
                       Row(
                         children: [
-                          GestureDetector(
-                            onTap: () {},
-                            child: CircleAvatar(
-                              backgroundImage: NetworkImage(story.profilePicUrl),
-                              radius: 20,
-                            ),
+                          CircleAvatar(
+                            backgroundImage: NetworkImage(current.profilePicUrl),
+                            radius: 20,
                           ),
                           const SizedBox(width: 10),
-                          GestureDetector(
-                            onTap: () {},
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  story.fullName,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                current.fullName,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                const SizedBox(height: 3),
+                              ),
+                              const SizedBox(height: 3),
+                              if (_currentMediaIndex < current.media.length)
                                 Text(
-                                  _formatTime(story.media[_currentMediaIndex]
-                                      .localCreatedAt),
+                                  _formatTime(
+                                      current.media[_currentMediaIndex].localCreatedAt),
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                              ],
-                            ),
+                            ],
                           ),
                           const Spacer(),
                           if (!isOwner)
                             IconButton(
                               icon: const Icon(Icons.more_vert, color: Colors.white),
                               onPressed: () => _showReportOptions(
-                                story.userId,
-                                story.storyId,
+                                current.userId,
+                                current.storyId,
                               ),
                             ),
                         ],
@@ -783,7 +840,7 @@ class _FullScreenStoryViewState extends State<FullScreenStoryView>
                       children: [
                         IconButton(
                           icon: const Icon(Icons.visibility, color: Colors.white),
-                          onPressed: () => _showViewersBottomSheet(),
+                          onPressed: _showViewersBottomSheet,
                           tooltip: 'Viewers',
                         ),
                         const SizedBox(height: 15),

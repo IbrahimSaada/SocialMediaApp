@@ -216,6 +216,10 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
   bool _isEditing = false;
   String _newCaption = "";
   late int _likeCount;
+
+  // For "Show More/Show Less" in caption
+  bool _isCaptionExpanded = false;
+
   late AnimationController _bookmarkAnimationController;
   final UserProfileService _userProfileService = UserProfileService();
 
@@ -452,6 +456,8 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     );
   }
 
+  /// Builds the caption editor if `_isEditing` is true.
+  /// Otherwise, displays the caption with a Show More / Show Less functionality.
   Widget _buildCaptionEditor() {
     if (_isEditing) {
       return Column(
@@ -489,11 +495,52 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
         ],
       );
     } else {
-      return Text(
-        widget.post.caption,
-        style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600),
+      // Determine if the text exceeds 3 lines to conditionally show "Show more".
+      final textStyle = const TextStyle(fontSize: 16.0, fontWeight: FontWeight.w600);
+      final span = TextSpan(text: widget.post.caption, style: textStyle);
+
+      // Use a TextPainter to check if the text exceeds 3 lines
+      final tp = TextPainter(
+        text: span,
         maxLines: 3,
-        overflow: TextOverflow.ellipsis,
+        textDirection: TextDirection.ltr,
+      );
+
+      // We need to layout with an arbitrary max width; we'll approximate by using screen width
+      final maxTextWidth = MediaQuery.of(context).size.width - 40; 
+      tp.layout(maxWidth: maxTextWidth);
+
+      final exceedsMaxLines = tp.didExceedMaxLines;
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.post.caption,
+            style: textStyle,
+            maxLines: _isCaptionExpanded ? null : 3,
+            overflow: _isCaptionExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+          ),
+          if (exceedsMaxLines)
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _isCaptionExpanded = !_isCaptionExpanded;
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                  _isCaptionExpanded ? 'Show Less' : 'Show More',
+                  style: const TextStyle(
+                    fontSize: 14.0,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue,
+                  ),
+                ),
+              ),
+            ),
+        ],
       );
     }
   }
