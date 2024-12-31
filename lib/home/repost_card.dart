@@ -410,7 +410,6 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
                 : Text(
                     widget.feedItem.content,
                     overflow: TextOverflow.ellipsis,
-                    maxLines: 2,
                   ),
             // If more than 100 chars, show the toggle
             if (widget.feedItem.content.length > 100)
@@ -508,7 +507,6 @@ class _RepostCardState extends State<RepostCard> with TickerProviderStateMixin {
                 : Text(
                     post.content,
                     overflow: TextOverflow.ellipsis,
-                    maxLines: 2,
                   ),
           if (post.content.length > 100)
             GestureDetector(
