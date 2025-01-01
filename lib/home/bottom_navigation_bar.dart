@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '***REMOVED***/home/add_friends_page.dart';
 import '***REMOVED***/notification/notification_page.dart';
 import '***REMOVED***/home/search.dart';
-import '***REMOVED***/askquestion/qna_page.dart';
 import '***REMOVED***/contact/contacts_page.dart';
 import '***REMOVED***/services/LoginService.dart';
 import '***REMOVED***/services/notificationservice.dart';
@@ -118,17 +117,6 @@ IconButton(
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const Search()),
-                ).then((_) {
-                  refreshUnreadCount();
-                });
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.help_outline, color: Colors.white, size: 28),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => QnaPage()),
                 ).then((_) {
                   refreshUnreadCount();
                 });
