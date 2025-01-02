@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cook/maintenance/expiredtoken.dart' show handleSessionExpired;
 import '../models/notification_model.dart';
-import '../page/question_details_page.dart';
-import '../page/user_private_question_details_page.dart';
 import '../services/notificationservice.dart';
 import '../services/SessionExpiredException.dart';
 import '../page/post_details_page.dart';
 import '../page/comment_details_page.dart';
 import '../page/repost_details_page.dart';
-import '../page/answer_details_page.dart';
-import '../page/private_question_details_page.dart';
 import '../home/add_friends_page.dart';
 
 class NotificationPage extends StatefulWidget {
@@ -229,8 +225,9 @@ class _NotificationPageState extends State<NotificationPage> {
     NotificationModel notification,
     double screenWidth,
   ) {
-    final iconData = getIconForNotificationType(notification.type);
-    final timestamp = getTimeDifference(notification.createdAt);
+    // Define iconData and timestamp within the method
+    final IconData iconData = getIconForNotificationType(notification.type);
+    final String timestamp = getTimeDifference(notification.createdAt);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10.0),
@@ -316,29 +313,7 @@ class _NotificationPageState extends State<NotificationPage> {
         notification.type == 'Follow' ||
         notification.type == 'Accept' ||
         notification.type == 'FollowedBack') {
-      if (notification.type == 'Answer' || notification.type == 'AnswerVerified') {
-        final questionId = notification.relatedEntityId!;
-        List<int> answerIds = [];
-        if (notification.aggregated_answer_ids != null &&
-            notification.aggregated_answer_ids!.isNotEmpty) {
-          answerIds = notification.aggregated_answer_ids!
-              .split(',')
-              .map((id) => int.parse(id.trim()))
-              .toList();
-        } else if (notification.commentId != null) {
-          answerIds = [notification.commentId!];
-        }
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AnswerDetailsPage(
-              answerIds: answerIds,
-              questionId: questionId,
-            ),
-          ),
-        );
-      } else if (notification.type == 'Follow' ||
+      if (notification.type == 'Follow' ||
           notification.type == 'Accept' ||
           notification.type == 'FollowedBack') {
         Navigator.push(
@@ -423,36 +398,8 @@ class _NotificationPageState extends State<NotificationPage> {
             ),
           );
         }
-      } else if (notification.type == 'QuestionLike') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => QuestionDetailsPage(
-              questionId: notification.relatedEntityId!,
-            ),
-          ),
-        );
-      } else if (notification.type == 'PrivateQuestion') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PrivateQuestionDetailsPage(
-              userId: notification.recipientUserId,
-              questionId: notification.relatedEntityId!,
-            ),
-          ),
-        );
-      } else if (notification.type == 'PrivateQuestionAnswered') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AcceptedPrivateQuestionDetailsPage(
-              questionId: notification.relatedEntityId!,
-            ),
-          ),
-        );
       } else {
-        print('Unhandled notification type: ${notification.type}');
+        print('No related entity id for this notification');
       }
     } else {
       print('No related entity id for this notification');
@@ -473,8 +420,6 @@ class _NotificationPageState extends State<NotificationPage> {
         return Icons.person_add;
       case 'FriendRequest':
         return Icons.person_add_alt_1;
-      case 'AnswerVerified':
-        return Icons.verified;
       case 'Decline':
         return Icons.close;
       case 'Accept':
@@ -482,11 +427,15 @@ class _NotificationPageState extends State<NotificationPage> {
       case 'FollowedBack':
         return Icons.person;
       case 'QuestionLike':
+        // Removed related to question-answering
         return Icons.thumb_up_alt;
-      case 'Answer':
-        return Icons.question_answer;
-      case 'PrivateQuestion':
-        return Icons.question_answer;
+      // Removed cases related to question-answering:
+      // case 'Answer':
+      //   return Icons.question_answer;
+      // case 'AnswerVerified':
+      //   return Icons.verified;
+      // case 'PrivateQuestion':
+      //   return Icons.question_answer;
       default:
         return Icons.notifications;
     }
