@@ -49,3 +49,8 @@ Test various features like posting, real-time chat, and notifications using mult
 Verify real-time updates for chat and notifications.
 Check user interactions such as follows, likes, and comments.
 
+## **Screenshots**
+
+![Screenshot 2024-12-31 193631](https://github.com/user-attachments/assets/2a6e371a-04d9-4a27-8899-5f7dff09a939)
+
+
