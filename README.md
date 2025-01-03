@@ -50,32 +50,20 @@ Verify real-time updates for chat and notifications.
 Check user interactions such as follows, likes, and comments.
 
 ## **Screenshots**
+![Screenshot 2024-12-31 193631](https://github.com/user-attachments/assets/afea3083-1a72-41cc-9420-0285384d4828)
+![Screenshot 2024-12-31 193858](https://github.com/user-attachments/assets/73a2b836-0159-4c9c-b479-cc82ade4022e)
+![Screenshot 2024-12-31 194010](https://github.com/user-attachments/assets/29709069-8e35-4522-b840-27fbae82c1bd)
+![Screenshot 2024-12-31 194057](https://github.com/user-attachments/assets/56f3023f-4abb-4b30-a381-02fd0200726e)
+![Screenshot 2024-12-31 194145](https://github.com/user-attachments/assets/58597642-e684-4101-b6ca-a4d43539ce5f)
+![Screenshot 2024-12-31 194225](https://github.com/user-attachments/assets/055c709c-6eae-44e6-9e71-4fabeb774418)
+![Screenshot 2024-12-31 194413](https://github.com/user-attachments/assets/2fc53645-7b0c-46c8-8b0a-f4d3523ae499)
+![Screenshot 2024-12-31 201228](https://github.com/user-attachments/assets/24432ca9-0ed4-4ede-9f49-e52e9770b952)
 
-![Screenshot 2024-12-31 193631](https://github.com/user-attachments/assets/2a6e371a-04d9-4a27-8899-5f7dff09a939)
 
-![Screenshot 2024-12-31 204026](https://github.com/user-attachments/assets/f72e6742-17e4-474b-8985-feeae4e58725)
-![Screenshot 2024-12-31 202945](https://github.com/user-attachments/assets/44820775-4a23-4c4c-bc5e-07075ce7c5c9)
-![Screenshot 2024-12-31 202544](https://github.com/user-attachments/assets/c0463220-dc9b-47a5-91d4-5b568ebbab38)
-![Screenshot 2024-12-31 201720](https://github.com/user-attachments/assets/f8f02405-489b-43ab-b1f8-21bd1576aa9a)
-![Screenshot 2024-12-31 201634](https://github.com/user-attachments/assets/26ad3509-a8fc-4241-a21b-232bcebc0a2c)
-![Screenshot 2024-12-31 201609](https://github.com/user-attachments/assets/3e1e9ac0-eaa3-4830-9c66-9f1ee743d35a)
-![Screenshot 2024-12-31 201512](https://github.com/user-attachments/assets/5a181f20-40e2-4cea-8898-b22e5eee2d24)
-![Screenshot 2024-12-31 201323](https://github.com/user-attachments/assets/05112b84-7c83-4759-98e3-a4a084dd8a32)
-![Screenshot 2024-12-31 201228](https://github.com/user-attachments/assets/1b32ba23-b620-4c50-9659-33049ce76cf4)
-![Screenshot 2024-12-31 194413](https://github.com/user-attachments/assets/c93ce86d-035f-4250-b4b1-bf66355cd30b)
-![Screenshot 2024-12-31 194334](https://github.com/user-attachments/assets/08727a32-c054-4454-8f95-baa6c0c0cc0f)
-![Screenshot 2024-12-31 194225](https://github.com/user-attachments/assets/94e4da0c-91e6-44c1-86f9-2c46208228dd)
-![Screenshot 2024-12-31 194145](https://github.com/user-attachments/assets/aea949e8-3bb5-441d-82b7-96913ce08331)
-![Screenshot 2024-12-31 194057](https://github.com/user-attachments/assets/d23d0877-7057-4f32-b77c-b2e8b504addc)
-![Screenshot 2024-12-31 194010](https://github.com/user-attachments/assets/0d02b1a9-1dc0-4115-840b-d0745fe2cc37)
-![Screenshot 2024-12-31 193858](https://github.com/user-attachments/assets/734af0f5-2132-4460-8c57-46ba4b43aa83)
-![Screenshot 2024-12-31 214207](https://github.com/user-attachments/assets/fb1091b2-f3c9-4298-949c-f38797ee3c55)
-![Screenshot 2024-12-31 214120](https://github.com/user-attachments/assets/b1b09b57-44ba-42fc-89cc-05a3abcff449)
-![Screenshot 2024-12-31 213841](https://github.com/user-attachments/assets/230e6e42-04e3-44ab-8d15-625637d11fcf)
-![Screenshot 2024-12-31 213319](https://github.com/user-attachments/assets/7ba7842d-d71f-42cc-aae0-895a15f1571a)
-![Screenshot 2024-12-31 204946](https://github.com/user-attachments/assets/0d7d1a0f-a8bc-4998-8bfd-af4fc8dc2a7a)
-![Screenshot 2024-12-31 204748](https://github.com/user-attachments/assets/d47fce91-41fa-4d0a-af24-c883af4656c4)
-![Screenshot 2024-12-31 204659](https://github.com/user-attachments/assets/8d64e8ec-fdb1-4d17-93a8-d29fd4b00696)
-![Screenshot 2024-12-31 204643](https://github.com/user-attachments/assets/9c772278-6597-4cdc-a3cc-63c905fb9267)
-![Screenshot 2024-12-31 204628](https://github.com/user-attachments/assets/af70ea75-99d0-4ee7-92dd-c538e822d8fc)
+
+
+
+
+
+
 
