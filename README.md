@@ -1,4 +1,4 @@
-![Screenshot 2025-01-04 115634](https://github.com/user-attachments/assets/27ecbfae-d2a1-43aa-80d9-62d852856777)## 🚀 **SocialMediaApp: A Feature-Rich Social Media Mobile Application** 
+## 🚀 **SocialMediaApp: A Feature-Rich Social Media Mobile Application** 
 
 Welcome to **SocialMediaApp**, a mobile social media application built with **Flutter**. This app offers a seamless experience for users to share content, interact with others, and stay updated in real-time.
 
@@ -238,7 +238,7 @@ flutter run
 ![Screenshot 2025-01-04 115239](https://github.com/user-attachments/assets/889ffb28-81e8-4a78-850f-a848221ae38c)
 ![Screenshot 2025-01-04 114948](https://github.com/user-attachments/assets/3469e86f-59a5-4a72-99ab-52688df59ea4)
 
-###🔔 **Notifications**
+### 🔔 **Notifications**
 ![Screenshot 2025-01-04 114546](https://github.com/user-attachments/assets/c252874c-e9e9-4ee7-af8d-abb4f4a52c75)
 
 ### 🤝 **Follow Requests**
