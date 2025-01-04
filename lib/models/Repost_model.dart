@@ -2,7 +2,7 @@
 // ignore: file_names
 // ignore_for_file: file_names
 
-import '***REMOVED***/models/post_model.dart';
+import 'package:myapp/models/post_model.dart';
 
 class Repost {
   final int shareId;

@@ -68,7 +68,7 @@ class S3UploadService {
 
     final objectKey = Uri.parse(urlData.url).path.replaceFirst('/', '');
     final objectUrl =
-        '***REMOVED***/$objectKey';
+        'your-bucket-name/$objectKey';
 
     return objectUrl;
   }
