@@ -282,8 +282,3 @@ This project is licensed under the **MIT License**.
 ## 📬 **Contact & Support**
 
 - **Email:** ibrahimsaada99@gmail.com - adamsaifi.cs@gmail.com - ahmadghosen20@gmail.com
-
-
-
-
-also say we are not published this project yet  and their is private feature will be show when app published in playstore and app store.
