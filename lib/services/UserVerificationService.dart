@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 
 class UserVerificationService {
   final String baseUrl =
-      '***REMOVED***/api/Registration';
+      'your-backend-server/api/Registration';
 
   Future<bool> verifyUser(String email, String verificationCode) async {
     try {

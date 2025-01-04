@@ -22,7 +22,7 @@ class SignalRService {
     // 2) Build the HubConnection
     _hubConnection = HubConnectionBuilder()
         .withUrl(
-          '***REMOVED***/chatHub',
+          'your-backend-server/chatHub',
           HttpConnectionOptions(
             accessTokenFactory: () async => accessToken,
           ),

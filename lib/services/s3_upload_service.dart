@@ -29,7 +29,7 @@ class S3UploadService {
     // Make the request with ApiService, which handles auth & signature
     final response = await _apiService.makeRequestWithToken(
       Uri.parse(
-        '***REMOVED***/api/media/s3-presigned-upload-urls',
+        'your-backend-server/api/media/s3-presigned-upload-urls',
       ),
       signatureData,
       'POST',

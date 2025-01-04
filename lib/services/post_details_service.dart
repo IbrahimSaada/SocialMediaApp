@@ -9,7 +9,7 @@ class PostDetailsService {
   // Base URL for fetching a single post by ID
   // e.g. GET https://<...>/api/Feed/Post/{postId}?userId={userId}
   static const String baseUrl =
-      '***REMOVED***/api/Feed/Post';
+      'your-backend-server/api/Feed/Post';
 
   final ApiService _apiService = ApiService();
 

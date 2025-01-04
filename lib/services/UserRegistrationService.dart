@@ -5,7 +5,7 @@ import '../models/user_model.dart';
 
 class UserRegistrationService {
   final String baseUrl =
-      '***REMOVED***/api/Registration';
+      'your-backend-server/api/Registration';
 
   Future<void> registerUser(UserModel user) async {
     try {

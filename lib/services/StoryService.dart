@@ -9,7 +9,7 @@ import 'package:myapp/models/paginated_stories.dart'; // import the new model
 
 class StoryService {
   final String baseUrl =
-      '***REMOVED***/api/Stories';
+      'your-backend-server/api/Stories';
 
   final ApiService _apiService = ApiService();
 

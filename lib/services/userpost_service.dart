@@ -15,7 +15,7 @@ class PrivacyException implements Exception {
 }
 
 class UserpostService {
-  static const String baseUrl = '***REMOVED***/api';
+  static const String baseUrl = 'your-backend-server/api';
   final ApiService _apiService = ApiService();
 
   Future<List<Post>> fetchUserPosts(int currentUserId, int viewerUserId, int pageNumber, int pageSize) async {

@@ -15,11 +15,11 @@ import 'bannedexception.dart';
 class SearchService {
   // Base endpoints
   static const String baseUrl =
-      '***REMOVED***/api/UserConnections/search';
+      'your-backend-server/api/UserConnections/search';
   static const String followerRequestsUrl =
-      '***REMOVED***/api/UserConnections/follower-requests';
+      'your-backend-server/api/UserConnections/follower-requests';
   static const String pendingRequestsUrl =
-      '***REMOVED***/api/UserConnections/pending-follow-requests';
+      'your-backend-server/api/UserConnections/pending-follow-requests';
 
   // Shared services
   final ApiService _apiService = ApiService();

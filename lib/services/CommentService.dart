@@ -11,7 +11,7 @@ import 'SignatureService.dart';
 import 'apiService.dart';
 
 class CommentService {
-  static const String apiUrl = '***REMOVED***/api/Posts';
+  static const String apiUrl = 'your-backend-server/api/Posts';
   static final LoginService _loginService = LoginService();
   static final SignatureService _signatureService = SignatureService();
 

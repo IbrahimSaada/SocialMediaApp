@@ -9,7 +9,7 @@ import 'apiService.dart';
 import 'SessionExpiredException.dart';
 
 class UserProfileService {
-  static const String baseUrl = '***REMOVED***/api/UserProfile';
+  static const String baseUrl = 'your-backend-server/api/UserProfile';
   final ApiService _apiService = ApiService();
   // Fetch user profile method
     Future<UserProfile?> fetchUserProfile(int userId) async {
@@ -146,7 +146,7 @@ Future<void> changeProfilePrivacy(int userId, PrivacySettings settings) async {
 
   // Construct the full URL with query parameters
   final Uri uri = Uri.parse(
-    '***REMOVED***/api/UserProfile/change-privacy'
+    'your-backend-server/api/UserProfile/change-privacy'
   ).replace(queryParameters: queryParams);
 
   // Data to sign (userId + privacy settings)

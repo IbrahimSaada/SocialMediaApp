@@ -7,7 +7,7 @@ import 'package:myapp/services/SessionExpiredException.dart';
 
 class ContactService {
   final String baseUrl =
-      '***REMOVED***/api/Chat';
+      'your-backend-server/api/Chat';
   final ApiService _apiService = ApiService();
 
   Future<List<UserContact>> fetchContacts(

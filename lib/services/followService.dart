@@ -5,7 +5,7 @@ import 'apiService.dart';
 import '../models/followRequestModel.dart';
 
 class FollowService {
-  static const String baseUrl = '***REMOVED***/api/UserConnections';
+  static const String baseUrl = 'your-backend-server/api/UserConnections';
   final ApiService _apiService = ApiService();
 
   /// Follow a user

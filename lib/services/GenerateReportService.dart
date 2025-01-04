@@ -6,7 +6,7 @@ import 'package:myapp/services/apiService.dart';
 import 'package:myapp/services/SessionExpiredException.dart';
 
 class ReportService {
-  final String apiUrl = '***REMOVED***/api/Reports'; 
+  final String apiUrl = 'your-backend-server/api/Reports'; 
   
   final ApiService _apiService = ApiService();
 

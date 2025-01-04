@@ -6,7 +6,7 @@ import 'dart:io';
 
 class PasswordResetService {
   final String baseUrl =
-      '***REMOVED***/api/ResetPassword';
+      'your-backend-server/api/ResetPassword';
 
   Future<void> requestPasswordReset(String email) async {
     try {

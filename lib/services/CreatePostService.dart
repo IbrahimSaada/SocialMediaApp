@@ -4,7 +4,7 @@ import 'package:myapp/services/apiService.dart';
 import 'package:myapp/services/SessionExpiredException.dart';
 
 class PostService {
-  final String _createPostUrl = '***REMOVED***/api/CreatePost';
+  final String _createPostUrl = 'your-backend-server/api/CreatePost';
   final ApiService _apiService = ApiService();
 
   PostService();

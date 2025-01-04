@@ -6,7 +6,7 @@ import 'SessionExpiredException.dart';
 import 'apiService.dart';
 
 class NotificationService {
-  static const String baseUrl = '***REMOVED***/api/Notification';
+  static const String baseUrl = 'your-backend-server/api/Notification';
 
   final ApiService _apiService = ApiService();
   final LoginService _loginService = LoginService();

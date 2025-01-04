@@ -8,7 +8,7 @@ import '../models/feed/post_item.dart';
 import '../models/feed/repost_item.dart';
 
 class FeedService {
-  static const String baseUrl = '***REMOVED***/api';
+  static const String baseUrl = 'your-backend-server/api';
   final ApiService _apiService = ApiService();
 
 Future<List<FeedItem>> fetchFeed({

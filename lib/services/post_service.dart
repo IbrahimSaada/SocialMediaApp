@@ -8,7 +8,7 @@ import '../models/bookmarkrequest_model.dart';
 import 'apiService.dart';
 
 class PostService {
-  static const String apiUrl = '***REMOVED***/api/Posts';
+  static const String apiUrl = 'your-backend-server/api/Posts';
 
   // Like a post
 static Future<void> likePost(LikeRequest likeRequest) async {
