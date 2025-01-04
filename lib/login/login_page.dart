@@ -1,8 +1,8 @@
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '***REMOVED***/home/home.dart';
-import '***REMOVED***/login/forgotpassword.dart';
+import 'package:myapp/home/home.dart';
+import 'package:myapp/login/forgotpassword.dart';
 import '../login/register.dart';
 import '../services/LoginService.dart';
 import '../services/BannedException.dart';

@@ -1,20 +1,20 @@
-import '***REMOVED***/services/Userprofile_service.dart';
+import 'package:myapp/services/Userprofile_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:timeago/timeago.dart' as timeago;
-import '***REMOVED***/services/post_service.dart';
-import '***REMOVED***/models/post_model.dart';
-import '***REMOVED***/models/LikeRequest_model.dart';
-import '***REMOVED***/models/bookmarkrequest_model.dart';
+import 'package:myapp/services/post_service.dart';
+import 'package:myapp/models/post_model.dart';
+import 'package:myapp/models/LikeRequest_model.dart';
+import 'package:myapp/models/bookmarkrequest_model.dart';
 import 'package:chewie/chewie.dart';
 import 'package:video_player/video_player.dart';
-import '***REMOVED***/home/comment.dart';
-import '***REMOVED***/services/LoginService.dart';
+import 'package:myapp/home/comment.dart';
+import 'package:myapp/services/LoginService.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-import '***REMOVED***/services/userpost_service.dart';
-import '***REMOVED***/home/report_dialog.dart';
-import '***REMOVED***/maintenance/expiredtoken.dart';
-import '***REMOVED***/services/SessionExpiredException.dart';
+import 'package:myapp/services/userpost_service.dart';
+import 'package:myapp/home/report_dialog.dart';
+import 'package:myapp/maintenance/expiredtoken.dart';
+import 'package:myapp/services/SessionExpiredException.dart';
 
 class ProfilePostDetails extends StatefulWidget {
   final List<Post> userPosts;

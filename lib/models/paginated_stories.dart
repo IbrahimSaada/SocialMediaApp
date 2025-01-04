@@ -1,5 +1,5 @@
-import '***REMOVED***/models/story_model.dart';
-import '***REMOVED***/models/storyview_response_model.dart';
+import 'package:myapp/models/story_model.dart';
+import 'package:myapp/models/storyview_response_model.dart';
 
 class PaginatedStories {
   final List<Story> data;

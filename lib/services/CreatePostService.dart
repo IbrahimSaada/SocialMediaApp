@@ -1,7 +1,7 @@
 
-import '***REMOVED***/models/post_request.dart';
-import '***REMOVED***/services/apiService.dart';
-import '***REMOVED***/services/SessionExpiredException.dart';
+import 'package:myapp/models/post_request.dart';
+import 'package:myapp/services/apiService.dart';
+import 'package:myapp/services/SessionExpiredException.dart';
 
 class PostService {
   final String _createPostUrl = '***REMOVED***/api/CreatePost';

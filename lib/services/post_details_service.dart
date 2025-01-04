@@ -1,9 +1,9 @@
 // services/post_details_service.dart
 
 import 'dart:convert';
-import '***REMOVED***/models/post_details_model.dart'; // Your custom model
-import '***REMOVED***/services/apiService.dart';
-import '***REMOVED***/services/SessionExpiredException.dart';
+import 'package:myapp/models/post_details_model.dart'; // Your custom model
+import 'package:myapp/services/apiService.dart';
+import 'package:myapp/services/SessionExpiredException.dart';
 
 class PostDetailsService {
   // Base URL for fetching a single post by ID

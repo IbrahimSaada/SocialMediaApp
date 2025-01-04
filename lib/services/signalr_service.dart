@@ -1,9 +1,9 @@
 // signalr_service.dart
 
 import 'package:signalr_core/signalr_core.dart';
-import '***REMOVED***/services/LoginService.dart';
-import '***REMOVED***/services/SignatureService.dart';
-import '***REMOVED***/services/SessionExpiredException.dart';
+import 'package:myapp/services/LoginService.dart';
+import 'package:myapp/services/SignatureService.dart';
+import 'package:myapp/services/SessionExpiredException.dart';
 
 class SignalRService {
   late HubConnection _hubConnection;

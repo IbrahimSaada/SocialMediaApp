@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '***REMOVED***/home/add_friends_page.dart';
-import '***REMOVED***/notification/notification_page.dart';
-import '***REMOVED***/home/search.dart';
-import '***REMOVED***/contact/contacts_page.dart';
-import '***REMOVED***/services/LoginService.dart';
-import '***REMOVED***/services/notificationservice.dart';
+import 'package:myapp/home/add_friends_page.dart';
+import 'package:myapp/notification/notification_page.dart';
+import 'package:myapp/home/search.dart';
+import 'package:myapp/contact/contacts_page.dart';
+import 'package:myapp/services/LoginService.dart';
+import 'package:myapp/services/notificationservice.dart';
 
 class BottomNavigationBarCook extends StatefulWidget {
   const BottomNavigationBarCook({Key? key}) : super(key: key);

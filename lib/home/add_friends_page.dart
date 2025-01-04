@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
 // Replace these imports with your actual files
-import '***REMOVED***/models/SearchUserModel.dart';
-import '***REMOVED***/services/search_service.dart';
-import '***REMOVED***/services/loginservice.dart';
-import '***REMOVED***/services/followService.dart';
-import '***REMOVED***/maintenance/expiredtoken.dart';  // For session expired
-import '***REMOVED***/profile/otheruserprofilepage.dart';
-import '***REMOVED***/profile/profile_page.dart';
+import 'package:myapp/models/SearchUserModel.dart';
+import 'package:myapp/services/search_service.dart';
+import 'package:myapp/services/loginservice.dart';
+import 'package:myapp/services/followService.dart';
+import 'package:myapp/maintenance/expiredtoken.dart';  // For session expired
+import 'package:myapp/profile/otheruserprofilepage.dart';
+import 'package:myapp/profile/profile_page.dart';
 
 // Session expired exception, or you can just check for status code 401, etc.
-import '***REMOVED***/services/SessionExpiredException.dart';
+import 'package:myapp/services/SessionExpiredException.dart';
 
 void showBlockSnackbar(BuildContext context, String reason) {
   String message;

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:app_links/app_links.dart';
-import '***REMOVED***/home/home.dart';
-import '***REMOVED***/login/login_page.dart';
-import '***REMOVED***/profile/otheruserprofilepage.dart';
+import 'package:myapp/home/home.dart';
+import 'package:myapp/login/login_page.dart';
+import 'package:myapp/profile/otheruserprofilepage.dart';
 import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'services/pushnotificationservice.dart';

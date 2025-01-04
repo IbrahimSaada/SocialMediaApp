@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
-import '***REMOVED***/services/userprofile_service.dart';
-import '***REMOVED***/models/following_model.dart';
-import '***REMOVED***/maintenance/expiredtoken.dart';
-import '***REMOVED***/services/SessionExpiredException.dart';
+import 'package:myapp/services/userprofile_service.dart';
+import 'package:myapp/models/following_model.dart';
+import 'package:myapp/maintenance/expiredtoken.dart';
+import 'package:myapp/services/SessionExpiredException.dart';
 
 class FollowingPage extends StatefulWidget {
   final int userId;

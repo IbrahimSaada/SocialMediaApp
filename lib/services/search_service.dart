@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 // Models
-import '***REMOVED***/models/SearchUserModel.dart';
+import 'package:myapp/models/SearchUserModel.dart';
 
 // Services & Exceptions
 import 'SessionExpiredException.dart';

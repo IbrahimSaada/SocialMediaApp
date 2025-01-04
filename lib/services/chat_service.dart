@@ -1,12 +1,12 @@
 // chat_service.dart
 
 import 'dart:convert';
-import '***REMOVED***/models/message_model.dart';
-import '***REMOVED***/models/contact_model.dart';
-import '***REMOVED***/models/deleteuserchat.dart';
-import '***REMOVED***/models/mute_user_dto.dart';
-import '***REMOVED***/services/apiService.dart';
-import '***REMOVED***/services/SessionExpiredException.dart';
+import 'package:myapp/models/message_model.dart';
+import 'package:myapp/models/contact_model.dart';
+import 'package:myapp/models/deleteuserchat.dart';
+import 'package:myapp/models/mute_user_dto.dart';
+import 'package:myapp/services/apiService.dart';
+import 'package:myapp/services/SessionExpiredException.dart';
 
 class ChatService {
   final String baseUrl =

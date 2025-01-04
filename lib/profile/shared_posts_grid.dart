@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '***REMOVED***/models/sharedpost_model.dart';
+import 'package:myapp/models/sharedpost_model.dart';
 
 class SharedPostsGrid extends StatelessWidget {
   final List<SharedPostDetails> sharedPosts;

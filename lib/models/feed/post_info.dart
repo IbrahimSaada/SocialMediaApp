@@ -1,6 +1,6 @@
 // models/feed/post_info.dart
 
-import '***REMOVED***/models/feed/post_media.dart';
+import 'package:myapp/models/feed/post_media.dart';
 import 'user_info.dart';
 
 class PostInfo {

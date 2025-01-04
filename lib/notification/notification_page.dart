@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '***REMOVED***/maintenance/expiredtoken.dart' show handleSessionExpired;
+import 'package:myapp/maintenance/expiredtoken.dart' show handleSessionExpired;
 import '../models/notification_model.dart';
 import '../services/notificationservice.dart';
 import '../services/SessionExpiredException.dart';

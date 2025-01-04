@@ -2,8 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '***REMOVED***/services/loginservice.dart';
-import '***REMOVED***/menu/menu_page.dart';
+import 'package:myapp/services/loginservice.dart';
+import 'package:myapp/menu/menu_page.dart';
 
 PreferredSizeWidget buildTopAppBar(BuildContext context) {
   return AppBar(

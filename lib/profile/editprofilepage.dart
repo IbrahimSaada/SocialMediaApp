@@ -1,13 +1,13 @@
 import 'dart:io';
-import '***REMOVED***/models/presigned_url.dart';
+import 'package:myapp/models/presigned_url.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '***REMOVED***/services/s3_upload_service.dart'; // Use your S3UploadService
-import '***REMOVED***/services/loginservice.dart'; // Use your LoginService
-import '***REMOVED***/services/userprofile_service.dart'; // Use the UserProfileService
-import '***REMOVED***/models/editprofile_model.dart'; // Use your EditUserProfile model
-import '***REMOVED***/maintenance/expiredtoken.dart';
-import '***REMOVED***/services/SessionExpiredException.dart';
+import 'package:myapp/services/s3_upload_service.dart'; // Use your S3UploadService
+import 'package:myapp/services/loginservice.dart'; // Use your LoginService
+import 'package:myapp/services/userprofile_service.dart'; // Use the UserProfileService
+import 'package:myapp/models/editprofile_model.dart'; // Use your EditUserProfile model
+import 'package:myapp/maintenance/expiredtoken.dart';
+import 'package:myapp/services/SessionExpiredException.dart';
 
 class EditProfilePage extends StatefulWidget {
   final String currentUsername;

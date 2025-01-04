@@ -6,12 +6,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:chewie/chewie.dart';
 import 'package:video_player/video_player.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '***REMOVED***/services/s3_upload_service.dart';
-import '***REMOVED***/services/CreatePostService.dart';
-import '***REMOVED***/services/LoginService.dart';
-import '***REMOVED***/models/post_request.dart';
-import '***REMOVED***/models/presigned_url.dart';
-import '***REMOVED***/maintenance/expiredtoken.dart';
+import 'package:myapp/services/s3_upload_service.dart';
+import 'package:myapp/services/CreatePostService.dart';
+import 'package:myapp/services/LoginService.dart';
+import 'package:myapp/models/post_request.dart';
+import 'package:myapp/models/presigned_url.dart';
+import 'package:myapp/maintenance/expiredtoken.dart';
 
 class CreatePostPage extends StatefulWidget {
   const CreatePostPage({super.key});

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '***REMOVED***/services/userprofile_service.dart';
-import '***REMOVED***/services/loginservice.dart';
-import '***REMOVED***/maintenance/expiredtoken.dart';
-import '***REMOVED***/services/SessionExpiredException.dart';
+import 'package:myapp/services/userprofile_service.dart';
+import 'package:myapp/services/loginservice.dart';
+import 'package:myapp/maintenance/expiredtoken.dart';
+import 'package:myapp/services/SessionExpiredException.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   @override

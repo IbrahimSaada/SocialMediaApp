@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '***REMOVED***/models/post_model.dart';
+import 'package:myapp/models/post_model.dart';
 
 class BookmarkedGrid extends StatelessWidget {
   final List<Post> bookmarkedPosts;

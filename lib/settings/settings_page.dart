@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '***REMOVED***/services/userprofile_service.dart';
-import '***REMOVED***/models/privacy_settings_model.dart';
-import '***REMOVED***/settings/changepasswordpage.dart';
-import '***REMOVED***/maintenance/expiredtoken.dart';
-import '***REMOVED***/services/SessionExpiredException.dart';
+import 'package:myapp/services/userprofile_service.dart';
+import 'package:myapp/models/privacy_settings_model.dart';
+import 'package:myapp/settings/changepasswordpage.dart';
+import 'package:myapp/maintenance/expiredtoken.dart';
+import 'package:myapp/services/SessionExpiredException.dart';
 
 class SettingsPage extends StatefulWidget {
   @override

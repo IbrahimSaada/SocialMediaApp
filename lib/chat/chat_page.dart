@@ -1,21 +1,21 @@
 // chat_page.dart
 
 import 'package:flutter/material.dart';
-import '***REMOVED***/services/chat_service.dart';
-import '***REMOVED***/models/message_model.dart';
-import '***REMOVED***/services/signalr_service.dart';
-import '***REMOVED***/chat/message_input.dart';
-import '***REMOVED***/chat/message_bubble.dart';
-import '***REMOVED***/chat/chat_app_bar.dart';
+import 'package:myapp/services/chat_service.dart';
+import 'package:myapp/models/message_model.dart';
+import 'package:myapp/services/signalr_service.dart';
+import 'package:myapp/chat/message_input.dart';
+import 'package:myapp/chat/message_bubble.dart';
+import 'package:myapp/chat/chat_app_bar.dart';
 import 'dart:async';
 import 'dart:convert';
-import '***REMOVED***/profile/otheruserprofilepage.dart';
-import '***REMOVED***/services/crypto/key_exchange_service.dart';
-import '***REMOVED***/services/crypto/encryption_service.dart';
-import '***REMOVED***/services/crypto/key_manager.dart' show UserKeyPair;
+import 'package:myapp/profile/otheruserprofilepage.dart';
+import 'package:myapp/services/crypto/key_exchange_service.dart';
+import 'package:myapp/services/crypto/encryption_service.dart';
+import 'package:myapp/services/crypto/key_manager.dart' show UserKeyPair;
 import 'package:cryptography/cryptography.dart';
 import '../maintenance/expiredtoken.dart';
-import '***REMOVED***/services/SessionExpiredException.dart';
+import 'package:myapp/services/SessionExpiredException.dart';
 
 class ChatPage extends StatefulWidget {
   final int chatId;

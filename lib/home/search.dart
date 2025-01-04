@@ -6,21 +6,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 
 // Models (Adjust imports as per your project structure)
-import '***REMOVED***/models/SearchUserModel.dart';
+import 'package:myapp/models/SearchUserModel.dart';
 
 // Services
-import '***REMOVED***/services/search_service.dart';
-import '***REMOVED***/services/LoginService.dart';
-import '***REMOVED***/services/FollowService.dart';
+import 'package:myapp/services/search_service.dart';
+import 'package:myapp/services/LoginService.dart';
+import 'package:myapp/services/FollowService.dart';
 
 // Exceptions
-import '***REMOVED***/maintenance/expiredtoken.dart'; // Session-expired dialog or screen
-import '***REMOVED***/services/SessionExpiredException.dart';
-import '***REMOVED***/services/blocked_user_exception.dart';
-import '***REMOVED***/services/bannedexception.dart';
+import 'package:myapp/maintenance/expiredtoken.dart'; // Session-expired dialog or screen
+import 'package:myapp/services/SessionExpiredException.dart';
+import 'package:myapp/services/blocked_user_exception.dart';
+import 'package:myapp/services/bannedexception.dart';
 
 // UI
-import '***REMOVED***/profile/otheruserprofilepage.dart';
+import 'package:myapp/profile/otheruserprofilepage.dart';
 
 class Search extends StatefulWidget {
   const Search({Key? key}) : super(key: key);

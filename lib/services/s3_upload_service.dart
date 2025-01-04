@@ -4,9 +4,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:mime/mime.dart';
-import '***REMOVED***/models/presigned_url.dart';
+import 'package:myapp/models/presigned_url.dart';
 import 'package:image_picker/image_picker.dart';
-import '***REMOVED***/services/apiService.dart'; // Import the ApiService
+import 'package:myapp/services/apiService.dart'; // Import the ApiService
 
 class S3UploadService {
   final ApiService _apiService = ApiService();

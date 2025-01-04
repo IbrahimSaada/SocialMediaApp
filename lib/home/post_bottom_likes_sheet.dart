@@ -1,9 +1,9 @@
 // post_likes_bottom_sheet.dart
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '***REMOVED***/services/loginservice.dart'; // adjust import as needed
-import '***REMOVED***/profile/otheruserprofilepage.dart';
-import '***REMOVED***/profile/profile_page.dart';
+import 'package:myapp/services/loginservice.dart'; // adjust import as needed
+import 'package:myapp/profile/otheruserprofilepage.dart';
+import 'package:myapp/profile/profile_page.dart';
 import '../models/user_like.dart';
 
 class PostLikesBottomSheet extends StatefulWidget {

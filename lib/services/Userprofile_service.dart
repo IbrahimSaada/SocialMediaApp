@@ -1,10 +1,10 @@
 import 'dart:convert';
-import '***REMOVED***/models/userprofileresponse_model.dart'; // UserProfile model
-import '***REMOVED***/models/editprofile_model.dart'; // EditUserProfile model
-import '***REMOVED***/models/FollowStatusResponse.dart';
-import '***REMOVED***/models/follower_model.dart';
-import '***REMOVED***/models/following_model.dart';
-import '***REMOVED***/models/privacy_settings_model.dart';
+import 'package:myapp/models/userprofileresponse_model.dart'; // UserProfile model
+import 'package:myapp/models/editprofile_model.dart'; // EditUserProfile model
+import 'package:myapp/models/FollowStatusResponse.dart';
+import 'package:myapp/models/follower_model.dart';
+import 'package:myapp/models/following_model.dart';
+import 'package:myapp/models/privacy_settings_model.dart';
 import 'apiService.dart';
 import 'SessionExpiredException.dart';
 

@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
-import '***REMOVED***/services/Userprofile_service.dart';
-import '***REMOVED***/services/userpost_service.dart';
-import '***REMOVED***/models/userprofileresponse_model.dart';
-import '***REMOVED***/models/post_model.dart';
-import '***REMOVED***/services/FollowService.dart';
-import '***REMOVED***/models/FollowStatusResponse.dart';
-import '***REMOVED***/profile/profilepostdetails.dart';
-import '***REMOVED***/models/sharedpost_model.dart';
-import '***REMOVED***/services/LoginService.dart';
-import '***REMOVED***/profile/post_grid.dart';
-import '***REMOVED***/profile/shared_posts_grid.dart';
-import '***REMOVED***/profile/shared_post_details_page.dart';
-import '***REMOVED***/profile/followerspage.dart';
-import '***REMOVED***/profile/followingpage.dart';
-import '***REMOVED***/maintenance/expiredtoken.dart';
-import '***REMOVED***/services/SessionExpiredException.dart';
-import '***REMOVED***/profile/qr_code.dart';
-import '***REMOVED***/services/blocked_user_exception.dart';
-import '***REMOVED***/services/bannedexception.dart'; 
+import 'package:myapp/services/Userprofile_service.dart';
+import 'package:myapp/services/userpost_service.dart';
+import 'package:myapp/models/userprofileresponse_model.dart';
+import 'package:myapp/models/post_model.dart';
+import 'package:myapp/services/FollowService.dart';
+import 'package:myapp/models/FollowStatusResponse.dart';
+import 'package:myapp/profile/profilepostdetails.dart';
+import 'package:myapp/models/sharedpost_model.dart';
+import 'package:myapp/services/LoginService.dart';
+import 'package:myapp/profile/post_grid.dart';
+import 'package:myapp/profile/shared_posts_grid.dart';
+import 'package:myapp/profile/shared_post_details_page.dart';
+import 'package:myapp/profile/followerspage.dart';
+import 'package:myapp/profile/followingpage.dart';
+import 'package:myapp/maintenance/expiredtoken.dart';
+import 'package:myapp/services/SessionExpiredException.dart';
+import 'package:myapp/profile/qr_code.dart';
+import 'package:myapp/services/blocked_user_exception.dart';
+import 'package:myapp/services/bannedexception.dart'; 
 import '../profile/report_dialog_user.dart'; // <-- Update path if needed
 
 class OtherUserProfilePage extends StatefulWidget {

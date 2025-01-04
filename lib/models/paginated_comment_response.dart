@@ -1,6 +1,6 @@
 // models/paginated_comment_response.dart
 
-import '***REMOVED***/models/comment_model.dart';
+import 'package:myapp/models/comment_model.dart';
 
 class PaginatedCommentResponse {
   final List<Comment> comments;
